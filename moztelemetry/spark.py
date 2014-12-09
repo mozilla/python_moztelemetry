@@ -68,4 +68,3 @@ def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=
     parallelism = max(len(sample) / 16, sc.defaultParallelism)
 
     return sc.parallelize(sample, parallelism).flatMap(lambda x: _read(x))
-    read(files)
