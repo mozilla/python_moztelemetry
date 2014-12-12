@@ -3,6 +3,9 @@ import boto
 import liblzma as lzma
 import simplejson as json
 
+_conn = boto.connect_s3()
+_bucket = _conn.get_bucket("telemetry-published-v2", validate=False)
+
 def _build_filter(appName, channel, version, buildid, submission_date):
     def parse(field):
         if isinstance(field, tuple):
@@ -54,9 +57,7 @@ def _get_filenames(filter):
         return []
 
 def _read(filename):
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket("telemetry-published-v2", validate=False)
-    key = bucket.get_key(filename)
+    key = _bucket.get_key(filename)
     compressed = key.get_contents_as_string()
     raw = lzma.decompress(compressed).split("\n")[:-1]
     return map(lambda x: x[37:], raw)
