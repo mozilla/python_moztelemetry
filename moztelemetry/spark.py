@@ -62,10 +62,10 @@ def _read(filename):
     raw = lzma.decompress(compressed).split("\n")[:-1]
     return map(lambda x: x[37:], raw)
 
-def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0, files_per_worker=16):
+def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0):
     filter = _build_filter(appName, channel, version, buildid, submission_date)
     files = _get_filenames(filter)
     sample = files[0: int(len(files)*fraction)]
-    parallelism = max(len(sample)/files_per_worker, sc.defaultParallelism)
+    parallelism = max(len(sample), sc.defaultParallelism)
 
     return sc.parallelize(sample, parallelism).flatMap(lambda x: _read(x))
