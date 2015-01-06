@@ -25,6 +25,8 @@ class Histogram:
         return self.definition
 
     def percentile(self, percentile):
+        assert(percentile >= 0 and percentile <= 100)
+
         fraction = percentile/100
         to_count = fraction*self.buckets.sum()
         percentile_bucket = 0
