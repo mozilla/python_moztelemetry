@@ -9,12 +9,14 @@ _definitions = requests.get("https://hg.mozilla.org/mozilla-central/raw-file/2a1
 
 class Histogram:
     def __init__(self, name, instance):
-        if isinstance(instance, list):
-            assert(False) # minimal format not supported yet
-
-        entries = {int(k): v for k, v in instance["values"].items()}
         self.definition = histogram_tools.Histogram(name, _definitions[name])
-        self.buckets = pd.Series(entries, index=self.definition.ranges()).fillna(0)
+
+        if isinstance(instance, list):
+            values = instance[:-5]
+            self.buckets = pd.Series(values, index=self.definition.ranges())
+        else:
+            entries = {int(k): v for k, v in instance["values"].items()}
+            self.buckets = pd.Series(entries, index=self.definition.ranges()).fillna(0)
 
     def get_values(self):
         return self.buckets
