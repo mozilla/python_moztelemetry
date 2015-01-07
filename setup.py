@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='python_moztelemetry',
-      version='0.2.0',
+      version='0.2.1',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',

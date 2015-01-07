@@ -13,7 +13,7 @@ class Histogram:
 
         if isinstance(instance, list):
             values = None
-            if len(instance) == self.definition.n_buckets() - 5:
+            if len(instance) == self.definition.n_buckets():
                 values = instance
             else:
                 values = instance[:-5]
@@ -44,7 +44,7 @@ class Histogram:
                 break
             to_count -= freq
 
-        if percentile_bucket == 0 or percentile_bucket == len(self.buckets) - 1:
+        if percentile_bucket == len(self.buckets) - 1:
             return float('nan')
 
         percentile_frequency = self.buckets.values[percentile_bucket]
