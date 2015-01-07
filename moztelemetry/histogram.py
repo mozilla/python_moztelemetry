@@ -12,7 +12,11 @@ class Histogram:
         self.definition = histogram_tools.Histogram(name, _definitions[name])
 
         if isinstance(instance, list):
-            values = instance[:-5]
+            values = None
+            if len(instance) == self.definition.n_buckets() - 5:
+                values = instance
+            else:
+                values = instance[:-5]
             self.buckets = pd.Series(values, index=self.definition.ranges())
         else:
             entries = {int(k): v for k, v in instance["values"].items()}
