@@ -18,6 +18,9 @@ class Histogram:
             entries = {int(k): v for k, v in instance["values"].items()}
             self.buckets = pd.Series(entries, index=self.definition.ranges()).fillna(0)
 
+    def __str__(self):
+        return str(self.buckets)
+
     def get_values(self):
         return self.buckets
 
