@@ -5,7 +5,7 @@ import histogram_tools
 import pandas as pd
 import numpy as np
 
-_definitions = requests.get("https://hg.mozilla.org/mozilla-central/raw-file/2a193b7f395c/toolkit/components/telemetry/Histograms.json").json()
+_definitions = requests.get("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/Histograms.json").json()
 
 class Histogram:
     def __init__(self, name, instance):
