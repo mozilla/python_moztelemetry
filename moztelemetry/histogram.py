@@ -11,7 +11,7 @@ class Histogram:
     def __init__(self, name, instance):
         self.definition = histogram_tools.Histogram(name, _definitions[name])
 
-        if isinstance(instance, list):
+        if isinstance(instance, list) or isinstance(instance, np.ndarray):
             values = None
             if len(instance) == self.definition.n_buckets():
                 values = instance
