@@ -6,7 +6,7 @@ import simplejson as json
 _conn = boto.connect_s3()
 _bucket = _conn.get_bucket("telemetry-published-v2", validate=False)
 
-def _build_filter(appName, channel, version, buildid, submission_date):
+def _build_filter(appName, channel, version, buildid, submission_date, reason):
     def parse(field):
         if isinstance(field, tuple):
             return {"min": field[0], "max": field[1]}
@@ -19,7 +19,7 @@ def _build_filter(appName, channel, version, buildid, submission_date):
                    "dimensions": [
                        {
                            "field_name": "reason",
-                           "allowed_values": ["saved-session"]
+                           "allowed_values": [reason]
                        },
                        {
                            "field_name": "appName",
@@ -62,8 +62,8 @@ def _read(filename):
     raw = lzma.decompress(compressed).split("\n")[:-1]
     return map(lambda x: x[37:], raw)
 
-def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0):
-    filter = _build_filter(appName, channel, version, buildid, submission_date)
+def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0, reason="saved-session"):
+    filter = _build_filter(appName, channel, version, buildid, submission_date, reason)
     files = _get_filenames(filter)
     sample = files[0: int(len(files)*fraction)]
     parallelism = max(len(sample), sc.defaultParallelism)
