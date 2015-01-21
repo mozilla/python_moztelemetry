@@ -60,7 +60,7 @@ def _read(filename):
     key = _bucket.get_key(filename)
     compressed = key.get_contents_as_string()
     raw = lzma.decompress(compressed).split("\n")[:-1]
-    return map(lambda x: x[37:], raw)
+    return map(lambda x: x.split("\t", 1)[1], raw)
 
 def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0, reason="saved-session"):
     filter = _build_filter(appName, channel, version, buildid, submission_date, reason)
