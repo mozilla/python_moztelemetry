@@ -65,7 +65,7 @@ def _read(filename):
 def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0, reason="saved-session"):
     filter = _build_filter(appName, channel, version, buildid, submission_date, reason)
     files = _get_filenames(filter)
-    sample = files[0: int(len(files)*fraction)]
+    sample = files[len(files) - int(len(files)*fraction):]
     parallelism = max(len(sample), sc.defaultParallelism)
 
     return sc.parallelize(sample, parallelism).flatMap(lambda x: _read(x))
