@@ -33,8 +33,8 @@ class Histogram:
 
     def get_value(self, only_median=False):
         """
-        Returns a scalar for flag and count histograms. Otherwise it returns either the 
-        raw histogram represented as a pandas Series or just the median if only_median 
+        Returns a scalar for flag and count histograms. Otherwise it returns either the
+        raw histogram represented as a pandas Series or just the median if only_median
         is True.
         """
 
