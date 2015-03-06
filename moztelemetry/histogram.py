@@ -5,14 +5,19 @@ import histogram_tools
 import pandas as pd
 import numpy as np
 
-_definitions = requests.get("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/Histograms.json").json()
 
 class Histogram:
+    """ A class representing a histogram. """
+
+    _definitions = requests.get("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/Histograms.json").json()
+
     def __init__(self, name, instance):
-        self.definition = histogram_tools.Histogram(name, _definitions[name])
+        """ Initialize a histogram from its name and a telemetry submission. """
+
+        self.definition = histogram_tools.Histogram(name, Histogram._definitions[name])
+        self.kind = self.definition.kind()
 
         if isinstance(instance, list) or isinstance(instance, np.ndarray):
-            values = None
             if len(instance) == self.definition.n_buckets():
                 values = instance
             else:
@@ -23,16 +28,33 @@ class Histogram:
             self.buckets = pd.Series(entries, index=self.definition.ranges()).fillna(0)
 
     def __str__(self):
+        """ Returns a string representation of the histogram. """
         return str(self.buckets)
 
-    def get_values(self):
-        return self.buckets
+    def get_value(self, only_median=False):
+        """
+        Returns a scalar for flag and count histograms. Otherwise it returns either the 
+        raw histogram represented as a pandas Series or just the median if only_median 
+        is True.
+        """
+
+        if self.kind in ["exponential", "linear", "enumerated", "boolean"]:
+            return self.percentile(50) if only_median else self.buckets
+        elif self.kind == "count":
+            return self.buckets[0]
+        elif self.kind == "flag":
+            return self.buckets[1] == 1
+        else:
+            assert(False) # Unsupported histogram kind
 
     def get_definition(self):
+        """ Returns the definition of the histogram. """
         return self.definition
 
     def percentile(self, percentile):
+        """ Returns the nth percentile of the histogram. """
         assert(percentile >= 0 and percentile <= 100)
+        assert(self.kind in ["exponential", "linear", "enumerated", "boolean"])
 
         fraction = percentile/100
         to_count = fraction*self.buckets.sum()
