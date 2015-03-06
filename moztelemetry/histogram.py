@@ -5,7 +5,6 @@ import histogram_tools
 import pandas as pd
 import numpy as np
 
-
 class Histogram:
     """ A class representing a histogram. """
 

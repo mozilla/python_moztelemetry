@@ -2,7 +2,8 @@ import requests
 import boto
 import liblzma as lzma
 import simplejson as json
-import histogram
+
+from histogram import Histogram
 
 _conn = boto.connect_s3()
 _bucket = _conn.get_bucket("telemetry-published-v2", validate=False)
