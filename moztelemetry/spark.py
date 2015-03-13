@@ -30,7 +30,8 @@ def filter_independent_pings(pings):
     if type(pings.first()) == str:
         pings = pings.map(lambda p: json.loads(p))
 
-    return pings.groupBy(lambda p: p.get("clientID", None)).map(lambda x: next(iter(x[1])))
+    # filter out clients without ID as groupBy can run out of memory (spilling not implemented as of Spark 1.2.1)
+    return pings.map(lambda p: "clientID" in p).groupBy(lambda p: p.get("clientID", None)).map(lambda x: next(iter(x[1])))
 
 def _build_filter(appName, channel, version, buildid, submission_date, reason):
     def parse(field):
