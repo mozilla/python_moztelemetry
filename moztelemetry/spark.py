@@ -9,6 +9,7 @@ _conn = boto.connect_s3()
 _bucket = _conn.get_bucket("telemetry-published-v2", validate=False)
 
 def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0, reason="saved-session"):
+    """ Returns a RDD of Telemetry submissions for the given criteria. """
     filter = _build_filter(appName, channel, version, buildid, submission_date, reason)
     files = _get_filenames(filter)
     sample = files[len(files) - int(len(files)*fraction):]
@@ -17,16 +18,22 @@ def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=
     return sc.parallelize(sample, parallelism).flatMap(lambda x: _read(x))
 
 def get_pings_properties(pings, keys, only_median=False):
+    """ Returns a RDD of a subset of properties of pings. """
     if type(pings.first()) == str:
         pings = pings.map(lambda p: json.loads(p))
 
     if type(keys) == str:
         keys = [keys]
 
-    keys = [key.split("/") for key in keys]
+    keys = [key.split(".") for key in keys]
     return pings.map(lambda p: _get_ping_properties(p, keys, only_median)).filter(lambda p: p)
 
-def filter_independent_pings(pings):
+def get_one_ping_per_client(pings):
+    """
+    Returns a single ping for each client in the RDD. This operation is expensive 
+    as it requires data to be shuffled around. It should be run only after extracting 
+    a subset with get_pings_properties.
+    """
     if type(pings.first()) == str:
         pings = pings.map(lambda p: json.loads(p))
 
