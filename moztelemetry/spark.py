@@ -30,8 +30,8 @@ def get_pings_properties(pings, keys, only_median=False):
 
 def get_one_ping_per_client(pings):
     """
-    Returns a single ping for each client in the RDD. This operation is expensive 
-    as it requires data to be shuffled around. It should be run only after extracting 
+    Returns a single ping for each client in the RDD. This operation is expensive
+    as it requires data to be shuffled around. It should be run only after extracting
     a subset with get_pings_properties.
     """
     if type(pings.first()) == str:
@@ -39,7 +39,8 @@ def get_one_ping_per_client(pings):
 
     return pings.filter(lambda p: "clientID" in p).\
                  map(lambda p: (p["clientID"], p)).\
-                 reduceByKey(lambda p1, p2:  p1)
+                 reduceByKey(lambda p1, p2: p1).\
+                 map(lambda p: p[1])
 
 def _build_filter(appName, channel, version, buildid, submission_date, reason):
     def parse(field):
