@@ -118,7 +118,7 @@ def _get_ping_property(cursor, key, only_median=False):
     if is_histogram:
         return (key[-1], Histogram(key[-1], cursor).get_value(only_median))
     elif is_keyed_histogram:
-        return ("/".join(key[-2:]), Histogram(key[-2], cursor).get_value(only_median))
+        return (".".join(key[-2:]), Histogram(key[-2], cursor).get_value(only_median))
     else:
         return (key[-1], cursor)
 
