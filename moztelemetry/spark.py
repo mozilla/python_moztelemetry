@@ -18,7 +18,10 @@ def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=
     return sc.parallelize(sample, parallelism).flatMap(lambda x: _read(x))
 
 def get_pings_properties(pings, keys, only_median=False):
-    """ Returns a RDD of a subset of properties of pings. """
+    """
+    Returns a RDD of a subset of properties of pings. Child histograms are
+    automatically merged with the parent histogram.
+    """
     if type(pings.first()) == str:
         pings = pings.map(lambda p: json.loads(p))
 
@@ -98,7 +101,21 @@ def _read(filename):
     raw = lzma.decompress(compressed).split("\n")[:-1]
     return map(lambda x: x.split("\t", 1)[1], raw)
 
-def _get_ping_property(cursor, key, only_median=False):
+def _get_ping_properties(ping, keys, only_median):
+    res = {}
+
+    for key in keys:
+        if key[0] == "histograms" or key[0] == "keyedHistograms":
+            k, v = _get_merged_histogram(ping, key)
+        else:
+            k, v = _get_ping_property(ping, key)
+
+        if k:
+            res[k] = v.get_value(only_median) if isinstance(v, Histogram) else v
+
+    return res
+
+def _get_ping_property(cursor, key):
     is_histogram = False
     is_keyed_histogram = False
 
@@ -116,18 +133,24 @@ def _get_ping_property(cursor, key, only_median=False):
     if cursor is None:
         return (None, None)
     if is_histogram:
-        return (key[-1], Histogram(key[-1], cursor).get_value(only_median))
+        return (key[-1], Histogram(key[-1], cursor))
     elif is_keyed_histogram:
-        return (".".join(key[-2:]), Histogram(key[-2], cursor).get_value(only_median))
+        return (".".join(key[-2:]), Histogram(key[-2], cursor))
     else:
         return (key[-1], cursor)
 
-def _get_ping_properties(ping, keys, only_median=False):
-    res = {}
+def _get_merged_histogram(cursor, key):
+    assert((len(key) == 2 and key[0] == "histograms") or (len(key) == 3 and key[0] == "keyedHistograms"))
 
-    for key in keys:
-        k, v = _get_ping_property(ping, key, only_median)
-        if k:
-            res[k] = v
+    # Get parent histogram
+    name, parent = _get_ping_property(cursor, key)
 
-    return res
+    # Get child histograms
+    cursor = cursor.get("childPayloads", {})
+    childs = [_get_ping_property(child, key)[1] for child in cursor]
+
+    # Merge
+    metrics = filter(lambda m: m is not None, [parent] + childs)
+    metric = reduce(lambda x, y: x + y, metrics) if metrics else None
+
+    return name, metric
