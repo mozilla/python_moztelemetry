@@ -15,8 +15,9 @@ class Histogram:
 
         self.definition = histogram_tools.Histogram(name, Histogram._definitions[name])
         self.kind = self.definition.kind()
+        self.name = name
 
-        if isinstance(instance, list) or isinstance(instance, np.ndarray):
+        if isinstance(instance, list) or isinstance(instance, np.ndarray) or isinstance(instance, pd.Series):
             if len(instance) == self.definition.n_buckets():
                 values = instance
             else:
@@ -72,3 +73,6 @@ class Histogram:
         percentile_lower_boundary = self.buckets.index[percentile_bucket]
         width = self.buckets.index[percentile_bucket + 1] - self.buckets.index[percentile_bucket]
         return percentile_lower_boundary + width*to_count/percentile_frequency
+
+    def __add__(self, other):
+        return Histogram(self.name, self.buckets + other.buckets)
