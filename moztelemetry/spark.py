@@ -1,7 +1,7 @@
 import requests
 import boto
 import liblzma as lzma
-import simplejson as json
+import ujson as json
 
 from histogram import Histogram
 
