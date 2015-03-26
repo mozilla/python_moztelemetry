@@ -1,7 +1,7 @@
-import requests
+iimport requests
 import boto
 import liblzma as lzma
-import ujson as json
+import json as json
 
 from histogram import Histogram
 
@@ -106,12 +106,17 @@ def _get_ping_properties(ping, keys, only_median):
 
     for key in keys:
         if key[0] == "histograms" or key[0] == "keyedHistograms":
-            k, v = _get_merged_histogram(ping, key)
+            props = _get_merged_histograms(ping, key)
+
+            for k, v in props.iteritems():
+                res[k] = v.get_value(only_median)
         else:
             k, v = _get_ping_property(ping, key)
 
-        if k:
-            res[k] = v.get_value(only_median) if isinstance(v, Histogram) else v
+            if v is None:
+                continue
+
+            res[k] = v
 
     return res
 
@@ -139,18 +144,28 @@ def _get_ping_property(cursor, key):
     else:
         return (key[-1], cursor)
 
-def _get_merged_histogram(cursor, key):
+def _get_merged_histograms(cursor, key):
     assert((len(key) == 2 and key[0] == "histograms") or (len(key) == 3 and key[0] == "keyedHistograms"))
+    res = {}
 
     # Get parent histogram
     name, parent = _get_ping_property(cursor, key)
 
-    # Get child histograms
     cursor = cursor.get("childPayloads", {})
-    childs = [_get_ping_property(child, key)[1] for child in cursor]
+    if not cursor: # pre e10s ping
+        return {name: parent} if parent else {}
 
-    # Merge
-    metrics = filter(lambda m: m is not None, [parent] + childs)
-    metric = reduce(lambda x, y: x + y, metrics) if metrics else None
+    if parent:
+        res[name + "_parent"] = parent
 
-    return name, metric
+    # Get children histograms
+    children = filter(lambda c: c is not None, [_get_ping_property(child, key)[1] for child in cursor])
+    if children:
+        res[name + "_children"] = reduce(lambda x, y: x + y, children)
+
+    # Merge parent and children
+    if parent or children:
+        metrics = ([parent] if parent else []) + children
+        res[name] = reduce(lambda x, y: x + y, metrics)
+
+    return res
