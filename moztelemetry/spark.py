@@ -159,8 +159,11 @@ def _get_merged_histograms(cursor, key):
         res[name + "_parent"] = parent
 
     # Get children histograms
-    children = filter(lambda c: c is not None, [_get_ping_property(child, key)[1] for child in cursor])
+    children = filter(lambda c: c[0] is not None, [_get_ping_property(child, key) for child in cursor])
+
     if children:
+        name = children[0][0] # The parent histogram might not exist
+        children = map(lambda c: c[1], children)
         res[name + "_children"] = reduce(lambda x, y: x + y, children)
 
     # Merge parent and children
