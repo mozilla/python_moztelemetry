@@ -1,4 +1,4 @@
-ffrom distutils.core import setup
+from distutils.core import setup
 
 setup(name='python_moztelemetry',
       version='0.3.0.3',
