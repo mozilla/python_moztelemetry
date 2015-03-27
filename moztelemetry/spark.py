@@ -28,7 +28,8 @@ def get_pings_properties(pings, keys, only_median=False):
     if type(keys) == str:
         keys = [keys]
 
-    keys = [key.split(".") for key in keys]
+    # Use '/' as dots can appear in keyed histograms
+    keys = [key.split("/") for key in keys]
     return pings.map(lambda p: _get_ping_properties(p, keys, only_median)).filter(lambda p: p)
 
 def get_one_ping_per_client(pings):
@@ -140,7 +141,7 @@ def _get_ping_property(cursor, key):
     if is_histogram:
         return (key[-1], Histogram(key[-1], cursor))
     elif is_keyed_histogram:
-        return (".".join(key[-2:]), Histogram(key[-2], cursor))
+        return ("/".join(key[-2:]), Histogram(key[-2], cursor))
     else:
         return (key[-1], cursor)
 
