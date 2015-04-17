@@ -74,7 +74,7 @@ class SDB:
         if isinstance(submission_date, basestring):
             submission_date = (submission_date, submission_date)
 
-        if "submission_date" is None:
+        if submission_date is None:
             domains = self._domains
         elif isinstance(submission_date, tuple) and len(submission_date) == 2:
             try:
