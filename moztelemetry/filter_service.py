@@ -199,6 +199,8 @@ def update_published_v2_files(sdb, from_submission_date=None, limit=None):
             print("Error listing keys: {}".format(e))
             traceback.print_exc()
             print("Continuing from last seen key: {}".format(last_key))
+        
+        break
 
     insert_published_files_batch(sdb, current_batch)
     sdb.flush_put()
