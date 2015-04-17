@@ -211,7 +211,8 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-l", "--limit", help="Maximum number of files to index", default=None)
-    parser.add_argument("-s", "--schema_version", help="Telemetry schema version", default="v2")
+    parser.add_argument("-s", "--schema-version", help="Telemetry schema version", default="v2")
+    parser.add_argument("-f", "--from-date", help="Add only telemetry files submitted after this date (included)", default=None)
 
     args = parser.parse_args()
 
@@ -222,4 +223,4 @@ if __name__ == "__main__":
         raise ValueError("Unsupported schema version")
 
     sdb = SDB("telemetry_v2", read_only=False)
-    update_published_v2_files(sdb, limit=args.limit)
+    update_published_v2_files(sdb, from_submission_date=args.from_date, limit=args.limit)
