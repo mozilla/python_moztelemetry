@@ -17,6 +17,7 @@ import ujson as json
 import traceback
 import boto.sdb
 import argparse
+import signal
 
 from collections import defaultdict
 from datetime import datetime
@@ -143,7 +144,6 @@ def delta_ms(start, end=None):
 def delta_sec(start, end=None):
     return delta_ms(start, end) / 1000.0
 
-
 def update_published_v2_files(sdb, from_submission_date=None, limit=None):
     s3 = S3Connection()
     bucket_name = "telemetry-published-v2"
@@ -151,6 +151,11 @@ def update_published_v2_files(sdb, from_submission_date=None, limit=None):
     schema_key = bucket.get_key("telemetry_schema.json")
     schema_string = schema_key.get_contents_as_string()
     schema = TelemetrySchema(json.loads(schema_string))
+
+    termination_requested = [False]
+    def keyboard_interrupt_handler(signal, frame):
+        termination_requested[0] = True
+    signal.signal(signal.SIGINT, keyboard_interrupt_handler)
 
     added_count = 0
     total_count = 0
@@ -186,15 +191,14 @@ def update_published_v2_files(sdb, from_submission_date=None, limit=None):
                     added_count += 1
 
                 total_count += 1
-                if total_count == limit:
+                if total_count == limit or termination_requested[0]:
+                    done = True
                     break
 
         except Exception as e:
             print("Error listing keys: {}".format(e))
             traceback.print_exc()
             print("Continuing from last seen key: {}".format(last_key))
-
-        break
 
     insert_published_files_batch(sdb, current_batch)
     sdb.flush_put()
