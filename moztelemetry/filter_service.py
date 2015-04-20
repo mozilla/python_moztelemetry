@@ -76,7 +76,7 @@ class SDB:
             submission_date = (submission_date, submission_date)
 
         if submission_date is None:
-            domains = self._domains
+            domains = self._domains.values()
         elif isinstance(submission_date, tuple) and len(submission_date) == 2:
             try:
                 begin = datetime.strptime(submission_date[0], "%Y%m%d")
@@ -105,7 +105,8 @@ class SDB:
 
         for domain in domains:
             query = "select submissionDate from {} where {}".format(domain.name, partial_query)
-            jobs.append(self._pool.apply_async(lambda: [x.name for x in domain.select(query)]))
+            # Not sure why closing over query generates empty results...
+            jobs.append(self._pool.apply_async(lambda x: list(domain.select(x)), [query]))
 
         return reduce(lambda x, y: x + y, [job.get() for job in jobs])
 

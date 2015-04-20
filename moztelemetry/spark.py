@@ -8,7 +8,7 @@
 """ This module implements the Telemetry API for Spark.
 
 Example usage:
-rdd = get_pings(None, app="Firefox", channel="nightly", submission_date="20150401", reason="saved_session"
+rdd = get_pings(None, app="Firefox", channel="nightly", build_id=("20140401000000", "20140402999999"), reason="saved_session")
 
 """
 
