@@ -78,6 +78,9 @@ def get_one_ping_per_client(pings):
     if type(pings.first()) == str:
         pings = pings.map(lambda p: json.loads(p))
 
+    if "clientID" is not in pings.first():
+        raise ValueError("Missing clientID attribute.")
+
     return pings.filter(lambda p: "clientID" in p).\
                  map(lambda p: (p["clientID"], p)).\
                  reduceByKey(lambda p1, p2: p1).\
