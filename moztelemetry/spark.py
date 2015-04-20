@@ -5,24 +5,53 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+""" This module implements the Telemetry API for Spark.
+
+Example usage:
+rdd = get_pings(None, app="Firefox", channel="nightly", submission_date="20150401", reason="saved_session"
+
+"""
+
 import requests
 import boto
 import liblzma as lzma
 import json as json
+import numpy.random as random
 
+from filter_service import  SDB
 from histogram import Histogram
 
 _conn = boto.connect_s3()
 _bucket = _conn.get_bucket("telemetry-published-v2", validate=False)
 
-def get_pings(sc, appName, channel, version, buildid, submission_date, fraction=1.0, reason="saved-session"):
-    """ Returns a RDD of Telemetry submissions for the given criteria. """
-    filter = _build_filter(appName, channel, version, buildid, submission_date, reason)
-    files = _get_filenames(filter)
-    sample = files[len(files) - int(len(files)*fraction):]
-    parallelism = max(len(sample), sc.defaultParallelism)
 
+def get_pings(sc, **kwargs):
+    """ Returns a RDD of Telemetry submissions for the given criteria. """
+    app = kwargs.pop("app", None)
+    channel = kwargs.pop("channel", None)
+    version = kwargs.pop("version", None)
+    build_id = kwargs.pop("build_id", None)
+    submission_date = kwargs.pop("submission_date", None)
+    fraction = kwargs.pop("fraction", 1.0)
+    reason = kwargs.pop("reason", "saved_session")
+
+    if fraction < 0 or fraction > 1:
+        raise ValueError("Invalid fraction argument")
+
+    if kwargs:
+        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
+
+    files = _get_filenames_v2(app=app, channel=channel, version=version, build_id = build_id,
+                              submission_date=submission_date, reason=reason)
+
+    if fraction != 1.0:
+        sample = random.choice(files, size=len(files)*fraction, replace=False)
+    else:
+        sample = files
+
+    parallelism = max(len(sample), sc.defaultParallelism)
     return sc.parallelize(sample, parallelism).flatMap(lambda x: _read(x))
+
 
 def get_pings_properties(pings, keys, only_median=False):
     """
@@ -39,6 +68,7 @@ def get_pings_properties(pings, keys, only_median=False):
     keys = [key.split("/") for key in keys]
     return pings.map(lambda p: _get_ping_properties(p, keys, only_median)).filter(lambda p: p)
 
+
 def get_one_ping_per_client(pings):
     """
     Returns a single ping for each client in the RDD. This operation is expensive
@@ -53,61 +83,29 @@ def get_one_ping_per_client(pings):
                  reduceByKey(lambda p1, p2: p1).\
                  map(lambda p: p[1])
 
-def _build_filter(appName, channel, version, buildid, submission_date, reason):
-    def parse(field):
-        if isinstance(field, tuple):
-            return {"min": field[0], "max": field[1]}
-        else:
-            return field
+def _get_filenames_v2(**kwargs):
+    translate = {"app": "appName",
+                 "channel": "appUpdateChannel",
+                 "version": "appVersion",
+                 "build_id": "appBuildID",
+                 "submission_date": "submissionDate",
+                 "reason": "reason"}
+    query = {}
+    for k, v in kwargs.iteritems():
+        tk = translate.get(k, None)
+        if not tk:
+            raise ValueError("Invalid query attribute name specified: {}".format(k))
+        query[tk] = v
 
-    filter = { "filter":
-               {
-                   "version": 1,
-                   "dimensions": [
-                       {
-                           "field_name": "reason",
-                           "allowed_values": [reason]
-                       },
-                       {
-                           "field_name": "appName",
-                           "allowed_values": [appName]
-                       },
-                       {
-                           "field_name": "appUpdateChannel",
-                           "allowed_values": [channel]
-                       },
-                       {
-                           "field_name": "appVersion",
-                           "allowed_values": parse(version)
-                       },
-                       {
-                           "field_name": "appBuildID",
-                           "allowed_values": parse(buildid)
-                       },
-                       {
-                           "field_name": "submission_date",
-                           "allowed_values": parse(submission_date)
-                       }
-                   ]
-               }
-             }
-    return json.dumps(filter)
-
-def _get_filenames(filter):
-    url = "http://ec2-54-203-209-235.us-west-2.compute.amazonaws.com:8080/files"
-    headers = {"content-type": "application/json"}
-    response = requests.post(url, data=filter, headers=headers)
-
-    try:
-        return response.json()["files"]
-    except:
-        return []
+    sdb = SDB("telemetry_v2")
+    return sdb.query(**query)
 
 def _read(filename):
     key = _bucket.get_key(filename)
     compressed = key.get_contents_as_string()
     raw = lzma.decompress(compressed).split("\n")[:-1]
     return map(lambda x: x.split("\t", 1)[1], raw)
+
 
 def _get_ping_properties(ping, keys, only_median):
     res = {}
@@ -127,6 +125,7 @@ def _get_ping_properties(ping, keys, only_median):
             res[k] = v
 
     return res
+
 
 def _get_ping_property(cursor, key):
     is_histogram = False
@@ -151,6 +150,7 @@ def _get_ping_property(cursor, key):
         return ("/".join(key[-2:]), Histogram(key[-2], cursor))
     else:
         return (key[-1], cursor)
+
 
 def _get_merged_histograms(cursor, key):
     assert((len(key) == 2 and key[0] == "histograms") or (len(key) == 3 and key[0] == "keyedHistograms"))

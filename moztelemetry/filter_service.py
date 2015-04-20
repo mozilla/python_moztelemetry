@@ -99,6 +99,7 @@ class SDB:
             return []
 
         # Build query
+        kwargs = {k: v for k, v in kwargs.iteritems() if v is not None}  # 'None' values match everything
         partial_query = " and ".join([self._sqlize(k, v) for k, v in kwargs.iteritems()])
         jobs = []
 
