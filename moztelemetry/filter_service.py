@@ -106,7 +106,7 @@ class SDB:
         for domain in domains:
             query = "select submissionDate from {} where {}".format(domain.name, partial_query)
             # Not sure why closing over query generates empty results...
-            jobs.append(self._pool.apply_async(lambda x: list(domain.select(x)), [query]))
+            jobs.append(self._pool.apply_async(lambda x: [f.name for f in domain.select(x)], [query]))
 
         return reduce(lambda x, y: x + y, [job.get() for job in jobs])
 
