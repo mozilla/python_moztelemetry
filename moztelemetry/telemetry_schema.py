@@ -127,3 +127,17 @@ class TelemetrySchema:
             raise ValueError("Error: field '{0}' not in schema dimensions".format(field_name))
         else:
             raise ValueError("Error: field '{0}' is dimension {1}, but incoming dims only has {2} items".format(field_name, dim_idx, len(dims)))
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    if len(sys.argv) != 3:
+        sys.stderr.write("Usage: telemetry_schema.py schema.json s3_filename")
+        sys.exit(-1)
+
+    schema_string = json.load(open(sys.argv[1], "r"))
+    schema = TelemetrySchema(schema_string)
+    dims = schema.get_dimension_map(schema.get_dimensions(".", sys.argv[2]))
+    print(json.dumps(dims))
