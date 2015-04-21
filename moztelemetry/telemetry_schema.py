@@ -133,16 +133,11 @@ if __name__ == "__main__":
     import json
     import sys
 
-    if len(sys.argv) != 2:
-        sys.stderr.write("Usage: telemetry_schema.py s3_filename")
+    if len(sys.argv) != 3:
+        sys.stderr.write("Usage: telemetry_schema.py schema.json s3_filename")
         sys.exit(-1)
 
-    # Change working directory to script directory
-    abspath = os.path.abspath(__file__)
-    dname = os.path.dirname(abspath)
-    os.chdir(dname)
-
-    schema_string = json.load(open("share/telemetry_v2_schema.json", "r"))
+    schema_string = json.load(open(sys.argv[1], "r"))
     schema = TelemetrySchema(schema_string)
-    dims = schema.get_dimension_map(schema.get_dimensions(".", sys.argv[1]))
+    dims = schema.get_dimension_map(schema.get_dimensions(".", sys.argv[2]))
     print(json.dumps(dims))
