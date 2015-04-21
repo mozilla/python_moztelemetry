@@ -142,7 +142,7 @@ if __name__ == "__main__":
     dname = os.path.dirname(abspath)
     os.chdir(dname)
 
-    schema_string = json.load(open("share/telemetry_schema.json", "r"))
+    schema_string = json.load(open("share/telemetry_v2_schema.json", "r"))
     schema = TelemetrySchema(schema_string)
     dims = schema.get_dimension_map(schema.get_dimensions(".", sys.argv[1]))
     print(json.dumps(dims))
