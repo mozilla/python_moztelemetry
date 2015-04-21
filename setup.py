@@ -15,4 +15,5 @@ setup(name='python_moztelemetry',
       url='https://github.com/vitillo/python_moztelemetry',
       packages=['moztelemetry'],
       package_dir={'moztelemetry': 'moztelemetry'},
+      package_data={'moztelemetry': ['share/telemetry_schema.json']},
       install_requires=['boto', 'ujson', 'requests', 'pandas', 'numpy'])
