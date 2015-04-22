@@ -7,21 +7,21 @@
 
 from distutils.core import setup
 
-import wget
+import urllib
 import setuptools.command.sdist
 
 class FetchExternal(setuptools.command.sdist.sdist):
   def run(self):
-    wget.download("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", out="moztelemetry/histogram_tools.py")
+    urllib.urlretrieve("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", "moztelemetry/histogram_tools.py")
     setuptools.command.sdist.sdist.run(self)
 
 setup(cmdclass={'sdist': FetchExternal},
       name='python_moztelemetry',
-      version='0.3.1.3',
+      version='0.3.1.4',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
       url='https://github.com/vitillo/python_moztelemetry',
       packages=['moztelemetry'],
       package_dir={'moztelemetry': 'moztelemetry'},
-      install_requires=['boto', 'ujson', 'requests', 'pandas>=0.15.2', 'numpy>=1.9.2', 'telemetry-tools', 'wget'])
+      install_requires=['boto', 'ujson', 'requests', 'pandas>=0.15.2', 'numpy>=1.9.2', 'telemetry-tools'])
