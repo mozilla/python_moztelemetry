@@ -17,11 +17,11 @@ class FetchExternal(setuptools.command.sdist.sdist):
 
 setup(cmdclass={'sdist': FetchExternal},
       name='python_moztelemetry',
-      version='0.3.1.2',
+      version='0.3.1.3',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
       url='https://github.com/vitillo/python_moztelemetry',
       packages=['moztelemetry'],
       package_dir={'moztelemetry': 'moztelemetry'},
-      install_requires=['boto', 'ujson', 'requests', 'pandas>=0.15.2', 'numpy>=1.9.2', 'telemetry-tools'])
+      install_requires=['boto', 'ujson', 'requests', 'pandas>=0.15.2', 'numpy>=1.9.2', 'telemetry-tools', 'wget'])
