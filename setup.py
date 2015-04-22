@@ -7,8 +7,17 @@
 
 from distutils.core import setup
 
-setup(name='python_moztelemetry',
-      version='0.3.1.0',
+import wget
+import setuptools.command.sdist
+
+class FetchExternal(setuptools.command.sdist.sdist):
+  def run(self):
+    wget.download("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", out="moztelemetry/histogram_tools.py")
+    setuptools.command.sdist.sdist.run(self)
+
+setup(cmdclass={'sdist': FetchExternal},
+      name='python_moztelemetry',
+      version='0.3.1.1',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
