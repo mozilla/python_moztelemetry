@@ -44,7 +44,7 @@ def get_pings(sc, **kwargs):
     files = _get_filenames_v2(app=app, channel=channel, version=version, build_id = build_id,
                               submission_date=submission_date, reason=reason)
 
-    if fraction != 1.0:
+    if files and fraction != 1.0:
         sample = random.choice(files, size=len(files)*fraction, replace=False)
     else:
         sample = files
