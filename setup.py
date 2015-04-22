@@ -24,4 +24,4 @@ setup(cmdclass={'sdist': FetchExternal},
       url='https://github.com/vitillo/python_moztelemetry',
       packages=['moztelemetry'],
       package_dir={'moztelemetry': 'moztelemetry'},
-      install_requires=['boto', 'ujson', 'requests', 'pandas', 'numpy'])
+      install_requires=['boto', 'ujson', 'requests', 'pandas', 'numpy', 'telemetry-tools'])
