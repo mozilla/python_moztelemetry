@@ -92,8 +92,26 @@ class SDB:
             prev = previous_stats.get(day, 0)
             current = current_stats.get(day, 0)
             diff = current - prev
-            diff_perc = diff/float(current) if current else float('nan')
-            print "Day {} - previous: {} , current: {}, added: {} ({}% missing)".format(day, prev, current, diff, diff_perc)
+            diff_perc = 100.0*diff/current if current else float('nan')
+            print "Day {} - previous: {}, current: {}, added: {} ({}% missing)".format(day, prev, current, diff, diff_perc)
+
+    def print_lambda_stats(self, from_date, to_date):
+        from_date = datetime.strptime(from_date, "%Y%m%d")
+        to_date = datetime.strptime(to_date, "%Y%m%d")
+        jobs = []
+
+        n_days = int((to_date - from_date).total_seconds()/(24*60*60))
+        for i in range(n_days + 1):
+            submission_date = (from_date + relativedelta(days=i)).strftime("%Y%m%d")
+            domain = self[submission_date[:-2]]
+            lambda_query = "select count(*) from {} where submissionDate='{}' and lambda='true'".format(domain.name, submission_date)
+            total_query = "select count(*) from {} where submissionDate='{}'".format(domain.name, submission_date)
+
+            n_lambda = sum([int(c["Count"]) for c in domain.select(lambda_query)])
+            n_total = sum([int(c["Count"]) for c in domain.select(total_query)])
+            n_missing = 100.0*(n_total - n_lambda)/n_total if n_total else float('nan')
+
+            print "Day {} - lambda {}, total {}, ({}% missing)".format(submission_date, n_lambda, n_total, n_missing)
 
     def query(self, **kwargs):
         # Get list of domains for selected submission_date
@@ -273,4 +291,10 @@ if __name__ == "__main__":
     if args.from_date:
         curr = sdb.get_daily_stats(args.from_date, args.to_date)
         print
+        print "Filter service stats:"
+        print "Note that the following numbers only make sense if there ins't another entity concurrently pushing new submissions:"
         sdb.diff_stats(prev, curr)
+
+    print
+    print "AWS lambda stats:"
+    sdb.print_lambda_stats(args.from_date, args.to_date)
