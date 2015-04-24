@@ -18,6 +18,7 @@ import traceback
 import boto.sdb
 import argparse
 import signal
+import sys
 
 from collections import defaultdict
 from datetime import datetime
@@ -191,6 +192,75 @@ def delta_ms(start, end=None):
 def delta_sec(start, end=None):
     return delta_ms(start, end) / 1000.0
 
+
+def update_published_v4_files(sdb, from_submission_date=None, to_submission_date=None, limit=None):
+    s3 = S3Connection()
+    metadata = s3.get_bucket("net-mozaws-prod-us-west-2-pipeline-metadata")
+    schema_key = metadata.get_key("telemetry/schema.json")
+    schema_string = schema_key.get_contents_as_string()
+    schema = TelemetrySchema(json.loads(schema_string))
+    bucket = s3.get_bucket("net-mozaws-prod-us-west-2-pipeline-data")
+
+    termination_requested = [False]
+    def keyboard_interrupt_handler(signal, frame):
+        termination_requested[0] = True
+    signal.signal(signal.SIGINT, keyboard_interrupt_handler)
+
+    added_count = [0]
+    total_count = [0]
+    start_time = datetime.now()
+    current_batch = [defaultdict(dict)]
+    done = [False]
+    last_key = ['']
+
+    def publish(prefix):
+        while not done[0]:
+            try:
+                for key in bucket.list(marker=last_key[0], prefix=prefix):
+                    last_key[0] = key.name
+
+                    if total_count[0] % 25 == 0:  # 25 is the limit for SimpleDB
+                        insert_published_files_batch(sdb, current_batch[0])
+                        current_batch[0] = defaultdict(dict)
+
+                    if total_count[0] % 1e5 == 0:
+                        print("Looked at {} total records in {} seconds, added {}".
+                              format(total_count[0], delta_sec(start_time), added_count[0]))
+
+                    dims = schema.get_dimension_map(schema.get_dimensions(".", key.name[10:], dirs_only=True))
+
+                    if (from_submission_date is None or dims["submissionDate"] >= from_submission_date) and \
+                       (to_submission_date is None or dims["submissionDate"] <= to_submission_date) and \
+                       dims["submissionDate"][:-2] in sdb:
+                        domain = current_batch[0][dims["submissionDate"][:-2]]
+                        domain[key.name] = {"appName": dims.get("appName"),
+                                            "sourceName": dims.get("sourceName"),
+                                            "docType": dims.get("docType"),
+                                            "submissionDate": dims.get("submissionDate"),
+                                            "appVersion": dims.get("appVersion"),
+                                            "sourceVersion": dims.get("sourceVersion"),
+                                            "appUpdateChannel": dims.get("appUpdateChannel")}
+                        added_count[0] += 1
+
+                    total_count[0] += 1
+                    if total_count[0] == limit or termination_requested[0]:
+                        done[0] = True
+                        break
+
+            except Exception as e:
+                print("Error listing keys: {}".format(e))
+                traceback.print_exc()
+                print("Continuing from last seen key: {}".format(last_key))
+
+            break
+
+        insert_published_files_batch(sdb, current_batch[0])
+
+    publish("telemetry/")
+    sdb.flush_put()
+    print("Overall, added {} of {} in {} seconds".format(added_count[0], total_count[0], delta_sec(start_time)))
+
+
 def update_published_v2_files(sdb, from_submission_date=None, to_submission_date=None, limit=None):
     s3 = S3Connection()
     bucket_name = "telemetry-published-v2"
@@ -260,6 +330,39 @@ def insert_published_files_batch(sdb, batch):
     for domain_name, items in batch.iteritems():
         sdb.batch_put(domain_name, items)
 
+def main(limit=None, schema_version=None, from_date=None, to_date=None):
+    if from_date and not to_date:
+        to_date = datetime.now().strftime("%Y%m%d")
+
+    if limit:
+        limit = int(limit)
+
+    if schema_version != "v2" and schema_version != "v4":
+        raise ValueError("Unsupported schema version")
+
+    if schema_version == "v2":
+        sdb = SDB("telemetry_v2", read_only=False)
+    else:
+        sdb = SDB("telemetry_v4", read_only=False)
+
+    if from_date:
+        prev = sdb.get_daily_stats(from_date, to_date)
+
+    if schema_version == "v2":
+        update_published_v2_files(sdb, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
+    else:
+        update_published_v4_files(sdb, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
+
+    if from_date:
+        curr = sdb.get_daily_stats(from_date, to_date)
+        print
+        print "Filter service stats:"
+        print "Note that the following numbers only make sense if there ins't another entity concurrently pushing new submissions:"
+        sdb.diff_stats(prev, curr)
+
+        print "AWS lambda stats:"
+        sdb.print_lambda_stats(from_date, to_date)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create a SimpleDB based index for telemetry submissions on S3",
@@ -271,30 +374,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--to-date", help="Add only telemetry files submitted before this date (included)", default=None)
 
     args = parser.parse_args()
-
-    if args.from_date and not args.to_date:
-        args.to_date = datetime.now().strftime("%Y%m%d")
-
-    if args.limit:
-        args.limit = int(args.limit)
-
-    if args.schema_version != "v2":
-        raise ValueError("Unsupported schema version")
-
-    sdb = SDB("telemetry_v2", read_only=False)
-
-    if args.from_date:
-        prev = sdb.get_daily_stats(args.from_date, args.to_date)
-
-    update_published_v2_files(sdb, from_submission_date=args.from_date, to_submission_date=args.to_date, limit=args.limit)
-
-    if args.from_date:
-        curr = sdb.get_daily_stats(args.from_date, args.to_date)
-        print
-        print "Filter service stats:"
-        print "Note that the following numbers only make sense if there ins't another entity concurrently pushing new submissions:"
-        sdb.diff_stats(prev, curr)
-
-    print
-    print "AWS lambda stats:"
-    sdb.print_lambda_stats(args.from_date, args.to_date)
+    main(limit=args.limit,
+         schema_version=args.schema_version,
+         from_date=args.from_date,
+         to_date=args.to_date)
