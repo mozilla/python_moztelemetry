@@ -41,17 +41,20 @@ class SDB:
 
         if not read_only:
             # Generate domain names that we want to keep
-            last = datetime.now()
-            first = last + relativedelta(months=-(months_retention - 1))
+            now = datetime.now()
+            first = now - relativedelta(months=months_retention - 1)
             domains = set()
 
-            for i in range(months_retention):
+            # Create also future domains as this will run on a periodic basis, even if we are using an AWS lambda
+            # function, to ensure correctness. Furthermore we don't want to create domains within the lambda function.
+            for i in range(months_retention + 12):
                 domains.add("{}_{}".format(prefix, (first + relativedelta(months=i)).strftime("%Y%m")))
 
             # Remove older domains
             for domain_name in domains_existing.difference(domains):
                 self.sdb.delete_domain(domain_name)
 
+            # Create new domains
             for domain_name in domains.difference(domains_existing):
                 self.sdb.create_domain(domain_name)
         else:
@@ -67,6 +70,30 @@ class SDB:
 
     def __getitem__(self, name):
         return self._domains.get(name, None)
+
+    def get_daily_stats(self, from_date, to_date):
+        from_date = datetime.strptime(from_date, "%Y%m%d")
+        to_date = datetime.strptime(to_date, "%Y%m%d")
+        jobs = []
+
+        n_days = int((to_date - from_date).total_seconds()/(24*60*60))
+        for i in range(n_days + 1):
+            submission_date = (from_date + relativedelta(days=i)).strftime("%Y%m%d")
+            domain = self[submission_date[:-2]]
+            query = "select count(*) from {} where submissionDate='{}'".format(domain.name, submission_date)
+            jobs.append(self._pool.apply_async(lambda d, q, s: (s, sum([int(c["Count"]) for c in d.select(q)])), [domain, query, submission_date]))
+
+        return dict([job.get() for job in jobs])
+
+    def diff_stats(self, previous_stats, current_stats):
+        days = set(current_stats.keys() + previous_stats.keys())
+
+        for day in sorted(days):
+            prev = previous_stats.get(day, 0)
+            current = current_stats.get(day, 0)
+            diff = current - prev
+            diff_perc = diff/float(current) if current else float('nan')
+            print "Day {} - previous: {} , current: {}, added: {} ({}% missing)".format(day, prev, current, diff, diff_perc)
 
     def query(self, **kwargs):
         # Get list of domains for selected submission_date
@@ -105,8 +132,8 @@ class SDB:
 
         for domain in domains:
             query = "select submissionDate from {} where {}".format(domain.name, partial_query)
-            # Not sure why closing over query generates empty results...
-            jobs.append(self._pool.apply_async(lambda x: [f.name for f in domain.select(x)], [query]))
+            # Not sure why closing over query and domain generates empty results...
+            jobs.append(self._pool.apply_async(lambda d, q: [f.name for f in d.select(q)], [domain, query]))
 
         return reduce(lambda x, y: x + y, [job.get() for job in jobs])
 
@@ -146,7 +173,7 @@ def delta_ms(start, end=None):
 def delta_sec(start, end=None):
     return delta_ms(start, end) / 1000.0
 
-def update_published_v2_files(sdb, from_submission_date=None, limit=None):
+def update_published_v2_files(sdb, from_submission_date=None, to_submission_date=None, limit=None):
     s3 = S3Connection()
     bucket_name = "telemetry-published-v2"
     bucket = s3.get_bucket(bucket_name)
@@ -182,7 +209,9 @@ def update_published_v2_files(sdb, from_submission_date=None, limit=None):
                 dims = schema.get_dimension_map(schema.get_dimensions(".", key.name))
 
                 if (from_submission_date is None or dims["submission_date"] >= from_submission_date) and \
-                   dims["submission_date"][:-2] in sdb and dims["reason"] != "idle_daily":
+                   (to_submission_date is None or dims["submission_date"] <= to_submission_date) and \
+                   dims["submission_date"][:-2] in sdb and \
+                   dims["reason"] != "idle_daily":
                     domain = current_batch[dims["submission_date"][:-2]]
                     domain[key.name] = {"reason": dims.get("reason"),
                                         "appName": dims.get("appName"),
@@ -221,8 +250,12 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--limit", help="Maximum number of files to index", default=None)
     parser.add_argument("-s", "--schema-version", help="Telemetry schema version", default="v2")
     parser.add_argument("-f", "--from-date", help="Add only telemetry files submitted after this date (included)", default=None)
+    parser.add_argument("-t", "--to-date", help="Add only telemetry files submitted before this date (included)", default=None)
 
     args = parser.parse_args()
+
+    if args.from_date and not args.to_date:
+        args.to_date = datetime.now().strftime("%Y%m%d")
 
     if args.limit:
         args.limit = int(args.limit)
@@ -231,4 +264,13 @@ if __name__ == "__main__":
         raise ValueError("Unsupported schema version")
 
     sdb = SDB("telemetry_v2", read_only=False)
-    update_published_v2_files(sdb, from_submission_date=args.from_date, limit=args.limit)
+
+    if args.from_date:
+        prev = sdb.get_daily_stats(args.from_date, args.to_date)
+
+    update_published_v2_files(sdb, from_submission_date=args.from_date, to_submission_date=args.to_date, limit=args.limit)
+
+    if args.from_date:
+        curr = sdb.get_daily_stats(args.from_date, args.to_date)
+        print
+        sdb.diff_stats(prev, curr)
