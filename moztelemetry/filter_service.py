@@ -18,7 +18,6 @@ import traceback
 import boto.sdb
 import argparse
 import signal
-import sys
 
 from collections import defaultdict
 from datetime import datetime
@@ -251,6 +250,7 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
                 print("Error listing keys: {}".format(e))
                 traceback.print_exc()
                 print("Continuing from last seen key: {}".format(last_key))
+                continue
 
             break
 
@@ -318,6 +318,7 @@ def update_published_v2_files(sdb, from_submission_date=None, to_submission_date
             print("Error listing keys: {}".format(e))
             traceback.print_exc()
             print("Continuing from last seen key: {}".format(last_key))
+            continue
 
         break
 
