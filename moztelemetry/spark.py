@@ -20,9 +20,11 @@ import numpy.random as random
 
 from filter_service import  SDB
 from histogram import Histogram
+from heka_message_parser import parse_heka_message
 
 _conn = boto.connect_s3()
-_bucket = _conn.get_bucket("telemetry-published-v2", validate=False)
+_bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
+_bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
 
 
 def get_pings(sc, **kwargs):
@@ -50,7 +52,7 @@ def get_pings(sc, **kwargs):
         sample = files
 
     parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).flatMap(lambda x: _read(x))
+    return sc.parallelize(sample, parallelism).flatMap(lambda x: _read_v2(x))
 
 
 def get_pings_properties(pings, keys, only_median=False):
@@ -103,11 +105,17 @@ def _get_filenames_v2(**kwargs):
     sdb = SDB("telemetry_v2")
     return sdb.query(**query)
 
-def _read(filename):
-    key = _bucket.get_key(filename)
+def _read_v2(filename):
+    key = _bucket_v2.get_key(filename)
     compressed = key.get_contents_as_string()
     raw = lzma.decompress(compressed).split("\n")[:-1]
     return map(lambda x: x.split("\t", 1)[1], raw)
+
+
+def _read_v4(filename):
+    key = _bucket_v4.get_key(filename)
+    heka_message = key.get_contents_as_string()
+    return list(parse_heka_message(heka_message))
 
 
 def _get_ping_properties(ping, keys, only_median):
