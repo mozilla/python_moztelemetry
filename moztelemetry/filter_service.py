@@ -26,6 +26,7 @@ from boto.s3.connection import S3Connection
 from multiprocessing.pool import ThreadPool
 from telemetry.telemetry_schema import TelemetrySchema
 
+
 class SDB:
     def __init__(self, prefix, months_retention=12, read_only=True):
         self.sdb = boto.sdb.connect_to_region('us-west-2')
@@ -180,6 +181,28 @@ class SDB:
         self._pool = ThreadPool(1000)
 
 
+class BatchPut:
+    def __init__(self, sdb):
+        self._cache = defaultdict(dict)
+        self._max = 25  # 25 is the limit for SimpleDB
+        self._sdb = sdb
+
+    def put(self, domain_name, filename, attributes):
+        domain = self._cache[domain_name]
+        domain[filename] = attributes
+
+        if len(domain) == self._max:
+            self._sdb.batch_put(domain_name, domain)
+            self._cache[domain_name] = {}
+
+    def flush(self):
+        for domain_name, entries in self._cache.iteritems():
+            self._sdb.batch_put(domain_name, entries)
+
+        self._sdb.flush_put()
+        self._cache = defaultdict(dict)
+
+
 def delta_ms(start, end=None):
     if end is None:
         end = datetime.now()
@@ -208,19 +231,15 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
     added_count = [0]
     total_count = [0]
     start_time = datetime.now()
-    current_batch = [defaultdict(dict)]
     done = [False]
     last_key = ['']
+    batch = BatchPut(sdb)
 
     def publish(prefix):
         while not done[0]:
             try:
                 for key in bucket.list(marker=last_key[0], prefix=prefix):
                     last_key[0] = key.name
-
-                    if total_count[0] % 25 == 0:  # 25 is the limit for SimpleDB
-                        insert_published_files_batch(sdb, current_batch[0])
-                        current_batch[0] = defaultdict(dict)
 
                     if total_count[0] % 1e5 == 0:
                         print("Looked at {} total records in {} seconds, added {}".
@@ -231,14 +250,14 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
                     if (from_submission_date is None or dims["submissionDate"] >= from_submission_date) and \
                        (to_submission_date is None or dims["submissionDate"] <= to_submission_date) and \
                        dims["submissionDate"][:-2] in sdb:
-                        domain = current_batch[0][dims["submissionDate"][:-2]]
-                        domain[key.name] = {"appName": dims.get("appName"),
-                                            "sourceName": dims.get("sourceName"),
-                                            "docType": dims.get("docType"),
-                                            "submissionDate": dims.get("submissionDate"),
-                                            "appVersion": dims.get("appVersion"),
-                                            "sourceVersion": dims.get("sourceVersion"),
-                                            "appUpdateChannel": dims.get("appUpdateChannel")}
+                        attributes = {"appName": dims.get("appName"),
+                                      "sourceName": dims.get("sourceName"),
+                                      "docType": dims.get("docType"),
+                                      "submissionDate": dims.get("submissionDate"),
+                                      "appVersion": dims.get("appVersion"),
+                                      "sourceVersion": dims.get("sourceVersion"),
+                                      "appUpdateChannel": dims.get("appUpdateChannel")}
+                        batch.put(dims["submissionDate"][:-2], key.name, attributes)
                         added_count[0] += 1
 
                     total_count[0] += 1
@@ -254,10 +273,17 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
 
             break
 
-        insert_published_files_batch(sdb, current_batch[0])
+    if from_submission_date:
+        to_date = datetime.strptime(to_submission_date, "%Y%m%d") if to_submission_date else datetime.now()
+        from_date = datetime.strptime(from_submission_date, "%Y%m%d")
 
-    publish("telemetry/")
-    sdb.flush_put()
+        for i in range((to_date - from_date).days + 1):
+            current_date = from_date + relativedelta(days=i)
+            publish("telemetry/{}".format(current_date.strftime("%Y%m%d")))
+    else:
+        publish("telemetry/")
+
+    batch.flush()
     print("Overall, added {} of {} in {} seconds".format(added_count[0], total_count[0], delta_sec(start_time)))
 
 
@@ -277,18 +303,14 @@ def update_published_v2_files(sdb, from_submission_date=None, to_submission_date
     added_count = 0
     total_count = 0
     start_time = datetime.now()
-    current_batch = defaultdict(dict)
     done = False
     last_key = ''
+    batch = BatchPut(sdb)
 
     while not done:
         try:
             for key in bucket.list(marker=last_key):
                 last_key = key.name
-
-                if total_count % 25 == 0:  # 25 is the limit for SimpleDB
-                    insert_published_files_batch(sdb, current_batch)
-                    current_batch = defaultdict(dict)
 
                 if total_count % 1e5 == 0:
                     print("Looked at {} total records in {} seconds, added {}".
@@ -300,13 +322,13 @@ def update_published_v2_files(sdb, from_submission_date=None, to_submission_date
                    (to_submission_date is None or dims["submission_date"] <= to_submission_date) and \
                    dims["submission_date"][:-2] in sdb and \
                    dims["reason"] != "idle_daily":
-                    domain = current_batch[dims["submission_date"][:-2]]
-                    domain[key.name] = {"reason": dims.get("reason"),
-                                        "appName": dims.get("appName"),
-                                        "appUpdateChannel": dims.get("appUpdateChannel"),
-                                        "appVersion": dims.get("appVersion"),
-                                        "appBuildID": dims.get("appBuildID"),
-                                        "submissionDate": dims.get("submission_date")}
+                    attributes = {"reason": dims.get("reason"),
+                                  "appName": dims.get("appName"),
+                                  "appUpdateChannel": dims.get("appUpdateChannel"),
+                                  "appVersion": dims.get("appVersion"),
+                                  "appBuildID": dims.get("appBuildID"),
+                                  "submissionDate": dims.get("submission_date")}
+                    batch.put(dims["submission_date"][:-2], key.name, attributes)
                     added_count += 1
 
                 total_count += 1
@@ -322,14 +344,9 @@ def update_published_v2_files(sdb, from_submission_date=None, to_submission_date
 
         break
 
-    insert_published_files_batch(sdb, current_batch)
-    sdb.flush_put()
+    batch.flush()
     print("Overall, added {} of {} in {} seconds".format(added_count, total_count, delta_sec(start_time)))
 
-
-def insert_published_files_batch(sdb, batch):
-    for domain_name, items in batch.iteritems():
-        sdb.batch_put(domain_name, items)
 
 def main(limit=None, schema_version=None, from_date=None, to_date=None):
     if from_date and not to_date:
@@ -358,7 +375,7 @@ def main(limit=None, schema_version=None, from_date=None, to_date=None):
         curr = sdb.get_daily_stats(from_date, to_date)
         print
         print "Filter service stats:"
-        print "Note that the following numbers only make sense if there ins't another entity concurrently pushing new submissions:"
+        print "Note that the following numbers are correct only if there ins't another entity concurrently pushing new submissions:"
         sdb.diff_stats(prev, curr)
 
         print "AWS lambda stats:"
