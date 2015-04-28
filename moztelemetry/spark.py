@@ -105,8 +105,8 @@ def _get_pings_v4(sc, **kwargs):
     version = kwargs.pop("version", None)
     submission_date = kwargs.pop("submission_date", None)
     source_name = kwargs.pop("source_name", "telemetry")
-    source_version = kwargs.pop("source_version", None)
-    doc_type = kwargs.pop("doc_type", None)
+    source_version = kwargs.pop("source_version", "4.0")
+    doc_type = kwargs.pop("doc_type", "main")
     fraction = kwargs.pop("fraction", 1.0)
 
     if fraction < 0 or fraction > 1:
