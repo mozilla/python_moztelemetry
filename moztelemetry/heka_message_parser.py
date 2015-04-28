@@ -45,7 +45,7 @@ def _lazyjson(content):
         default = []
     else:
         try:
-            return float(content)
+            return float(content) if '.' in content or 'e' in content.lower() else int(content)
         except:
             return content
 
