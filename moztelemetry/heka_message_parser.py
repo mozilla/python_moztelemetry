@@ -6,7 +6,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import ujson as json
-from heka_message import unpack_string
+from telemetry.util.heka_message import unpack_string
 
 def parse_heka_message(message):
     for record in unpack_string(message):
