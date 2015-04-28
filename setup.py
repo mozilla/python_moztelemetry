@@ -8,14 +8,15 @@
 from distutils.core import setup
 
 import urllib
-import setuptools.command.sdist
+import setuptools.command.install
 
-class FetchExternal(setuptools.command.sdist.sdist):
-  def run(self):
-    urllib.urlretrieve("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", "moztelemetry/histogram_tools.py")
-    setuptools.command.sdist.sdist.run(self)
 
-setup(cmdclass={'sdist': FetchExternal},
+class FetchExternal(setuptools.command.install.install):
+    def run(self):
+        urllib.urlretrieve("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", "moztelemetry/histogram_tools.py")
+        setuptools.command.install.install.run(self)
+
+setup(cmdclass={'install': FetchExternal},
       name='python_moztelemetry',
       version='0.3.1.8',
       author='Roberto Agostino Vitillo',
