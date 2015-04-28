@@ -36,6 +36,10 @@ def get_pings(sc, **kwargs):
     submission_date = kwargs.pop("submission_date", None)
     fraction = kwargs.pop("fraction", 1.0)
     reason = kwargs.pop("reason", "saved_session")
+    schema = kwargs.pop("schema", "v2")
+
+    if schema not in ["v2", "v4"]:
+        raise ValueError("Invalid schema version")
 
     if fraction < 0 or fraction > 1:
         raise ValueError("Invalid fraction argument")
@@ -52,7 +56,8 @@ def get_pings(sc, **kwargs):
         sample = files
 
     parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).flatMap(lambda x: _read_v2(x))
+    read_fun = _read_v2 if schema == "v2" else _read_v4
+    return sc.parallelize(sample, parallelism).flatMap(lambda x: read_fun(x))
 
 
 def get_pings_properties(pings, keys, only_median=False):
