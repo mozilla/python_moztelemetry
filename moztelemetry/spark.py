@@ -186,17 +186,19 @@ def _get_ping_properties(ping, paths, only_median):
     result = {}
 
     for property_name, path in paths:
+        cursor = ping
+
         if path[0] == "payload":
             path = path[1:]  # Translate v4 histogram queries to v2 ones
-            ping = ping["payload"]
+            cursor = ping["payload"]
 
         if path[0] == "histograms" or path[0] == "keyedHistograms":
-            props = _get_merged_histograms(ping, path)
+            props = _get_merged_histograms(cursor, path)
 
             for k, v in props.iteritems():
                 result[k] = v.get_value(only_median)
         else:
-            prop = _get_ping_property(ping, path)
+            prop = _get_ping_property(cursor, path)
 
             if prop is None:
                 continue
