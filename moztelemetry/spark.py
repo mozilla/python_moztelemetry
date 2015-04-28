@@ -29,35 +29,13 @@ _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validat
 
 def get_pings(sc, **kwargs):
     """ Returns a RDD of Telemetry submissions for the given criteria. """
-    app = kwargs.pop("app", None)
-    channel = kwargs.pop("channel", None)
-    version = kwargs.pop("version", None)
-    build_id = kwargs.pop("build_id", None)
-    submission_date = kwargs.pop("submission_date", None)
-    fraction = kwargs.pop("fraction", 1.0)
-    reason = kwargs.pop("reason", "saved_session")
     schema = kwargs.pop("schema", "v2")
-
-    if schema not in ["v2", "v4"]:
-        raise ValueError("Invalid schema version")
-
-    if fraction < 0 or fraction > 1:
-        raise ValueError("Invalid fraction argument")
-
-    if kwargs:
-        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
-
-    files = _get_filenames_v2(app=app, channel=channel, version=version, build_id = build_id,
-                              submission_date=submission_date, reason=reason)
-
-    if files and fraction != 1.0:
-        sample = random.choice(files, size=len(files)*fraction, replace=False)
+    if schema == "v2":
+        return _get_pings_v2(sc, **kwargs)
+    elif schema == "v4":
+        return _get_pings_v4(sc, **kwargs)
     else:
-        sample = files
-
-    parallelism = max(len(sample), sc.defaultParallelism)
-    read_fun = _read_v2 if schema == "v2" else _read_v4
-    return sc.parallelize(sample, parallelism).flatMap(lambda x: read_fun(x))
+        raise ValueError("Invalid schema version")
 
 
 def get_pings_properties(pings, keys, only_median=False):
@@ -93,6 +71,62 @@ def get_one_ping_per_client(pings):
                  reduceByKey(lambda p1, p2: p1).\
                  map(lambda p: p[1])
 
+
+def _get_pings_v2(sc, **kwargs):
+    app = kwargs.pop("app", None)
+    channel = kwargs.pop("channel", None)
+    version = kwargs.pop("version", None)
+    build_id = kwargs.pop("build_id", None)
+    submission_date = kwargs.pop("submission_date", None)
+    fraction = kwargs.pop("fraction", 1.0)
+    reason = kwargs.pop("reason", "saved_session")
+
+    if fraction < 0 or fraction > 1:
+        raise ValueError("Invalid fraction argument")
+
+    if kwargs:
+        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
+
+    files = _get_filenames_v2(app=app, channel=channel, version=version, build_id = build_id,
+                              submission_date=submission_date, reason=reason)
+
+    if files and fraction != 1.0:
+        sample = random.choice(files, size=len(files)*fraction, replace=False)
+    else:
+        sample = files
+
+    parallelism = max(len(sample), sc.defaultParallelism)
+    return sc.parallelize(sample, parallelism).flatMap(lambda x: _read_v2(x))
+
+
+def _get_pings_v4(sc, **kwargs):
+    app = kwargs.pop("app", None)
+    channel = kwargs.pop("channel", None)
+    version = kwargs.pop("version", None)
+    submission_date = kwargs.pop("submission_date", None)
+    source_name = kwargs.pop("source_name", "telemetry")
+    source_version = kwargs.pop("source_version", None)
+    doc_type = kwargs.pop("doc_type", None)
+    fraction = kwargs.pop("fraction", 1.0)
+
+    if fraction < 0 or fraction > 1:
+        raise ValueError("Invalid fraction argument")
+
+    if kwargs:
+        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
+
+    files = _get_filenames_v4(app=app, channel=channel, version=version, submission_date=submission_date,
+                              source_name=source_name, source_version=source_version, doc_type=doc_type)
+
+    if files and fraction != 1.0:
+        sample = random.choice(files, size=len(files)*fraction, replace=False)
+    else:
+        sample = files
+
+    parallelism = max(len(sample), sc.defaultParallelism)
+    return sc.parallelize(sample, parallelism).flatMap(lambda x: _read_v4(x))
+
+
 def _get_filenames_v2(**kwargs):
     translate = {"app": "appName",
                  "channel": "appUpdateChannel",
@@ -109,6 +143,26 @@ def _get_filenames_v2(**kwargs):
 
     sdb = SDB("telemetry_v2")
     return sdb.query(**query)
+
+
+def _get_filenames_v4(**kwargs):
+    translate = {"app": "appName",
+                 "channel": "appUpdateChannel",
+                 "version": "appVersion",
+                 "submission_date": "submissionDate",
+                 "source_name": "sourceName",
+                 "source_version": "sourceVersion",
+                 "doc_type": "docType"}
+    query = {}
+    for k, v in kwargs.iteritems():
+        tk = translate.get(k, None)
+        if not tk:
+            raise ValueError("Invalid query attribute name specified: {}".format(k))
+        query[tk] = v
+
+    sdb = SDB("telemetry_v4")
+    return sdb.query(**query)
+
 
 def _read_v2(filename):
     key = _bucket_v2.get_key(filename)
