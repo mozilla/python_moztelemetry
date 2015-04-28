@@ -17,7 +17,7 @@ class FetchExternal(setuptools.command.sdist.sdist):
 
 setup(cmdclass={'sdist': FetchExternal},
       name='python_moztelemetry',
-      version='0.3.1.7',
+      version='0.3.1.8',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
