@@ -22,7 +22,7 @@ def _parse_heka_record(record):
 
         if len(name) == 1:  # Treat all top level fields as strings
             blob = value[0] if len(value) else ""
-            result[name[0]] = blob
+            result[name[0]] = _lazyjson(blob)
         else:
             _add_field(result, name, value)
 
