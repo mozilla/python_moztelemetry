@@ -19,7 +19,11 @@ def _parse_heka_record(record):
     for field in fields:
         name = field.name.split('.')
         value = field.value_string
-        _add_field(result, name, value)
+
+        if len(name) == 1:  # Treat all top level fields as strings
+            result[name[0]] = value
+        else:
+            _add_field(result, name, value)
 
     return result
 
