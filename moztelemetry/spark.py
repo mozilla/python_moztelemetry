@@ -245,14 +245,15 @@ def _get_merged_histograms(cursor, path):
         result[name + "_parent"] = parent
 
     cursor = cursor.get("childPayloads", {})
-    if not cursor: # pre e10s ping
+    if not cursor:  # pre e10s ping
+	result[name] = parent
         return result
 
     # Get children histograms
     children = filter(lambda h: h is not None, [_get_ping_property(child, path) for child in cursor])
 
     if children:
-        name = children[0].name # The parent histogram might not exist
+        name = children[0].name  # The parent histogram might not exist
         result[name + "_children"] = reduce(lambda x, y: x + y, children)
 
     # Merge parent and children
