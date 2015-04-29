@@ -21,7 +21,8 @@ def _parse_heka_record(record):
         value = field.value_string
 
         if len(name) == 1:  # Treat all top level fields as strings
-            result[name[0]] = value
+            blob = value[0] if len(value) else ""
+            result[name[0]] = blob
         else:
             _add_field(result, name, value)
 
