@@ -228,7 +228,9 @@ def _get_ping_property(cursor, path):
     if is_histogram:
         return Histogram(path[-1], cursor)
     elif is_keyed_histogram:
-        return Histogram(path[-2], cursor)
+        histogram = Histogram(path[-2], cursor)
+        histogram.name = "/".join(path[-2:])
+        return histogram
     else:
         return cursor
 
@@ -243,10 +245,10 @@ def _get_merged_histograms(cursor, path):
     if parent:
         name = parent.name
         result[name + "_parent"] = parent
+        result[name] = parent
 
     cursor = cursor.get("childPayloads", {})
     if not cursor:  # pre e10s ping
-	result[name] = parent
         return result
 
     # Get children histograms
