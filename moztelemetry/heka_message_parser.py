@@ -13,15 +13,20 @@ def parse_heka_message(message):
         yield _parse_heka_record(record)
 
 def _parse_heka_record(record):
-    result = {}
-    fields = record.message.fields
+    result = json.loads(record.message.payload)
+    result["meta"] = {
+        # TODO: uuid, logger, severity, env_version, pid
+        "Timestamp": record.message.timestamp,
+        "Type":      record.message.type,
+        "Hostname":  record.message.hostname,
+    }
 
-    for field in fields:
+    for field in record.message.fields:
         name = field.name.split('.')
         value = field.value_string
 
-	if len(name) == 1:  # Treat top-level fields as strings
-	    result[name[0]] = value[0] if len(value) else ""
+	if len(name) == 1:  # Treat top-level meta fields as strings
+	    result["meta"][name[0]] = value[0] if len(value) else ""
 	else:
 	    _add_field(result, name, value)
 
