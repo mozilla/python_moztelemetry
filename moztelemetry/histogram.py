@@ -16,6 +16,21 @@ import ujson as json
 
 from functools32 import lru_cache
 
+# Ugly hack to speed-up aggregation.
+exponential_buckets = histogram_tools.exponential_buckets
+linear_buckets = histogram_tools.linear_buckets
+
+@lru_cache(maxsize=2**14)
+def cached_exponential_buckets(*args, **kwargs):
+    exponential_buckets(*args, **kwargs)
+
+@lru_cache(maxsize=2**14)
+def cached_linear_buckets(*args, **kwargs):
+    linear_buckets(*args, **kwargs)
+
+histogram_tools.exponential_buckets = cached_exponential_buckets
+histogram_tools.linear_buckets = cached_linear_buckets
+
 @lru_cache(maxsize=2**10)
 def _fetch_histograms_definition(revision):
     uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
@@ -53,10 +68,10 @@ class Histogram:
                 values = instance
             else:
                 values = instance[:-5]
-            self.buckets = pd.Series(values, index=_get_cached_ranges(self.definition))
+            self.buckets = pd.Series(values, index=self.definition.ranges())
         else:
             entries = {int(k): v for k, v in instance["values"].items()}
-            self.buckets = pd.Series(entries, index=_get_cached_ranges(self.definition)).fillna(0)
+            self.buckets = pd.Series(entries, index=self.definition.ranges()).fillna(0)
 
     def __str__(self):
         """ Returns a string representation of the histogram. """
