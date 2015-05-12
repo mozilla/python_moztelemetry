@@ -9,16 +9,24 @@ from __future__ import division
 
 import requests
 import histogram_tools
+import re
 import pandas as pd
 import numpy as np
-import re
+import ujson as json
 
 from functools32 import lru_cache
 
 @lru_cache(maxsize=512)
 def _fetch_histograms_definition(revision):
     uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
-    return requests.get(uri).json()
+    definition = requests.get(uri).text
+
+    # see bug 920169
+    definition = definition.replace('"JS::gcreason::NUM_TELEMETRY_REASONS"', "101")
+    definition = definition.replace('"mozilla::StartupTimeline::MAX_EVENT_ID"', "12")
+    definition = definition.replace('"80 + 1"', "81")
+
+    return json.loads(definition)
 
 class Histogram:
     """ A class representing a histogram. """
@@ -98,6 +106,9 @@ class Histogram:
 
 
 if __name__ == "__main__":
+    # Histogram with computed value
+    Histogram("GC_REASON_2", [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 11, 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2517, -1, -1, 116979, 0])
+
     # Histogram without revision
     Histogram("STARTUP_CRASH_DETECTED", [1, 0, 0, 0, -1, -1, 0, 0], "https://hg.mozilla.org/mozilla-central/rev/da2f28836843")
 
