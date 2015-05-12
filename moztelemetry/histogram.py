@@ -27,9 +27,12 @@ class Histogram:
         """ Initialize a histogram from its name and a telemetry submission. """
 
         histograms_definition = _fetch_histograms_definition(revision)
-        histogram_name = re.sub("^STARTUP_", "", name)
 
-        self.definition = histogram_tools.Histogram(name, histograms_definition[histogram_name])
+        try:
+            self.definition = histogram_tools.Histogram(name, histograms_definition[name])
+        except KeyError:
+            self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", name)])
+
         self.kind = self.definition.kind()
         self.name = name
 
@@ -96,7 +99,7 @@ class Histogram:
 
 if __name__ == "__main__":
     # Histogram without revision
-    Histogram("HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1])
+    Histogram("STARTUP_CRASH_DETECTED", [1, 0, 0, 0, -1, -1, 0, 0], "https://hg.mozilla.org/mozilla-central/rev/da2f28836843")
 
     # Histogram with revision
     Histogram("HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1], "https://hg.mozilla.org/mozilla-central/rev/37ddc5e2eb72")
