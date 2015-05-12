@@ -11,16 +11,25 @@ import requests
 import histogram_tools
 import pandas as pd
 import numpy as np
+import re
+
+from functools32 import lru_cache
+
+@lru_cache(maxsize=512)
+def _fetch_histograms_definition(revision):
+    uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
+    return requests.get(uri).json()
 
 class Histogram:
     """ A class representing a histogram. """
 
-    _definitions = requests.get("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/Histograms.json").json()
-
-    def __init__(self, name, instance):
+    def __init__(self, name, instance, revision="https://hg.mozilla.org/mozilla-central/rev/tip"):
         """ Initialize a histogram from its name and a telemetry submission. """
 
-        self.definition = histogram_tools.Histogram(name, Histogram._definitions[name])
+        histograms_definition = _fetch_histograms_definition(revision)
+        histogram_name = re.sub("^STARTUP_", "", name)
+
+        self.definition = histogram_tools.Histogram(name, histograms_definition[histogram_name])
         self.kind = self.definition.kind()
         self.name = name
 
@@ -83,3 +92,14 @@ class Histogram:
 
     def __add__(self, other):
         return Histogram(self.name, self.buckets + other.buckets)
+
+
+if __name__ == "__main__":
+    # Histogram without revision
+    Histogram("HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1])
+
+    # Histogram with revision
+    Histogram("HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1], "https://hg.mozilla.org/mozilla-central/rev/37ddc5e2eb72")
+
+    # Startup histogram
+    Histogram("STARTUP_HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1])
