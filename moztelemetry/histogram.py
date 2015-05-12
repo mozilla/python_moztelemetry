@@ -28,7 +28,7 @@ def _fetch_histograms_definition(revision):
 
     return json.loads(definition)
 
-@lru_cache(maxsize=2**20)
+@lru_cache(maxsize=2**20)  # A LFU cache would be more appropriate.
 def _get_cached_ranges(definition):
     return definition.ranges()
 
