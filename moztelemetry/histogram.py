@@ -16,7 +16,7 @@ import ujson as json
 
 from functools32 import lru_cache
 
-@lru_cache(maxsize=512)
+@lru_cache(maxsize=2**10)
 def _fetch_histograms_definition(revision):
     uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
     definition = requests.get(uri).text
@@ -27,6 +27,10 @@ def _fetch_histograms_definition(revision):
     definition = definition.replace('"80 + 1"', "81")
 
     return json.loads(definition)
+
+@lru_cache(maxsize=2**20)
+def _get_cached_ranges(definition):
+    return definition.ranges()
 
 class Histogram:
     """ A class representing a histogram. """
@@ -49,10 +53,10 @@ class Histogram:
                 values = instance
             else:
                 values = instance[:-5]
-            self.buckets = pd.Series(values, index=self.definition.ranges())
+            self.buckets = pd.Series(values, index=_get_cached_ranges(self.definition))
         else:
             entries = {int(k): v for k, v in instance["values"].items()}
-            self.buckets = pd.Series(entries, index=self.definition.ranges()).fillna(0)
+            self.buckets = pd.Series(entries, index=_get_cached_ranges(self.definition)).fillna(0)
 
     def __str__(self):
         """ Returns a string representation of the histogram. """
