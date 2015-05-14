@@ -22,11 +22,11 @@ linear_buckets = histogram_tools.linear_buckets
 
 @lru_cache(maxsize=2**14)
 def cached_exponential_buckets(*args, **kwargs):
-    exponential_buckets(*args, **kwargs)
+    return exponential_buckets(*args, **kwargs)
 
 @lru_cache(maxsize=2**14)
 def cached_linear_buckets(*args, **kwargs):
-    linear_buckets(*args, **kwargs)
+    return linear_buckets(*args, **kwargs)
 
 histogram_tools.exponential_buckets = cached_exponential_buckets
 histogram_tools.linear_buckets = cached_linear_buckets
