@@ -45,7 +45,7 @@ def _extract_metrics(ping):
     dimensions["build_id"] = ping["application"]["buildId"][:8]
     dimensions["application"] = ping["application"]["name"]
     dimensions["architecture"] = ping["application"]["architecture"]
-    dimensions["revision"] = ping["payload"]["info"]["revision"]
+    dimensions["revision"] = ping["payload"]["info"]["revision"].split('/')[-1]
     dimensions["child"] = False
     dimensions["os"] = ping["environment"]["system"]["os"]["name"]
     dimensions["os_version"] = ping["environment"]["system"]["os"]["version"]
