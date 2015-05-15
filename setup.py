@@ -18,11 +18,11 @@ class FetchExternal(setuptools.command.install.install):
 
 setup(cmdclass={'install': FetchExternal},
       name='python_moztelemetry',
-      version='0.3.2.6',
+      version='0.3.2.7',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
       url='https://github.com/vitillo/python_moztelemetry',
       packages=['moztelemetry'],
       package_dir={'moztelemetry': 'moztelemetry'},
-      install_requires=['boto', 'ujson', 'requests', 'protobuf', 'functools32', 'pandas>=0.15.2', 'numpy>=1.9.2', 'telemetry-tools'])
+      install_requires=['boto', 'ujson', 'requests', 'protobuf', 'functools32', 'py4j', 'pandas>=0.15.2', 'numpy>=1.9.2', 'telemetry-tools'])
