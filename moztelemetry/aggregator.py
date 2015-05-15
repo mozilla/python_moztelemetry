@@ -31,7 +31,7 @@ def _sample_clients(ping):
 
 
 def _trim_ping(ping):
-    payload = {k: v for k, v in ping["payload"].iteritems() if k in ["histograms", "keyedHistograms"]}
+    payload = {k: v for k, v in ping["payload"].iteritems() if k in ["histograms", "keyedHistograms", "info"]}
     return {"clientId": ping["clientId"],
             "environment": ping["environment"],
             "application": ping["application"],
@@ -45,6 +45,7 @@ def _extract_metrics(ping):
     dimensions["build_id"] = ping["application"]["buildId"][:8]
     dimensions["application"] = ping["application"]["name"]
     dimensions["architecture"] = ping["application"]["architecture"]
+    dimensions["revision"] = ping["payload"]["info"]["revision"]
     dimensions["child"] = False
     dimensions["os"] = ping["environment"]["system"]["os"]["name"]
     dimensions["os_version"] = ping["environment"]["system"]["os"]["version"]
@@ -120,12 +121,13 @@ def _aggregate(x, y):
 
 def _prettify(raw_aggregate):
     key, value = raw_aggregate
-    channel, version, build_id, application, architecture, child, os, os_version, metric = key
+    channel, version, build_id, application, architecture, revision, child, os, os_version, metric = key
     return {"channel": channel,
             "version": version,
             "build_id": build_id,
             "application": application,
             "architecture": architecture,
+            "revision": revision,
             "child": child,
             "os": os,
             "os_version": os_version,
@@ -150,4 +152,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     sc = SparkContext("local[*]", "Aggregator Test")
-    aggregate_metrics(sc, args.channel, args.submission_date)
+    print aggregate_metrics(sc, args.channel, args.submission_date)
