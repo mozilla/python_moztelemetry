@@ -10,8 +10,8 @@ from histogram import cached_exponential_buckets
 _exponential_index = cached_exponential_buckets(1, 30000, 50)
 
 
-def aggregate_metrics(sc, channel, submission_date):
-    pings = get_pings(sc, channel=channel, submission_date=submission_date, doc_type="saved_session", schema="v4", fraction=0.01)
+def aggregate_metrics(sc, channel, submission_date, fraction=0.01):
+    pings = get_pings(sc, channel=channel, submission_date=submission_date, doc_type="saved_session", schema="v4", fraction=fraction)
     #pings = sc.parallelize([pings.first()])
 
     trimmed = get_one_ping_per_client(pings.filter(_sample_clients).map(_trim_ping))
@@ -24,7 +24,7 @@ def aggregate_metrics(sc, channel, submission_date):
 
 def _sample_clients(ping):
     client_id = ping.get("clientId", None)
-    channel = ping["environment"]["settings"]["update"]["channel"]
+    channel = ping["application"]["channel"]
     percentage = {"nightly": 100,
                   "aurora": 100}
     return client_id and ((binascii.crc32(client_id) % 100) < percentage[channel])
@@ -34,16 +34,17 @@ def _trim_ping(ping):
     payload = {k: v for k, v in ping["payload"].iteritems() if k in ["histograms", "keyedHistograms"]}
     return {"clientId": ping["clientId"],
             "environment": ping["environment"],
+            "application": ping["application"],
             "payload": payload}
 
 
 def _extract_metrics(ping):
     dimensions = OrderedDict()
-    dimensions["channel"] = ping["environment"]["settings"]["update"]["channel"]
-    dimensions["version"] = ping["environment"]["build"]["platformVersion"].split('.')[0]
-    dimensions["build_id"] = ping["environment"]["build"]["buildId"][:8]
-    dimensions["application"] = ping["environment"]["build"]["applicationName"]
-    dimensions["architecture"] = ping["environment"]["build"]["architecture"]
+    dimensions["channel"] = ping["application"]["channel"]
+    dimensions["version"] = ping["application"]["version"].split('.')[0]
+    dimensions["build_id"] = ping["application"]["buildId"][:8]
+    dimensions["application"] = ping["application"]["name"]
+    dimensions["architecture"] = ping["application"]["architecture"]
     dimensions["child"] = False
     dimensions["os"] = ping["environment"]["system"]["os"]["name"]
     dimensions["os_version"] = ping["environment"]["system"]["os"]["version"]
@@ -72,7 +73,6 @@ def _extract_main_histograms(dimensions, histograms):
     for histogram_name, histogram in histograms.iteritems():
         histogram = pd.Series({int(k): v for k, v in histogram["values"].items()})
         yield _dimension_mapper(dimensions, histogram, histogram_name)
-
 
 
 def _extract_keyed_histograms(dimensions, histogram_name, histograms):
