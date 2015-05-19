@@ -113,7 +113,7 @@ def get_one_ping_per_client(pings):
 
 
 def _read_client_history(client_prefix):
-    paths = [x.name for x in list(bucket.list(prefix=client_prefix))]
+    paths = [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
     return [ping for x in paths for ping in _read_v4(x)]
 
 
