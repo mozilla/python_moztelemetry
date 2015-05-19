@@ -10,7 +10,7 @@ from histogram import cached_exponential_buckets
 _exponential_index = cached_exponential_buckets(1, 30000, 50)
 
 
-def aggregate_metrics(sc, channel, submission_date, fraction=0.01):
+def aggregate_metrics(sc, channel, submission_date, fraction=1):
     pings = get_pings(sc, channel=channel, submission_date=submission_date, doc_type="saved_session", schema="v4", fraction=fraction)
     #pings = sc.parallelize([pings.first()])
 
@@ -45,7 +45,7 @@ def _extract_metrics(ping):
     dimensions["build_id"] = ping["application"]["buildId"][:8]
     dimensions["application"] = ping["application"]["name"]
     dimensions["architecture"] = ping["application"]["architecture"]
-    dimensions["revision"] = ping["payload"]["info"]["revision"]
+    dimensions["revision"] = ping["payload"]["info"]["revision"].split('/')[-1]
     dimensions["child"] = False
     dimensions["os"] = ping["environment"]["system"]["os"]["name"]
     dimensions["os_version"] = ping["environment"]["system"]["os"]["version"]
