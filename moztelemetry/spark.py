@@ -8,11 +8,10 @@
 """ This module implements the Telemetry API for Spark.
 
 Example usage:
-rdd = get_pings(None, app="Firefox", channel="nightly", build_id=("20140401000000", "20140402999999"), reason="saved_session")
-
+pings = get_pings(None, app="Firefox", channel="nightly", build_id=("20140401000000", "20140402999999"), reason="saved_session")
+histories = get_clients_history(sc, app="Firefox", channel="nightly", fraction = 0.01)
 """
 
-import requests
 import boto
 import liblzma as lzma
 import json as json
@@ -25,6 +24,36 @@ from heka_message_parser import parse_heka_message
 _conn = boto.connect_s3()
 _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
 _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
+
+
+def get_clients_history(sc, **kwargs):
+    """ Returns a RDD of histories for the selected criteria, where a history is a list of submissions for a client """
+
+    app = kwargs.pop("app", None)
+    channel = kwargs.pop("channel", None)
+    fraction = kwargs.pop("fraction", 1.0)
+
+    if app != "Firefox":
+        raise ValueError("Application doesn't exists")
+
+    if channel != "nightly":
+        raise ValueError("Channel doesn't exists")
+
+    if fraction < 0 or fraction > 1:
+        raise ValueError("Invalid fraction argument")
+
+    if kwargs:
+        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
+
+    clients = [x.name for x in list(_bucket_v4.list(prefix="telemetry_sample_42/", delimiter="/"))]
+
+    if clients and fraction != 1.0:
+        sample = random.choice(clients, size=len(clients)*fraction, replace=False)
+    else:
+        sample = clients
+
+    parallelism = max(len(sample), sc.defaultParallelism)
+    return sc.parallelize(sample, parallelism).map(lambda x: _read_client_history(x))
 
 
 def get_pings(sc, **kwargs):
@@ -76,6 +105,12 @@ def get_one_ping_per_client(pings):
     return filtered.map(lambda p: (p[client_id], p)).\
                     reduceByKey(lambda p1, p2: p1).\
                     map(lambda p: p[1])
+
+
+def _read_client_history(client_prefix):
+    paths = [x.name for x in list(bucket.list(prefix=client_prefix))]
+    return [ping for x in paths for ping in _read_v4(x)]
+
 
 def _get_pings_v2(sc, **kwargs):
     app = kwargs.pop("app", None)
