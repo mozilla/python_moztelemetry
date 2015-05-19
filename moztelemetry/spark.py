@@ -10,6 +10,7 @@
 Example usage:
 pings = get_pings(None, app="Firefox", channel="nightly", build_id=("20140401000000", "20140402999999"), reason="saved_session")
 histories = get_clients_history(sc, app="Firefox", channel="nightly", fraction = 0.01)
+
 """
 
 import boto
@@ -27,7 +28,11 @@ _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validat
 
 
 def get_clients_history(sc, **kwargs):
-    """ Returns a RDD of histories for the selected criteria, where a history is a list of submissions for a client """
+    """ Returns a RDD of histories for the selected criteria, where a history is a list of submissions for a client.
+
+        This API is experimental and might change entirely at any point!
+
+    """
 
     app = kwargs.pop("app", None)
     channel = kwargs.pop("channel", None)
