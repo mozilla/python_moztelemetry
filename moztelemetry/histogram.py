@@ -34,7 +34,7 @@ histogram_tools.linear_buckets = cached_linear_buckets
 @lru_cache(maxsize=2**10)
 def _fetch_histograms_definition(revision):
     uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
-    definition = requests.get(uri).text
+    definition = requests.get(uri).content
 
     # see bug 920169
     definition = definition.replace('"JS::gcreason::NUM_TELEMETRY_REASONS"', "101")
@@ -68,10 +68,10 @@ class Histogram:
                 values = instance
             else:
                 values = instance[:-5]
-            self.buckets = pd.Series(values, index=self.definition.ranges())
+            self.buckets = pd.Series(values, index=self.definition.ranges(), dtype='int32')
         else:
             entries = {int(k): v for k, v in instance["values"].items()}
-            self.buckets = pd.Series(entries, index=self.definition.ranges()).fillna(0)
+            self.buckets = pd.Series(entries, index=self.definition.ranges(), dtype='int32').fillna(0)
 
     def __str__(self):
         """ Returns a string representation of the histogram. """
