@@ -77,12 +77,16 @@ class Histogram:
         """ Returns a string representation of the histogram. """
         return str(self.buckets)
 
-    def get_value(self, only_median=False):
+    def get_value(self, only_median=False, autocast=True):
         """
         Returns a scalar for flag and count histograms. Otherwise it returns either the
         raw histogram represented as a pandas Series or just the median if only_median
         is True.
+        If autocast is disabled the underlying pandas series is always returned as is.
         """
+
+        if not autocast:
+            return self.buckets
 
         if self.kind in ["exponential", "linear", "enumerated", "boolean"]:
             return self.percentile(50) if only_median else self.buckets
