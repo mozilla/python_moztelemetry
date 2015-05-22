@@ -252,9 +252,11 @@ def _get_ping_property(cursor, path):
     is_histogram = False
     is_keyed_histogram = False
 
-    if len(path) == 2 and path[0] == "histograms":
+    if path[0] == "histograms":
         is_histogram = True
-    elif len(path) == 3 and path[0] == "keyedHistograms":
+    elif path[0] == "keyedHistograms":
+        # Deal with histogram names that contain a slash...
+        path = path[:2] + (["/".join(path[2:])] if len(path) > 2 else [])
         is_keyed_histogram = True
 
     for partial in path:
@@ -269,7 +271,7 @@ def _get_ping_property(cursor, path):
         return Histogram(path[-1], cursor)
     elif is_keyed_histogram:
         histogram = Histogram(path[-2], cursor)
-        histogram.name = "/".join(path[-2:])
+        histogram.name = "/".join(path[1:])
         return histogram
     else:
         return cursor
