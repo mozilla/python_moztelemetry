@@ -13,12 +13,12 @@ import setuptools.command.install
 
 class FetchExternal(setuptools.command.install.install):
     def run(self):
-        urllib.urlretrieve("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", "moztelemetry/histogram_tools.py")
+        urllib.urlretrieve("http://hg.mozilla.org/mozilla-central/raw-file/72940b27aeaa/toolkit/components/telemetry/histogram_tools.py", "moztelemetry/histogram_tools.py")
         setuptools.command.install.install.run(self)
 
 setup(cmdclass={'install': FetchExternal},
       name='python_moztelemetry',
-      version='0.3.3.0',
+      version='0.3.3.1',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
