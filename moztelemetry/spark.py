@@ -195,6 +195,7 @@ def _get_filenames_v4(**kwargs):
     translate = {"app": "appName",
                  "channel": "appUpdateChannel",
                  "version": "appVersion",
+                 "build_id": "appBuildID",
                  "submission_date": "submissionDate",
                  "source_name": "sourceName",
                  "source_version": "sourceVersion",
