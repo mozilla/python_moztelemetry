@@ -217,8 +217,9 @@ def delta_sec(start, end=None):
 
 def update_published_v4_files(sdb, from_submission_date=None, to_submission_date=None, limit=None):
     s3 = S3Connection()
+    bucket_prefix = "telemetry-2"
     metadata = s3.get_bucket("net-mozaws-prod-us-west-2-pipeline-metadata")
-    schema_key = metadata.get_key("telemetry/schema.json")
+    schema_key = metadata.get_key("{}/schema.json".format(bucket_prefix))
     schema_string = schema_key.get_contents_as_string()
     schema = TelemetrySchema(json.loads(schema_string))
     bucket = s3.get_bucket("net-mozaws-prod-us-west-2-pipeline-data")
@@ -245,7 +246,7 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
                         print("Looked at {} total records in {} seconds, added {}".
                               format(total_count[0], delta_sec(start_time), added_count[0]))
 
-                    dims = schema.get_dimension_map(schema.get_dimensions(".", key.name[10:], dirs_only=True))
+                    dims = schema.get_dimension_map(schema.get_dimensions(".", key.name[len(bucket_prefix) + 1:], dirs_only=True))
 
                     if (from_submission_date is None or dims["submissionDate"] >= from_submission_date) and \
                        (to_submission_date is None or dims["submissionDate"] <= to_submission_date) and \
@@ -256,7 +257,8 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
                                       "submissionDate": dims.get("submissionDate"),
                                       "appVersion": dims.get("appVersion"),
                                       "sourceVersion": dims.get("sourceVersion"),
-                                      "appUpdateChannel": dims.get("appUpdateChannel")}
+                                      "appUpdateChannel": dims.get("appUpdateChannel"),
+                                      "appBuildID": dims.get("appBuildId")}
                         batch.put(dims["submissionDate"][:-2], key.name, attributes)
                         added_count[0] += 1
 
@@ -279,9 +281,9 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
 
         for i in range((to_date - from_date).days + 1):
             current_date = from_date + relativedelta(days=i)
-            publish("telemetry/{}".format(current_date.strftime("%Y%m%d")))
+            publish("{}/{}".format(bucket_prefix, current_date.strftime("%Y%m%d")))
     else:
-        publish("telemetry/")
+        publish(bucket_prefix)
 
     batch.flush()
     print("Overall, added {} of {} in {} seconds".format(added_count[0], total_count[0], delta_sec(start_time)))

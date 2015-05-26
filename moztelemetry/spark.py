@@ -148,6 +148,7 @@ def _get_pings_v4(sc, **kwargs):
     app = kwargs.pop("app", None)
     channel = kwargs.pop("channel", None)
     version = kwargs.pop("version", None)
+    build_id = kwargs.pop("build_id", None)
     submission_date = kwargs.pop("submission_date", None)
     source_name = kwargs.pop("source_name", "telemetry")
     source_version = kwargs.pop("source_version", "4")
@@ -160,7 +161,7 @@ def _get_pings_v4(sc, **kwargs):
     if kwargs:
         raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
 
-    files = _get_filenames_v4(app=app, channel=channel, version=version, submission_date=submission_date,
+    files = _get_filenames_v4(app=app, channel=channel, version=version, build_id=build_id, submission_date=submission_date,
                               source_name=source_name, source_version=source_version, doc_type=doc_type)
 
     if files and fraction != 1.0:
