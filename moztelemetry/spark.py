@@ -22,6 +22,9 @@ from filter_service import  SDB
 from histogram import Histogram
 from heka_message_parser import parse_heka_message
 
+boto.config.add_section('Boto')
+boto.config.set('Boto','http_socket_timeout','10')  # https://github.com/boto/boto/issues/2830
+
 _conn = boto.connect_s3()
 _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
 _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
@@ -219,9 +222,12 @@ def _read_v2(filename):
 
 
 def _read_v4(filename):
-    key = _bucket_v4.get_key(filename)
-    heka_message = key.get_contents_as_string()
-    return list(parse_heka_message(heka_message))
+    try:
+        key = _bucket_v4.get_key(filename)
+        heka_message = key.get_contents_as_string()
+        return parse_heka_message(heka_message)
+    except SSLError:
+        return []  # https://github.com/boto/boto/issues/2830
 
 
 def _get_ping_properties(ping, paths, only_median):
