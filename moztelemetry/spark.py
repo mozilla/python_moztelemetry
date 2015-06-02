@@ -215,10 +215,13 @@ def _get_filenames_v4(**kwargs):
 
 
 def _read_v2(filename):
-    key = _bucket_v2.get_key(filename)
-    compressed = key.get_contents_as_string()
-    raw = lzma.decompress(compressed).split("\n")[:-1]
-    return map(lambda x: x.split("\t", 1)[1], raw)
+    try:
+        key = _bucket_v2.get_key(filename)
+        compressed = key.get_contents_as_string()
+        raw = lzma.decompress(compressed).split("\n")[:-1]
+        return map(lambda x: x.split("\t", 1)[1], raw)
+    except SSLError:
+        return []  # https://github.com/boto/boto/issues/2830
 
 
 def _read_v4(filename):
