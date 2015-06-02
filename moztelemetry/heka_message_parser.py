@@ -6,16 +6,19 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import ujson as json
-from telemetry.util.heka_message import unpack
+from telemetry.util.heka_message import unpack, BacktrackableFile
+
 
 def parse_heka_message(message, boundary_bytes=None):
-    for record, total_bytes in unpack(message, retry=True):
+    message = BacktrackableFile(message)
+
+    for record, total_bytes in unpack(message, backtrack=True):
         yield _parse_heka_record(record)
 
         if boundary_bytes and (total_bytes >= boundary_bytes):
+            message.close(True)
             break
 
-    message.close(True)
 
 def _parse_heka_record(record):
     result = json.loads(record.message.payload)
