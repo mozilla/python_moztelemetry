@@ -29,6 +29,7 @@ boto.config.set('Boto','http_socket_timeout','10')  # https://github.com/boto/bo
 _conn = boto.connect_s3()
 _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
 _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
+_chunk_size = 2**24
 
 
 def get_clients_history(sc, **kwargs):
@@ -174,7 +175,8 @@ def _get_pings_v4(sc, **kwargs):
         sample = files
 
     parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).flatMap(lambda x: _read_v4(x))
+    ranges = sc.parallelize(sample, parallelism).flatMap(_read_v4_ranges).collect()
+    return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
 
 
 def _get_filenames_v2(**kwargs):
@@ -222,7 +224,7 @@ def _read_v2(filename):
         raw = lzma.decompress(compressed).split("\n")[:-1]
         return map(lambda x: x.split("\t", 1)[1], raw)
     except ssl.SSLError:
-        return []  # https://github.com/boto/boto/issues/2830
+        return []
 
 
 def _read_v4(filename):
@@ -231,7 +233,28 @@ def _read_v4(filename):
         key.open_read()
         return parse_heka_message(key)
     except ssl.SSLError:
-        return []  # https://github.com/boto/boto/issues/2830
+        return []
+
+
+def _read_v4_ranges(filename):
+    try:
+        key = _bucket_v4.get_key(filename)
+        n_chunks = (key.size / _chunk_size) + 1
+        return zip([filename]*n_chunks, range(n_chunks))
+    except ssl.SSLError:
+        return []
+
+
+def _read_v4_range(filename_chunk):
+    filename, chunk = filename_chunk
+    start = _chunk_size*chunk
+
+    try:
+        key = _bucket_v4.get_key(filename)
+        key.open_read(headers={'Range': "bytes={}-".format(start)})
+        return parse_heka_message(key, boundary_bytes=_chunk_size)
+    except ssl.SSLError:
+        return []
 
 
 def _get_ping_properties(ping, paths, only_median):

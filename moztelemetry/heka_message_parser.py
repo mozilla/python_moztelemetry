@@ -8,9 +8,12 @@
 import ujson as json
 from telemetry.util.heka_message import unpack
 
-def parse_heka_message(message):
-    for record in unpack(message):
+def parse_heka_message(message, boundary_bytes=None):
+    for record, total_bytes in unpack(message, retry=True):
         yield _parse_heka_record(record)
+
+        if boundary_bytes and (total_bytes >= boundary_bytes):
+            return
 
 def _parse_heka_record(record):
     result = json.loads(record.message.payload)
