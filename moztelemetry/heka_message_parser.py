@@ -6,18 +6,23 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import ujson as json
+import ssl
 from telemetry.util.heka_message import unpack, BacktrackableFile
 
 
 def parse_heka_message(message, boundary_bytes=None):
-    message = BacktrackableFile(message)
+    try:
+        message = BacktrackableFile(message)
 
-    for record, total_bytes in unpack(message, backtrack=True):
-        yield _parse_heka_record(record)
+        for record, total_bytes in unpack(message, backtrack=True):
+            yield _parse_heka_record(record)
 
-        if boundary_bytes and (total_bytes >= boundary_bytes):
-            message.close(True)
-            break
+            if boundary_bytes and (total_bytes >= boundary_bytes):
+                message.close()
+                break
+
+    except ssl.SSLError:
+        pass  # https://github.com/boto/boto/issues/2830
 
 
 def _parse_heka_record(record):

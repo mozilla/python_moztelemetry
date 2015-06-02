@@ -228,33 +228,23 @@ def _read_v2(filename):
 
 
 def _read_v4(filename):
-    try:
-        key = _bucket_v4.get_key(filename)
-        key.open_read()
-        return parse_heka_message(key)
-    except ssl.SSLError:
-        return []
+    key = _bucket_v4.get_key(filename)
+    key.open_read()
+    return parse_heka_message(key)
 
 
 def _read_v4_ranges(filename):
-    try:
-        key = _bucket_v4.get_key(filename)
-        n_chunks = (key.size / _chunk_size) + 1
-        return zip([filename]*n_chunks, range(n_chunks))
-    except ssl.SSLError:
-        return []
+    key = _bucket_v4.get_key(filename)
+    n_chunks = (key.size / _chunk_size) + 1
+    return zip([filename]*n_chunks, range(n_chunks))
 
 
 def _read_v4_range(filename_chunk):
     filename, chunk = filename_chunk
     start = _chunk_size*chunk
-
-    try:
-        key = _bucket_v4.get_key(filename)
-        key.open_read(headers={'Range': "bytes={}-".format(start)})
-        return parse_heka_message(key, boundary_bytes=_chunk_size)
-    except ssl.SSLError:
-        return []
+    key = _bucket_v4.get_key(filename)
+    key.open_read(headers={'Range': "bytes={}-".format(start)})
+    return parse_heka_message(key, boundary_bytes=_chunk_size)
 
 
 def _get_ping_properties(ping, paths, only_median):
