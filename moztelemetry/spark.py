@@ -228,8 +228,8 @@ def _read_v2(filename):
 def _read_v4(filename):
     try:
         key = _bucket_v4.get_key(filename)
-        heka_message = key.get_contents_as_string()
-        return parse_heka_message(heka_message)
+        key.open_read()
+        return parse_heka_message(key)
     except ssl.SSLError:
         return []  # https://github.com/boto/boto/issues/2830
 
