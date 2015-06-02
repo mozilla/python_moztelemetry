@@ -13,7 +13,9 @@ def parse_heka_message(message, boundary_bytes=None):
         yield _parse_heka_record(record)
 
         if boundary_bytes and (total_bytes >= boundary_bytes):
-            return
+            break
+
+    message.close(True)
 
 def _parse_heka_record(record):
     result = json.loads(record.message.payload)
