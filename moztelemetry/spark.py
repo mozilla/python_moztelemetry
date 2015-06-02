@@ -17,6 +17,7 @@ import boto
 import liblzma as lzma
 import json as json
 import numpy.random as random
+import ssl
 
 from filter_service import  SDB
 from histogram import Histogram
@@ -220,7 +221,7 @@ def _read_v2(filename):
         compressed = key.get_contents_as_string()
         raw = lzma.decompress(compressed).split("\n")[:-1]
         return map(lambda x: x.split("\t", 1)[1], raw)
-    except SSLError:
+    except ssl.SSLError:
         return []  # https://github.com/boto/boto/issues/2830
 
 
@@ -229,7 +230,7 @@ def _read_v4(filename):
         key = _bucket_v4.get_key(filename)
         heka_message = key.get_contents_as_string()
         return parse_heka_message(heka_message)
-    except SSLError:
+    except ssl.SSLError:
         return []  # https://github.com/boto/boto/issues/2830
 
 
