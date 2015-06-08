@@ -19,12 +19,12 @@ import json as json
 import numpy.random as random
 import ssl
 
-from filter_service import  SDB
+from filter_service import SDB
 from histogram import Histogram
 from heka_message_parser import parse_heka_message
 
 boto.config.add_section('Boto')
-boto.config.set('Boto','http_socket_timeout','10')  # https://github.com/boto/boto/issues/2830
+boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
 
 _conn = boto.connect_s3()
 _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
@@ -137,7 +137,7 @@ def _get_pings_v2(sc, **kwargs):
     if kwargs:
         raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
 
-    files = _get_filenames_v2(app=app, channel=channel, version=version, build_id = build_id,
+    files = _get_filenames_v2(app=app, channel=channel, version=version, build_id=build_id,
                               submission_date=submission_date, reason=reason)
 
     if files and fraction != 1.0:
@@ -228,23 +228,32 @@ def _read_v2(filename):
 
 
 def _read_v4(filename):
-    key = _bucket_v4.get_key(filename)
-    key.open_read()
-    return parse_heka_message(key)
+    try:
+        key = _bucket_v4.get_key(filename)
+        key.open_read()
+        return parse_heka_message(key)
+    except ssl.SSLError:
+        return []
 
 
 def _read_v4_ranges(filename):
-    key = _bucket_v4.get_key(filename)
-    n_chunks = (key.size / _chunk_size) + 1
-    return zip([filename]*n_chunks, range(n_chunks))
+    try:
+        key = _bucket_v4.get_key(filename)
+        n_chunks = (key.size / _chunk_size) + 1
+        return zip([filename]*n_chunks, range(n_chunks))
+    except ssl.SSLError:
+        return []
 
 
 def _read_v4_range(filename_chunk):
-    filename, chunk = filename_chunk
-    start = _chunk_size*chunk
-    key = _bucket_v4.get_key(filename)
-    key.open_read(headers={'Range': "bytes={}-".format(start)})
-    return parse_heka_message(key, boundary_bytes=_chunk_size)
+    try:
+        filename, chunk = filename_chunk
+        start = _chunk_size*chunk
+        key = _bucket_v4.get_key(filename)
+        key.open_read(headers={'Range': "bytes={}-".format(start)})
+        return parse_heka_message(key, boundary_bytes=_chunk_size)
+    except ssl.SSLError:
+        return []
 
 
 def _get_ping_properties(ping, paths, only_median):
