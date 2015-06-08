@@ -176,7 +176,11 @@ def _get_pings_v4(sc, **kwargs):
 
     parallelism = max(len(sample), sc.defaultParallelism)
     ranges = sc.parallelize(sample, parallelism).flatMap(_read_v4_ranges).collect()
-    return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
+
+    if len(ranges) == 0:
+        return sc.parallelize([])
+    else:
+        return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
 
 
 def _get_filenames_v2(**kwargs):
