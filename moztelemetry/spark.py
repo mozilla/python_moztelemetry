@@ -9,7 +9,7 @@
 
 Example usage:
 pings = get_pings(None, app="Firefox", channel="nightly", build_id=("20140401000000", "20140402999999"), reason="saved_session")
-histories = get_clients_history(sc, app="Firefox", channel="nightly", fraction = 0.01)
+histories = get_clients_history(sc, fraction = 0.01)
 
 """
 
@@ -22,6 +22,7 @@ import ssl
 from filter_service import SDB
 from histogram import Histogram
 from heka_message_parser import parse_heka_message
+from xml.sax import SAXParseException
 
 boto.config.add_section('Boto')
 boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
@@ -33,21 +34,12 @@ _chunk_size = 2**24
 
 
 def get_clients_history(sc, **kwargs):
-    """ Returns a RDD of histories for the selected criteria, where a history is a list of submissions for a client.
+    """ Returns a RDD of histories, where a history is a list of submissions for a client.
 
         This API is experimental and might change entirely at any point!
-
     """
 
-    app = kwargs.pop("app", None)
-    channel = kwargs.pop("channel", None)
     fraction = kwargs.pop("fraction", 1.0)
-
-    if app != "Firefox":
-        raise ValueError("Application doesn't exists")
-
-    if channel != "nightly":
-        raise ValueError("Channel doesn't exists")
 
     if fraction < 0 or fraction > 1:
         raise ValueError("Invalid fraction argument")
@@ -63,11 +55,42 @@ def get_clients_history(sc, **kwargs):
         sample = clients
 
     parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).map(lambda x: _read_client_history(x))
+    return sc.parallelize(sample, parallelism).\
+        map(lambda x: _read_client_history(x)).\
+        filter(lambda x: x is not None)
 
 
 def get_pings(sc, **kwargs):
-    """ Returns a RDD of Telemetry submissions for the given criteria. """
+    """ Returns a RDD of Telemetry submissions for a given filtering criteria.
+
+    Depending on the value of the 'schema' argument, different filtering criteria
+    are available. By default, the 'v2' schema is assumed (classic Telemetry).
+    The unified Telemetry/FHR submissions are available by selecting the 'v4' schema.
+
+    If schema == "v2" then:
+    :param app: an application name, e.g.: "Firefox"
+    :param channel: a channel name, e.g.: "nightly"
+    :param version: the application version, e.g.: "40.0a1"
+    :param build_id: a build_id or a range of build_ids, e.g.:
+                     "20150601000000" or ("20150601000000", "20150610999999")
+    :param submission_date: a submission date or a range of submission dates, e.g:
+                            "20150601" or ("20150601", "20150610")
+    :param fraction: the fraction of pings to return, set to 1.0 by default
+    :param reason: submission reason, set to "saved_session" by default, e.g: "saved_session"
+
+    If schema == "v4" then:
+    :param app: an application name, e.g.: "Firefox"
+    :param channel: a channel name, e.g.: "nightly"
+    :param version: the application version, e.g.: "40.0a1"
+    :param build_id: a build_id or a range of build_ids, e.g.:
+                     "20150601000000" or ("20150601000000", "20150610999999")
+    :param submission_date: a submission date or a range of submission dates, e.g:
+                            "20150601" or ("20150601", "20150610")
+    :param source_name: source name, set to "telemetry" by default
+    :param source_version: source version, set to "4" by default
+    :param doc_type: ping type, set to "main" by default
+    :param fraction: the fraction of pings to return, set to 1.0 by default
+    """
     schema = kwargs.pop("schema", "v2")
     if schema == "v2":
         return _get_pings_v2(sc, **kwargs)
@@ -118,8 +141,11 @@ def get_one_ping_per_client(pings):
 
 
 def _read_client_history(client_prefix):
-    paths = [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
-    return [ping for x in paths for ping in _read_v4(x)]
+    try:
+        paths = [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
+        return [ping for x in paths for ping in _read_v4(x)]
+    except SAXParseException:  # https://groups.google.com/forum/#!topic/boto-users/XCtTFzvtKRs
+        return None
 
 
 def _get_pings_v2(sc, **kwargs):

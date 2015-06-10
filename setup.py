@@ -18,7 +18,7 @@ class FetchExternal(setuptools.command.install.install):
 
 setup(cmdclass={'install': FetchExternal},
       name='python_moztelemetry',
-      version='0.3.3.8',
+      version='0.3.4.0',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
