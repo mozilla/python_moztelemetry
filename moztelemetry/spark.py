@@ -24,7 +24,8 @@ from histogram import Histogram
 from heka_message_parser import parse_heka_message
 from xml.sax import SAXParseException
 
-boto.config.add_section('Boto')
+if not boto.config.has_section('Boto'):
+    boto.config.add_section('Boto')
 boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
 
 _conn = boto.connect_s3()
