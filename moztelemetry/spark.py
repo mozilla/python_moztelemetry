@@ -101,7 +101,7 @@ def get_pings(sc, **kwargs):
         raise ValueError("Invalid schema version")
 
 
-def get_pings_properties(pings, paths, only_median=False):
+def get_pings_properties(pings, paths, only_median=False, with_processes=False):
     """
     Returns a RDD of a subset of properties of pings. Child histograms are
     automatically merged with the parent histogram.
@@ -114,7 +114,7 @@ def get_pings_properties(pings, paths, only_median=False):
 
     # Use '/' as dots can appear in keyed histograms
     paths = [(path, path.split("/")) for path in paths]
-    return pings.map(lambda p: _get_ping_properties(p, paths, only_median)).filter(lambda p: p)
+    return pings.map(lambda p: _get_ping_properties(p, paths, only_median, with_processes)).filter(lambda p: p)
 
 
 def get_one_ping_per_client(pings):
@@ -287,7 +287,7 @@ def _read_v4_range(filename_chunk):
         return []
 
 
-def _get_ping_properties(ping, paths, only_median):
+def _get_ping_properties(ping, paths, only_median, with_processes):
     result = {}
 
     for property_name, path in paths:
@@ -298,16 +298,12 @@ def _get_ping_properties(ping, paths, only_median):
             cursor = ping["payload"]
 
         if path[0] == "histograms" or path[0] == "keyedHistograms":
-            props = _get_merged_histograms(cursor, path)
+            props = _get_merged_histograms(cursor, property_name, path, with_processes)
 
             for k, v in props.iteritems():
-                result[k] = v.get_value(only_median)
+                result[k] = v.get_value(only_median) if v else None
         else:
             prop = _get_ping_property(cursor, path)
-
-            if prop is None:
-                continue
-
             result[property_name] = prop
 
     return result
@@ -336,38 +332,29 @@ def _get_ping_property(cursor, path):
         return Histogram(path[-1], cursor)
     elif is_keyed_histogram:
         histogram = Histogram(path[-2], cursor)
-        histogram.name = "/".join(path[1:])
+        histogram.name = "/".join(path[-2:])
         return histogram
     else:
         return cursor
 
 
-def _get_merged_histograms(cursor, path):
+def _get_merged_histograms(cursor, property_name, path, with_processes):
     assert((len(path) == 2 and path[0] == "histograms") or (len(path) == 3 and path[0] == "keyedHistograms"))
     result = {}
 
     # Get parent histogram
     parent = _get_ping_property(cursor, path)
 
-    if parent:
-        name = parent.name
-        result[name + "_parent"] = parent
-        result[name] = parent
-
-    cursor = cursor.get("childPayloads", {})
-    if not cursor:  # pre e10s ping
-        return result
-
     # Get children histograms
-    children = filter(lambda h: h is not None, [_get_ping_property(child, path) for child in cursor])
-
-    if children:
-        name = children[0].name  # The parent histogram might not exist
-        result[name + "_children"] = reduce(lambda x, y: x + y, children)
+    cursor = cursor.get("childPayloads", {})
+    children = filter(lambda h: h is not None, [_get_ping_property(child, path) for child in cursor]) if cursor else []
 
     # Merge parent and children
-    if parent or children:
-        metrics = ([parent] if parent else []) + children
-        result[name] = reduce(lambda x, y: x + y, metrics)
+    merged = ([parent] if parent else []) + children
+
+    if with_processes:
+        result[property_name + "_parent"] = parent
+        result[property_name + "_children"] = reduce(lambda x, y: x + y, children) if children else None
+    result[property_name] = reduce(lambda x, y: x + y, merged) if merged else None
 
     return result

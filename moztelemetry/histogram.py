@@ -89,9 +89,9 @@ class Histogram:
             return self.buckets
 
         if self.kind in ["exponential", "linear", "enumerated", "boolean"]:
-            return self.percentile(50) if only_median else self.buckets
+            return long(self.percentile(50)) if only_median else self.buckets
         elif self.kind == "count":
-            return self.buckets[0]
+            return long(self.buckets[0])
         elif self.kind == "flag":
             return self.buckets[1] == 1
         else:
@@ -116,11 +116,12 @@ class Histogram:
                 break
             to_count -= freq
 
-        if percentile_bucket == len(self.buckets) - 1:
-            return float('nan')
-
-        percentile_frequency = self.buckets.values[percentile_bucket]
         percentile_lower_boundary = self.buckets.index[percentile_bucket]
+        percentile_frequency = self.buckets.values[percentile_bucket]
+
+        if percentile_bucket == len(self.buckets) - 1 or percentile_frequency == 0:
+            return percentile_lower_boundary
+
         width = self.buckets.index[percentile_bucket + 1] - self.buckets.index[percentile_bucket]
         return percentile_lower_boundary + width*to_count/percentile_frequency
 
