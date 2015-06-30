@@ -89,7 +89,7 @@ class Histogram:
             return self.buckets
 
         if self.kind in ["exponential", "linear", "enumerated", "boolean"]:
-            return long(self.percentile(50)) if only_median else self.buckets
+            return float(self.percentile(50)) if only_median else self.buckets
         elif self.kind == "count":
             return long(self.buckets[0])
         elif self.kind == "flag":
