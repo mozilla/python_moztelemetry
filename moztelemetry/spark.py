@@ -89,7 +89,7 @@ def get_pings(sc, **kwargs):
                             "20150601" or ("20150601", "20150610")
     :param source_name: source name, set to "telemetry" by default
     :param source_version: source version, set to "4" by default
-    :param doc_type: ping type, set to "main" by default
+    :param doc_type: ping type, set to "saved_session" by default
     :param fraction: the fraction of pings to return, set to 1.0 by default
     """
     schema = kwargs.pop("schema", "v2")
@@ -184,7 +184,7 @@ def _get_pings_v4(sc, **kwargs):
     submission_date = kwargs.pop("submission_date", None)
     source_name = kwargs.pop("source_name", "telemetry")
     source_version = kwargs.pop("source_version", "4")
-    doc_type = kwargs.pop("doc_type", "main")
+    doc_type = kwargs.pop("doc_type", "saved_session")
     fraction = kwargs.pop("fraction", 1.0)
 
     if fraction < 0 or fraction > 1:
