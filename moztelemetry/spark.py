@@ -28,10 +28,13 @@ if not boto.config.has_section('Boto'):
     boto.config.add_section('Boto')
 boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
 
-_conn = boto.connect_s3()
-_bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
-_bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
 _chunk_size = 2**24
+try:
+    _conn = boto.connect_s3()
+    _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
+    _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
+except:
+    pass  # Handy for testing purposes...
 
 
 def get_clients_history(sc, **kwargs):
