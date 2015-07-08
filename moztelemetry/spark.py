@@ -323,11 +323,11 @@ def _get_ping_property(cursor, path):
         path = path[:2] + (["/".join(path[2:])] if len(path) > 2 else [])
         is_keyed_histogram = True
 
-    for partial in path:
-        cursor = cursor.get(partial, None)
-
-        if cursor is None:
-            break
+    try:
+        for field in path:
+            cursor = cursor[field]
+    except:
+        return None
 
     if cursor is None:
         return None
@@ -342,19 +342,22 @@ def _get_ping_property(cursor, path):
 
 
 def _get_merged_histograms(cursor, property_name, path, with_processes):
-    assert((len(path) == 2 and path[0] == "histograms") or (len(path) == 3 and path[0] == "keyedHistograms"))
-    result = {}
+    if path[0] == "histograms" and len(path) != 2:
+        raise ValueError("Histogram access requires a histogram name.")
+    elif path[0] == "keyedHistograms" and len(path) != 3:
+        raise ValueError("Keyed histogram access requires both a histogram name and a label.")
 
     # Get parent histogram
     parent = _get_ping_property(cursor, path)
 
     # Get children histograms
-    cursor = cursor.get("childPayloads", {})
+    cursor = cursor.get("childPayloads", {}) if type(cursor) == dict else {}
     children = filter(lambda h: h is not None, [_get_ping_property(child, path) for child in cursor]) if cursor else []
 
     # Merge parent and children
     merged = ([parent] if parent else []) + children
 
+    result = {}
     if with_processes:
         result[property_name + "_parent"] = parent
         result[property_name + "_children"] = reduce(lambda x, y: x + y, children) if children else None
