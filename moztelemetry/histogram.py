@@ -68,10 +68,10 @@ class Histogram:
                 values = instance
             else:
                 values = instance[:-5]
-            self.buckets = pd.Series(values, index=self.definition.ranges(), dtype='int32')
+            self.buckets = pd.Series(values, index=self.definition.ranges(), dtype='int64')
         else:
             entries = {int(k): v for k, v in instance["values"].items()}
-            self.buckets = pd.Series(entries, index=self.definition.ranges(), dtype='int32').fillna(0)
+            self.buckets = pd.Series(entries, index=self.definition.ranges(), dtype='int64').fillna(0)
 
     def __str__(self):
         """ Returns a string representation of the histogram. """
