@@ -28,7 +28,7 @@ if not boto.config.has_section('Boto'):
     boto.config.add_section('Boto')
 boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
 
-_chunk_size = 2**24
+_chunk_size = 100*(2**20)
 try:
     _conn = boto.connect_s3()
     _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
