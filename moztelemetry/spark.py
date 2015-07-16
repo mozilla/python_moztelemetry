@@ -18,6 +18,7 @@ import liblzma as lzma
 import json as json
 import numpy.random as random
 import ssl
+import binascii
 
 from filter_service import SDB
 from histogram import Histogram
@@ -38,9 +39,7 @@ except:
 
 
 def get_clients_history(sc, **kwargs):
-    """ Returns a RDD of histories, where a history is a list of submissions for a client.
-
-        This API is experimental and might change entirely at any point!
+    """ Returns RDD[client_id, ping]. This API is experimental and might change entirely at any point!
     """
 
     fraction = kwargs.pop("fraction", 1.0)
@@ -60,8 +59,9 @@ def get_clients_history(sc, **kwargs):
 
     parallelism = max(len(sample), sc.defaultParallelism)
     return sc.parallelize(sample, parallelism).\
-        map(lambda x: _read_client_history(x)).\
-        filter(lambda x: x is not None)
+              flatMap(_get_client_history).\
+              partitionBy(len(sample), lambda k: binascii.crc32(k)).\
+              flatMapValues(lambda x: _read_v4(x))
 
 
 def get_pings(sc, **kwargs):
@@ -144,10 +144,11 @@ def get_one_ping_per_client(pings):
                     map(lambda p: p[1])
 
 
-def _read_client_history(client_prefix):
+def _get_client_history(client_prefix):
     try:
-        paths = [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
-        return [ping for x in paths for ping in _read_v4(x)]
+        client_id = client_prefix[20:-1]
+        filenames = [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
+        return zip([client_id]*len(filenames), filenames)
     except SAXParseException:  # https://groups.google.com/forum/#!topic/boto-users/XCtTFzvtKRs
         return None
 
