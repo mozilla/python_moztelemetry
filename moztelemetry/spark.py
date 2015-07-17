@@ -57,10 +57,13 @@ def get_clients_history(sc, **kwargs):
     else:
         sample = clients
 
+    client_ids = [client_prefix[20:-1] for client_prefix in sample]
     parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).\
-              flatMap(_get_client_history).\
+
+    return sc.parallelize(zip(client_ids, sample), parallelism).\
               partitionBy(len(sample)).\
+              flatMapValues(_get_client_history).\
+              filter(lambda x: x[1] is not None).\
               flatMapValues(lambda x: _read_v4(x))
 
 
@@ -146,9 +149,7 @@ def get_one_ping_per_client(pings):
 
 def _get_client_history(client_prefix):
     try:
-        client_id = client_prefix[20:-1]
-        filenames = [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
-        return zip([client_id]*len(filenames), filenames)
+        return [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
     except SAXParseException:  # https://groups.google.com/forum/#!topic/boto-users/XCtTFzvtKRs
         return None
 
