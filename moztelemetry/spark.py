@@ -60,7 +60,7 @@ def get_clients_history(sc, **kwargs):
     parallelism = max(len(sample), sc.defaultParallelism)
     return sc.parallelize(sample, parallelism).\
               flatMap(_get_client_history).\
-              partitionBy(len(sample), lambda k: binascii.crc32(k)).\
+              partitionBy(len(sample)).\
               flatMapValues(lambda x: _read_v4(x))
 
 
