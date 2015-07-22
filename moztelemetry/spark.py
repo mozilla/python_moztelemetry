@@ -18,7 +18,6 @@ import backports.lzma as lzma
 import json as json
 import numpy.random as random
 import ssl
-import binascii
 
 from filter_service import SDB
 from histogram import Histogram
