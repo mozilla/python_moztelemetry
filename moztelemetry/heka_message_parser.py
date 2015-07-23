@@ -38,6 +38,14 @@ def _parse_heka_record(record):
     for field in record.message.fields:
         name = field.name.split('.')
         value = field.value_string
+        if field.value_type == 1:
+            value = field.value_bytes
+        elif field.value_type == 2:
+            value = field.value_integer
+        elif field.value_type == 3:
+            value = field.value_double
+        elif field.value_type == 4:
+            value = field.value_bool
 
 	if len(name) == 1:  # Treat top-level meta fields as strings
 	    result["meta"][name[0]] = value[0] if len(value) else ""
