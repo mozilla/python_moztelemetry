@@ -53,12 +53,23 @@ class Histogram:
     def __init__(self, name, instance, revision="http://hg.mozilla.org/mozilla-central/rev/tip"):
         """ Initialize a histogram from its name and a telemetry submission. """
 
-        histograms_definition = _fetch_histograms_definition(revision)
+        retry = True
+        while True:
+            histograms_definition = _fetch_histograms_definition(revision)
 
-        try:
-            self.definition = histogram_tools.Histogram(name, histograms_definition[name])
-        except KeyError:
-            self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", name)])
+            try:
+                self.definition = histogram_tools.Histogram(name, histograms_definition[name])
+            except KeyError:
+                try:
+                    self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", name)])
+                except KeyError as e:
+                    if not retry:
+                        raise e
+
+                    retry = False
+                    _fetch_histograms_definition.cache_clear()
+
+            break
 
         self.kind = self.definition.kind()
         self.name = name
