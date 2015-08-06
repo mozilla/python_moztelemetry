@@ -68,6 +68,7 @@ class Histogram:
 
                     retry = False
                     _fetch_histograms_definition.cache_clear()
+                    continue
 
             break
 
