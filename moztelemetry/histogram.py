@@ -15,10 +15,12 @@ import numpy as np
 import ujson as json
 
 from functools32 import lru_cache
+from expiringdict import ExpiringDict
 
 # Ugly hack to speed-up aggregation.
 exponential_buckets = histogram_tools.exponential_buckets
 linear_buckets = histogram_tools.linear_buckets
+definition_cache = ExpiringDict(max_len=2**10, max_age_seconds=3600)
 
 @lru_cache(maxsize=2**14)
 def cached_exponential_buckets(*args, **kwargs):
@@ -31,17 +33,22 @@ def cached_linear_buckets(*args, **kwargs):
 histogram_tools.exponential_buckets = cached_exponential_buckets
 histogram_tools.linear_buckets = cached_linear_buckets
 
-@lru_cache(maxsize=2**10)
 def _fetch_histograms_definition(revision):
-    uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
-    definition = requests.get(uri).content
+    cached = definition_cache.get(revision, None)
+    if cached is None:
+        uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
+        definition = requests.get(uri).content
 
-    # see bug 920169
-    definition = definition.replace('"JS::gcreason::NUM_TELEMETRY_REASONS"', "101")
-    definition = definition.replace('"mozilla::StartupTimeline::MAX_EVENT_ID"', "12")
-    definition = definition.replace('"80 + 1"', "81")
+        # see bug 920169
+        definition = definition.replace('"JS::gcreason::NUM_TELEMETRY_REASONS"', "101")
+        definition = definition.replace('"mozilla::StartupTimeline::MAX_EVENT_ID"', "12")
+        definition = definition.replace('"80 + 1"', "81")
 
-    return json.loads(definition)
+        parsed = json.loads(definition)
+        definition_cache[revision] = parsed
+        return parsed
+    else:
+        return cached
 
 @lru_cache(maxsize=2**20)  # A LFU cache would be more appropriate.
 def _get_cached_ranges(definition):
@@ -53,24 +60,12 @@ class Histogram:
     def __init__(self, name, instance, revision="http://hg.mozilla.org/mozilla-central/rev/tip"):
         """ Initialize a histogram from its name and a telemetry submission. """
 
-        retry = True
-        while True:
-            histograms_definition = _fetch_histograms_definition(revision)
+        histograms_definition = _fetch_histograms_definition(revision)
 
-            try:
-                self.definition = histogram_tools.Histogram(name, histograms_definition[name])
-            except KeyError:
-                try:
-                    self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", name)])
-                except KeyError as e:
-                    if not retry:
-                        raise e
-
-                    retry = False
-                    _fetch_histograms_definition.cache_clear()
-                    continue
-
-            break
+        try:
+            self.definition = histogram_tools.Histogram(name, histograms_definition[name])
+        except KeyError:
+            self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", name)])
 
         self.kind = self.definition.kind()
         self.name = name
