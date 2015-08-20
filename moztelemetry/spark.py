@@ -70,19 +70,7 @@ def get_pings(sc, **kwargs):
     """ Returns a RDD of Telemetry submissions for a given filtering criteria.
 
     Depending on the value of the 'schema' argument, different filtering criteria
-    are available. By default, the 'v2' schema is assumed (classic Telemetry).
-    The unified Telemetry/FHR submissions are available by selecting the 'v4' schema.
-
-    If schema == "v2" then:
-    :param app: an application name, e.g.: "Firefox"
-    :param channel: a channel name, e.g.: "nightly"
-    :param version: the application version, e.g.: "40.0a1"
-    :param build_id: a build_id or a range of build_ids, e.g.:
-                     "20150601000000" or ("20150601000000", "20150610999999")
-    :param submission_date: a submission date or a range of submission dates, e.g:
-                            "20150601" or ("20150601", "20150610")
-    :param fraction: the fraction of pings to return, set to 1.0 by default
-    :param reason: submission reason, set to "saved_session" by default, e.g: "saved_session"
+    are available. By default, the 'v4' schema is assumed (unified Telemetry/FHR).
 
     If schema == "v4" then:
     :param app: an application name, e.g.: "Firefox"
@@ -96,8 +84,20 @@ def get_pings(sc, **kwargs):
     :param source_version: source version, set to "4" by default
     :param doc_type: ping type, set to "saved_session" by default
     :param fraction: the fraction of pings to return, set to 1.0 by default
+
+    If schema == "v2" then:
+    :param app: an application name, e.g.: "Firefox"
+    :param channel: a channel name, e.g.: "nightly"
+    :param version: the application version, e.g.: "40.0a1"
+    :param build_id: a build_id or a range of build_ids, e.g.:
+                     "20150601000000" or ("20150601000000", "20150610999999")
+    :param submission_date: a submission date or a range of submission dates, e.g:
+                            "20150601" or ("20150601", "20150610")
+    :param fraction: the fraction of pings to return, set to 1.0 by default
+    :param reason: submission reason, set to "saved_session" by default, e.g: "saved_session"
+
     """
-    schema = kwargs.pop("schema", "v2")
+    schema = kwargs.pop("schema", "v4")
     if schema == "v2":
         return _get_pings_v2(sc, **kwargs)
     elif schema == "v4":
