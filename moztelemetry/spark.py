@@ -233,7 +233,7 @@ def _filter_to_schema(schema, filter_args):
         }
         if dim["field_name"] in filter_args:
             new_filter["allowed_values"] = filter_args[dim["field_name"]]
-
+        new_schema["dimensions"].append(new_filter)
     return TelemetrySchema(new_schema)
 
 
