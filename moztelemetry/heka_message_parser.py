@@ -27,7 +27,10 @@ def parse_heka_message(message, boundary_bytes=None):
 
 
 def _parse_heka_record(record):
-    result = json.loads(record.message.payload)
+    if record.message.payload:
+        result = json.loads(record.message.payload)
+    else:
+        result = {}
     result["meta"] = {
         # TODO: uuid, logger, severity, env_version, pid
         "Timestamp": record.message.timestamp,
