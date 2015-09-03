@@ -181,6 +181,8 @@ def get_records(sc, source_name, **kwargs):
 
     bucket_name = _sources[source_name]["bucket"]
     bucket_prefix = _sources[source_name]["prefix"]
+    if bucket_prefix[-1] != "/":
+        bucket_prefix = bucket_prefix + "/"
 
     fraction = kwargs.pop("fraction", 1.0)
     if fraction < 0 or fraction > 1:
