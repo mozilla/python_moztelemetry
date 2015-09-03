@@ -159,6 +159,7 @@ def get_data_sources():
         return {}
 
 def get_source_schema(source_name):
+    global _sources
     if _sources is None:
         _sources = get_data_sources()
 
@@ -202,8 +203,8 @@ def get_records(sc, source_name, **kwargs):
     # TODO: cache the buckets, or at least recognize the ones we already have
     #       handles to (_bucket_* vars)
     bucket = _bucket_v4 # TODO: bucket = _conn.get_bucket(bucket_name, validate=False)
-    # TODO: list S3
-    files = _list_s3_filenames(bucket, bucket_prefix, _filter_to_schema(schema, filter_args))
+    filter_schema = _filter_to_schema(schema, filter_args)
+    files = _list_s3_filenames(bucket, bucket_prefix, filter_schema)
 
     if files and fraction != 1.0:
         sample = random.choice(files, size=len(files)*fraction, replace=False)
