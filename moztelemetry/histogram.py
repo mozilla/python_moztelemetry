@@ -62,10 +62,14 @@ class Histogram:
 
         histograms_definition = _fetch_histograms_definition(revision)
 
-        try:
-            self.definition = histogram_tools.Histogram(name, histograms_definition[name])
-        except KeyError:
-            self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", name)])
+        # TODO: implement centralized revision service which handles all the quirks...
+        if name.startswith("USE_COUNTER_"):
+            self.definition = histogram_tools.Histogram(name, {"kind": "boolean", "description": "", "expires_in_version": "never"})
+        else:
+            try:
+                self.definition = histogram_tools.Histogram(name, histograms_definition[name])
+            except KeyError:
+                self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", name)])
 
         self.kind = self.definition.kind()
         self.name = name
