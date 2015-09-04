@@ -192,7 +192,13 @@ def get_records(sc, source_name, **kwargs):
     filter_args = {}
     field_names = [f["field_name"] for f in schema["dimensions"]]
     for field_name in field_names:
-        filter_args[field_name] = kwargs.pop(field_name, None)
+        field_filter = kwargs.pop(field_name, None)
+        # Special case for compatibility with get_pings:
+        #   If we get a filter parameter that is a tuple of length 2, treat it
+        #   as a min/max filter instead of a list of allowed values.
+        if isinstance(field_filter, tuple) and len(field_filter) == 2:
+            field_filter = {"min": field_filter[0], "max": field_filter[1]}
+        filter_args[field_name] = field_filter
 
     if kwargs:
         raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
