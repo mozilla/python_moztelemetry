@@ -150,7 +150,7 @@ def get_one_ping_per_client(pings):
                     reduceByKey(lambda p1, p2: p1).\
                     map(lambda p: p[1])
 
-def get_data_sources():
+def _get_data_sources():
     try:
         key = _bucket_meta.get_key("sources.json")
         sources = key.get_contents_as_string()
@@ -158,10 +158,10 @@ def get_data_sources():
     except ssl.SSLError:
         return {}
 
-def get_source_schema(source_name):
+def _get_source_schema(source_name):
     global _sources
     if _sources is None:
-        _sources = get_data_sources()
+        _sources = _get_data_sources()
 
     if source_name not in _sources:
         raise ValueError("Unknown data source: {}. Known sources: [{}].".format(source_name, ", ".join(sorted(_sources.keys()))))
@@ -176,7 +176,7 @@ def get_source_schema(source_name):
     return _sources[source_name]["schema"]
 
 def get_records(sc, source_name, **kwargs):
-    schema = get_source_schema(source_name)
+    schema = _get_source_schema(source_name)
     if schema is None:
         raise ValueError("Error getting schema for {}".format(source_name))
 
