@@ -150,32 +150,23 @@ def get_one_ping_per_client(pings):
                     reduceByKey(lambda p1, p2: p1).\
                     map(lambda p: p[1])
 
-def _get_data_sources():
-    try:
-        key = _bucket_meta.get_key("sources.json")
-        sources = key.get_contents_as_string()
-        return json.loads(sources)
-    except ssl.SSLError:
-        return {}
-
-def _get_source_schema(source_name):
-    global _sources
-    if _sources is None:
-        _sources = _get_data_sources()
-
-    if source_name not in _sources:
-        raise ValueError("Unknown data source: {}. Known sources: [{}].".format(source_name, ", ".join(sorted(_sources.keys()))))
-
-    if "schema" not in _sources[source_name]:
-        try:
-            key = _bucket_meta.get_key("{}/schema.json".format(_sources[source_name].get("metadata_prefix", source_name)))
-            schema = key.get_contents_as_string()
-            _sources[source_name]["schema"] = json.loads(schema)
-        except ssl.SSLError:
-            return None
-    return _sources[source_name]["schema"]
 
 def get_records(sc, source_name, **kwargs):
+    """ Returns a RDD of records for a given data source and filtering criteria.
+
+    All data sources support
+    :param fraction: the fraction of files read from the data source, set to 1.0
+                     by default.
+
+    Depending on the data source, different filtering criteria will be available.
+
+    Filtering criteria should be specified using the TelemetrySchema approach:
+    Range filter: submissionDate={"min": "20150901", "max": "20150908"}
+                     or submissionDate=("20150901", "20150908")
+    List filter: appUpdateChannel=["nightly", "aurora", "beta"]
+    Value filter: docType="main"
+
+    """
     schema = _get_source_schema(source_name)
     if schema is None:
         raise ValueError("Error getting schema for {}".format(source_name))
@@ -227,8 +218,37 @@ def get_records(sc, source_name, **kwargs):
     else:
         return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
 
+
+def _get_data_sources():
+    try:
+        key = _bucket_meta.get_key("sources.json")
+        sources = key.get_contents_as_string()
+        return json.loads(sources)
+    except ssl.SSLError:
+        return {}
+
+
+def _get_source_schema(source_name):
+    global _sources
+    if _sources is None:
+        _sources = _get_data_sources()
+
+    if source_name not in _sources:
+        raise ValueError("Unknown data source: {}. Known sources: [{}].".format(source_name, ", ".join(sorted(_sources.keys()))))
+
+    if "schema" not in _sources[source_name]:
+        try:
+            key = _bucket_meta.get_key("{}/schema.json".format(_sources[source_name].get("metadata_prefix", source_name)))
+            schema = key.get_contents_as_string()
+            _sources[source_name]["schema"] = json.loads(schema)
+        except ssl.SSLError:
+            return None
+    return _sources[source_name]["schema"]
+
+
 def _list_s3_filenames(bucket, prefix, schema):
     return [k.name for k in s3u.list_heka_partitions(bucket, prefix, schema=schema)]
+
 
 def _filter_to_schema(schema, filter_args):
     new_schema = {"version": 1, "dimensions": []}
