@@ -162,7 +162,7 @@ def get_records(sc, source_name, **kwargs):
 
     Filtering criteria should be specified using the TelemetrySchema approach:
     Range filter: submissionDate={"min": "20150901", "max": "20150908"}
-                     or submissionDate=("20150901", "20150908")
+                  or submissionDate=("20150901", "20150908")
     List filter: appUpdateChannel=["nightly", "aurora", "beta"]
     Value filter: docType="main"
 
