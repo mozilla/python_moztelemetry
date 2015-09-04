@@ -222,10 +222,7 @@ def get_records(sc, source_name, **kwargs):
         return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
 
 def _list_s3_filenames(bucket, prefix, schema):
-    filenames = []
-    for k in s3u.list_heka_partitions(bucket, prefix, schema=schema):
-        filenames.append(k.name)
-    return filenames
+    return [k.name for k in s3u.list_heka_partitions(bucket, prefix, schema=schema)]
 
 def _filter_to_schema(schema, filter_args):
     new_schema = {"version": 1, "dimensions": []}
