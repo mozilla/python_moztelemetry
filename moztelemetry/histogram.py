@@ -63,7 +63,7 @@ class Histogram:
         histograms_definition = _fetch_histograms_definition(revision)
 
         # TODO: implement centralized revision service which handles all the quirks...
-        if name.startswith("USE_COUNTER_"):
+        if name.startswith("USE_COUNTER_") or name.startswith("USE_COUNTER2_"):
             self.definition = histogram_tools.Histogram(name, {"kind": "boolean", "description": "", "expires_in_version": "never"})
         else:
             try:
