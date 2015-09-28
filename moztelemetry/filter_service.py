@@ -8,7 +8,7 @@
 """ SimpleDB backed filter service for telemetry submissions.
 
 Example usage:
-sdb = SDB("telemetry_v2")
+sdb = SDB("telemetry_v4")
 sdb.query(submissionDate=("20150415", "20150416"), appName="Firefox", appBuildID=("20150414000000", "20150414999999"))
 
 """
@@ -28,10 +28,11 @@ from telemetry.telemetry_schema import TelemetrySchema
 
 
 class SDB:
-    def __init__(self, prefix, months_retention=12, read_only=True):
+    def __init__(self, prefix, months_retention=12, read_only=True, s3_prefix=None):
         self.sdb = boto.sdb.connect_to_region('us-west-2')
         self.read_only = read_only
         self.prefix = prefix
+        self.s3_prefix = s3_prefix or prefix
 
         # Get existing domains
         domains_existing = map(lambda x: x.name, self.sdb.get_all_domains())
@@ -81,7 +82,7 @@ class SDB:
         for i in range(n_days + 1):
             submission_date = (from_date + relativedelta(days=i)).strftime("%Y%m%d")
             domain = self[submission_date[:-2]]
-            query = "select count(*) from {} where submissionDate='{}'".format(domain.name, submission_date)
+            query = "select count(*) from `{}` where submissionDate='{}'".format(domain.name, submission_date)
             jobs.append(self._pool.apply_async(lambda d, q, s: (s, sum([int(c["Count"]) for c in d.select(q)])), [domain, query, submission_date]))
 
         return dict([job.get() for job in jobs])
@@ -105,8 +106,8 @@ class SDB:
         for i in range(n_days + 1):
             submission_date = (from_date + relativedelta(days=i)).strftime("%Y%m%d")
             domain = self[submission_date[:-2]]
-            lambda_query = "select count(*) from {} where submissionDate='{}' and lambda='true'".format(domain.name, submission_date)
-            total_query = "select count(*) from {} where submissionDate='{}'".format(domain.name, submission_date)
+            lambda_query = "select count(*) from `{}` where submissionDate='{}' and lambda='true'".format(domain.name, submission_date)
+            total_query = "select count(*) from `{}` where submissionDate='{}'".format(domain.name, submission_date)
 
             n_lambda = sum([int(c["Count"]) for c in domain.select(lambda_query)])
             n_total = sum([int(c["Count"]) for c in domain.select(total_query)])
@@ -150,7 +151,7 @@ class SDB:
         jobs = []
 
         for domain in domains:
-            query = "select submissionDate from {} where {}".format(domain.name, partial_query)
+            query = "select submissionDate from `{}` where {}".format(domain.name, partial_query)
             # Not sure why closing over query and domain generates empty results...
             jobs.append(self._pool.apply_async(lambda d, q: [f.name for f in d.select(q)], [domain, query]))
 
@@ -217,7 +218,7 @@ def delta_sec(start, end=None):
 
 def update_published_v4_files(sdb, from_submission_date=None, to_submission_date=None, limit=None):
     s3 = S3Connection()
-    bucket_prefix = "telemetry-2"
+    bucket_prefix = sdb.s3_prefix
     metadata = s3.get_bucket("net-mozaws-prod-us-west-2-pipeline-metadata")
     schema_key = metadata.get_key("{}/schema.json".format(bucket_prefix))
     schema_string = schema_key.get_contents_as_string()
@@ -251,14 +252,7 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
                     if (from_submission_date is None or dims["submissionDate"] >= from_submission_date) and \
                        (to_submission_date is None or dims["submissionDate"] <= to_submission_date) and \
                        dims["submissionDate"][:-2] in sdb:
-                        attributes = {"appName": dims.get("appName"),
-                                      "sourceName": dims.get("sourceName"),
-                                      "docType": dims.get("docType"),
-                                      "submissionDate": dims.get("submissionDate"),
-                                      "appVersion": dims.get("appVersion"),
-                                      "sourceVersion": dims.get("sourceVersion"),
-                                      "appUpdateChannel": dims.get("appUpdateChannel"),
-                                      "appBuildID": dims.get("appBuildId")}
+                        attributes = dims
                         batch.put(dims["submissionDate"][:-2], key.name, attributes)
                         added_count[0] += 1
 
@@ -289,67 +283,6 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
     print("Overall, added {} of {} in {} seconds".format(added_count[0], total_count[0], delta_sec(start_time)))
 
 
-def update_published_v2_files(sdb, from_submission_date=None, to_submission_date=None, limit=None):
-    s3 = S3Connection()
-    bucket_name = "telemetry-published-v2"
-    bucket = s3.get_bucket(bucket_name)
-    schema_key = bucket.get_key("telemetry_schema.json")
-    schema_string = schema_key.get_contents_as_string()
-    schema = TelemetrySchema(json.loads(schema_string))
-
-    termination_requested = [False]
-    def keyboard_interrupt_handler(signal, frame):
-        termination_requested[0] = True
-    signal.signal(signal.SIGINT, keyboard_interrupt_handler)
-
-    added_count = 0
-    total_count = 0
-    start_time = datetime.now()
-    done = False
-    last_key = ''
-    batch = BatchPut(sdb)
-
-    while not done:
-        try:
-            for key in bucket.list(marker=last_key):
-                last_key = key.name
-
-                if total_count % 1e5 == 0:
-                    print("Looked at {} total records in {} seconds, added {}".
-                          format(total_count, delta_sec(start_time), added_count))
-
-                dims = schema.get_dimension_map(schema.get_dimensions(".", key.name))
-
-                if (from_submission_date is None or dims["submission_date"] >= from_submission_date) and \
-                   (to_submission_date is None or dims["submission_date"] <= to_submission_date) and \
-                   dims["submission_date"][:-2] in sdb and \
-                   dims["reason"] != "idle_daily":
-                    attributes = {"reason": dims.get("reason"),
-                                  "appName": dims.get("appName"),
-                                  "appUpdateChannel": dims.get("appUpdateChannel"),
-                                  "appVersion": dims.get("appVersion"),
-                                  "appBuildID": dims.get("appBuildID"),
-                                  "submissionDate": dims.get("submission_date")}
-                    batch.put(dims["submission_date"][:-2], key.name, attributes)
-                    added_count += 1
-
-                total_count += 1
-                if total_count == limit or termination_requested[0]:
-                    done = True
-                    break
-
-        except Exception as e:
-            print("Error listing keys: {}".format(e))
-            traceback.print_exc()
-            print("Continuing from last seen key: {}".format(last_key))
-            continue
-
-        break
-
-    batch.flush()
-    print("Overall, added {} of {} in {} seconds".format(added_count, total_count, delta_sec(start_time)))
-
-
 def main(limit=None, schema_version=None, from_date=None, to_date=None):
     if from_date and not to_date:
         to_date = datetime.now().strftime("%Y%m%d")
@@ -357,21 +290,18 @@ def main(limit=None, schema_version=None, from_date=None, to_date=None):
     if limit:
         limit = int(limit)
 
-    if schema_version != "v2" and schema_version != "v4":
+    if schema_version != "v4" and schema_version != "v4_release":
         raise ValueError("Unsupported schema version")
 
-    if schema_version == "v2":
-        sdb = SDB("telemetry_v2", read_only=False)
+    if schema_version == "v4":
+        sdb = SDB("telemetry_v4", read_only=False, s3_prefix="telemetry-2")
     else:
-        sdb = SDB("telemetry_v4", read_only=False)
+        sdb = SDB("telemetry-release", read_only=False)
 
     if from_date:
         prev = sdb.get_daily_stats(from_date, to_date)
 
-    if schema_version == "v2":
-        update_published_v2_files(sdb, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
-    else:
-        update_published_v4_files(sdb, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
+    update_published_v4_files(sdb, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
 
     if from_date:
         curr = sdb.get_daily_stats(from_date, to_date)
@@ -389,7 +319,7 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-l", "--limit", help="Maximum number of files to index", default=None)
-    parser.add_argument("-s", "--schema-version", help="Telemetry schema version", default="v2")
+    parser.add_argument("-s", "--schema-version", help="Telemetry schema version", default="v4")
     parser.add_argument("-f", "--from-date", help="Add only telemetry files submitted after this date (included)", default=None)
     parser.add_argument("-t", "--to-date", help="Add only telemetry files submitted before this date (included)", default=None)
 
