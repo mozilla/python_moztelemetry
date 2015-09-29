@@ -283,20 +283,20 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
     print("Overall, added {} of {} in {} seconds".format(added_count[0], total_count[0], delta_sec(start_time)))
 
 
-def main(limit=None, schema_version=None, from_date=None, to_date=None):
+def main(limit=None, prefix=None, from_date=None, to_date=None):
     if from_date and not to_date:
         to_date = datetime.now().strftime("%Y%m%d")
 
     if limit:
         limit = int(limit)
 
-    if schema_version != "v4" and schema_version != "v4_release":
-        raise ValueError("Unsupported schema version")
+    if prefix not in ["telemetry-2", "telemetry-release"]:
+        raise ValueError("Unsupported prefix")
 
-    if schema_version == "v4":
-        sdb = SDB("telemetry_v4", read_only=False, s3_prefix="telemetry-2")
+    if prefix == "telemetry-2":
+        sdb = SDB("telemetry_v4", read_only=False, s3_prefix=prefix)  # Backwards compatibility
     else:
-        sdb = SDB("telemetry-release", read_only=False)
+        sdb = SDB(prefix, read_only=False)
 
     if from_date:
         prev = sdb.get_daily_stats(from_date, to_date)
@@ -319,12 +319,12 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-l", "--limit", help="Maximum number of files to index", default=None)
-    parser.add_argument("-s", "--schema-version", help="Telemetry schema version", default="v4")
+    parser.add_argument("-p", "--prefix", help="Dataset prefix", default="telemetry-2")
     parser.add_argument("-f", "--from-date", help="Add only telemetry files submitted after this date (included)", default=None)
     parser.add_argument("-t", "--to-date", help="Add only telemetry files submitted before this date (included)", default=None)
 
     args = parser.parse_args()
     main(limit=args.limit,
-         schema_version=args.schema_version,
+         prefix=args.prefix,
          from_date=args.from_date,
          to_date=args.to_date)
