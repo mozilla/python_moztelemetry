@@ -18,6 +18,7 @@ import traceback
 import boto.sdb
 import argparse
 import signal
+import boto
 
 from collections import defaultdict
 from datetime import datetime
@@ -26,13 +27,14 @@ from boto.s3.connection import S3Connection
 from multiprocessing.pool import ThreadPool
 from telemetry.telemetry_schema import TelemetrySchema
 
+METADATA_BUCKET = "net-mozaws-prod-us-west-2-pipeline-metadata"
+
 
 class SDB:
-    def __init__(self, prefix, months_retention=12, read_only=True, s3_prefix=None):
+    def __init__(self, prefix, months_retention=12, read_only=True):
         self.sdb = boto.sdb.connect_to_region('us-west-2')
         self.read_only = read_only
         self.prefix = prefix
-        self.s3_prefix = s3_prefix or prefix
 
         # Get existing domains
         domains_existing = map(lambda x: x.name, self.sdb.get_all_domains())
@@ -216,14 +218,13 @@ def delta_sec(start, end=None):
     return delta_ms(start, end) / 1000.0
 
 
-def update_published_v4_files(sdb, from_submission_date=None, to_submission_date=None, limit=None):
+def update_published_v4_files(sdb, bucket, bucket_prefix, from_submission_date=None, to_submission_date=None, limit=None):
     s3 = S3Connection()
-    bucket_prefix = sdb.s3_prefix
-    metadata = s3.get_bucket("net-mozaws-prod-us-west-2-pipeline-metadata")
+    metadata = s3.get_bucket(METADATA_BUCKET)
     schema_key = metadata.get_key("{}/schema.json".format(bucket_prefix))
     schema_string = schema_key.get_contents_as_string()
     schema = TelemetrySchema(json.loads(schema_string))
-    bucket = s3.get_bucket("net-mozaws-prod-us-west-2-pipeline-data")
+    bucket = s3.get_bucket(bucket)
 
     termination_requested = [False]
     def keyboard_interrupt_handler(signal, frame):
@@ -252,8 +253,7 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
                     if (from_submission_date is None or dims["submissionDate"] >= from_submission_date) and \
                        (to_submission_date is None or dims["submissionDate"] <= to_submission_date) and \
                        dims["submissionDate"][:-2] in sdb:
-                        attributes = dims
-                        batch.put(dims["submissionDate"][:-2], key.name, attributes)
+                        batch.put(dims["submissionDate"][:-2], key.name, dims)
                         added_count[0] += 1
 
                     total_count[0] += 1
@@ -283,25 +283,31 @@ def update_published_v4_files(sdb, from_submission_date=None, to_submission_date
     print("Overall, added {} of {} in {} seconds".format(added_count[0], total_count[0], delta_sec(start_time)))
 
 
-def main(limit=None, prefix=None, from_date=None, to_date=None):
+def main(limit=None, dataset=None, from_date=None, to_date=None):
     if from_date and not to_date:
         to_date = datetime.now().strftime("%Y%m%d")
 
     if limit:
         limit = int(limit)
 
-    if prefix not in ["telemetry-2", "telemetry-release"]:
+    if dataset not in ["telemetry", "telemetry-release"]:
         raise ValueError("Unsupported prefix")
 
+    conn = boto.connect_s3()
+    meta_bucket = conn.get_bucket(METADATA_BUCKET, validate=False)
+    sources = json.loads(meta_bucket.get_key("sources.json").get_contents_as_string())
+    bucket = sources[dataset]["bucket"]
+    prefix = sources[dataset]["prefix"]
+
     if prefix == "telemetry-2":
-        sdb = SDB("telemetry_v4", read_only=False, s3_prefix=prefix)  # Backwards compatibility
+        sdb = SDB("telemetry_v4", read_only=False)  # Backwards compatibility
     else:
         sdb = SDB(prefix, read_only=False)
 
     if from_date:
         prev = sdb.get_daily_stats(from_date, to_date)
 
-    update_published_v4_files(sdb, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
+    update_published_v4_files(sdb, bucket, prefix, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
 
     if from_date:
         curr = sdb.get_daily_stats(from_date, to_date)
@@ -319,12 +325,12 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-l", "--limit", help="Maximum number of files to index", default=None)
-    parser.add_argument("-p", "--prefix", help="Dataset prefix", default="telemetry-2")
+    parser.add_argument("-d", "--dataset", help="Dataset name", default="telemetry")
     parser.add_argument("-f", "--from-date", help="Add only telemetry files submitted after this date (included)", default=None)
     parser.add_argument("-t", "--to-date", help="Add only telemetry files submitted before this date (included)", default=None)
 
     args = parser.parse_args()
     main(limit=args.limit,
-         prefix=args.prefix,
+         dataset=args.dataset,
          from_date=args.from_date,
          to_date=args.to_date)
