@@ -291,7 +291,7 @@ def main(limit=None, dataset=None, from_date=None, to_date=None):
         limit = int(limit)
 
     if dataset not in ["telemetry", "telemetry-release"]:
-        raise ValueError("Unsupported prefix")
+        raise ValueError("Unsupported dataset")
 
     conn = boto.connect_s3()
     meta_bucket = conn.get_bucket(METADATA_BUCKET, validate=False)
