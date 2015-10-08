@@ -308,7 +308,7 @@ def wrap_streams_update(*args, **kwargs):
     return buffer.getvalue()
 
 
-def main(dataset, from_date, to_date, limit):
+def main(dataset, from_date, to_date, limit=None):
     from_date = datetime.strptime(from_date, "%Y%m%d")
     to_date = datetime.strptime(to_date, "%Y%m%d")
 
