@@ -17,15 +17,17 @@ import ujson as json
 import traceback
 import boto.sdb
 import argparse
-import signal
 import boto
+import sys
 
 from collections import defaultdict
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from boto.s3.connection import S3Connection
 from multiprocessing.pool import ThreadPool
+from joblib import Parallel, delayed
 from telemetry.telemetry_schema import TelemetrySchema
+from cStringIO import StringIO
 
 METADATA_BUCKET = "net-mozaws-prod-us-west-2-pipeline-metadata"
 
@@ -218,7 +220,7 @@ def delta_sec(start, end=None):
     return delta_ms(start, end) / 1000.0
 
 
-def update_published_v4_files(sdb, bucket, bucket_prefix, from_submission_date=None, to_submission_date=None, limit=None):
+def update_published_v4_files(sdb, bucket, bucket_prefix, submission_date, limit=None):
     s3 = S3Connection()
     metadata = s3.get_bucket(METADATA_BUCKET)
     schema_key = metadata.get_key("{}/schema.json".format(bucket_prefix))
@@ -226,67 +228,49 @@ def update_published_v4_files(sdb, bucket, bucket_prefix, from_submission_date=N
     schema = TelemetrySchema(json.loads(schema_string))
     bucket = s3.get_bucket(bucket)
 
-    termination_requested = [False]
-    def keyboard_interrupt_handler(signal, frame):
-        termination_requested[0] = True
-    signal.signal(signal.SIGINT, keyboard_interrupt_handler)
-
-    added_count = [0]
-    total_count = [0]
+    added_count = 0
+    total_count = 0
     start_time = datetime.now()
-    done = [False]
-    last_key = ['']
+    done = False
+    last_key = ''
     batch = BatchPut(sdb)
+    prefix = "{}/{}".format(bucket_prefix, submission_date) if submission_date else bucket_prefix
 
-    def publish(prefix):
-        while not done[0]:
-            try:
-                for key in bucket.list(marker=last_key[0], prefix=prefix):
-                    last_key[0] = key.name
+    print "Bucket: {} - Prefix: {} - Date: {}".format(bucket.name, bucket_prefix, submission_date)
 
-                    if total_count[0] % 1e5 == 0:
-                        print("Looked at {} total records in {} seconds, added {}".
-                              format(total_count[0], delta_sec(start_time), added_count[0]))
+    while not done:
+        try:
+            for key in bucket.list(marker=last_key, prefix=prefix):
+                last_key = key.name
 
-                    dims = schema.get_dimension_map(schema.get_dimensions(".", key.name[len(bucket_prefix) + 1:], dirs_only=True))
+                if total_count % 1e5 == 0:
+                    print("Looked at {} total records in {} seconds, added {}".
+                            format(total_count, delta_sec(start_time), added_count))
 
-                    if (from_submission_date is None or dims["submissionDate"] >= from_submission_date) and \
-                       (to_submission_date is None or dims["submissionDate"] <= to_submission_date) and \
-                       dims["submissionDate"][:-2] in sdb:
-                        batch.put(dims["submissionDate"][:-2], key.name, dims)
-                        added_count[0] += 1
+                dims = schema.get_dimension_map(schema.get_dimensions(".", key.name[len(bucket_prefix) + 1:], dirs_only=True))
 
-                    total_count[0] += 1
-                    if total_count[0] == limit or termination_requested[0]:
-                        done[0] = True
-                        break
+                if (dims["submissionDate"] == submission_date) and dims["submissionDate"][:-2] in sdb:
+                    batch.put(dims["submissionDate"][:-2], key.name, dims)
+                    added_count += 1
 
-            except Exception as e:
-                print("Error listing keys: {}".format(e))
-                traceback.print_exc()
-                print("Continuing from last seen key: {}".format(last_key))
-                continue
+                total_count += 1
+                if total_count == limit:
+                    done = True
+                    break
 
-            break
+        except Exception as e:
+            print("Error listing keys: {}".format(e))
+            traceback.print_exc()
+            print("Continuing from last seen key: {}".format(last_key))
+            continue
 
-    if from_submission_date:
-        to_date = datetime.strptime(to_submission_date, "%Y%m%d") if to_submission_date else datetime.now()
-        from_date = datetime.strptime(from_submission_date, "%Y%m%d")
-
-        for i in range((to_date - from_date).days + 1):
-            current_date = from_date + relativedelta(days=i)
-            publish("{}/{}".format(bucket_prefix, current_date.strftime("%Y%m%d")))
-    else:
-        publish(bucket_prefix)
+        break
 
     batch.flush()
-    print("Overall, added {} of {} in {} seconds".format(added_count[0], total_count[0], delta_sec(start_time)))
+    print("Overall, added {} of {} in {} seconds".format(added_count, total_count, delta_sec(start_time)))
 
 
-def main(limit=None, dataset=None, from_date=None, to_date=None):
-    if from_date and not to_date:
-        to_date = datetime.now().strftime("%Y%m%d")
-
+def main(dataset, submission_date, limit=None):
     if limit:
         limit = int(limit)
 
@@ -304,20 +288,24 @@ def main(limit=None, dataset=None, from_date=None, to_date=None):
     else:
         sdb = SDB(prefix, read_only=False)
 
-    if from_date:
-        prev = sdb.get_daily_stats(from_date, to_date)
+    prev = sdb.get_daily_stats(submission_date, submission_date)
+    update_published_v4_files(sdb, bucket, prefix, submission_date=submission_date, limit=limit)
+    curr = sdb.get_daily_stats(submission_date, submission_date)
 
-    update_published_v4_files(sdb, bucket, prefix, from_submission_date=from_date, to_submission_date=to_date, limit=limit)
+    print "Filter service stats:"
+    print "Note that the following numbers are correct only if there ins't another entity concurrently pushing new submissions:"
+    sdb.diff_stats(prev, curr)
 
-    if from_date:
-        curr = sdb.get_daily_stats(from_date, to_date)
-        print
-        print "Filter service stats:"
-        print "Note that the following numbers are correct only if there ins't another entity concurrently pushing new submissions:"
-        sdb.diff_stats(prev, curr)
+    print "AWS lambda stats:"
+    sdb.print_lambda_stats(submission_date, submission_date)
 
-        print "AWS lambda stats:"
-        sdb.print_lambda_stats(from_date, to_date)
+
+def wrap_streams_main(*args, **kwargs):
+    buffer = StringIO()
+    sys.stdout = buffer
+    sys.stderr = buffer
+    main(*args, **kwargs)
+    return buffer.getvalue()
 
 
 if __name__ == "__main__":
@@ -330,7 +318,14 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--to-date", help="Add only telemetry files submitted before this date (included)", default=None)
 
     args = parser.parse_args()
-    main(limit=args.limit,
-         dataset=args.dataset,
-         from_date=args.from_date,
-         to_date=args.to_date)
+    from_date = datetime.strptime(args.from_date, "%Y%m%d")
+    to_date = datetime.strptime(args.to_date, "%Y%m%d")
+
+    dates = []
+    for i in range((to_date - from_date).days + 1):
+        dates.append((from_date + relativedelta(days=i)).strftime("%Y%m%d"))
+
+    out = Parallel(n_jobs=-1, backend="multiprocessing")(delayed(wrap_streams_main)(limit=args.limit, dataset=args.dataset, submission_date=d) for d in dates)
+
+    for o in out:
+        print o
