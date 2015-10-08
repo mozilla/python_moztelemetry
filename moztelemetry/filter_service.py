@@ -270,7 +270,7 @@ def update_published_v4_files(sdb, bucket, bucket_prefix, submission_date, limit
     print("Overall, added {} of {} in {} seconds".format(added_count, total_count, delta_sec(start_time)))
 
 
-def main(dataset, submission_date, limit=None):
+def update(dataset, submission_date, limit=None):
     if limit:
         limit = int(limit)
 
@@ -300,12 +300,26 @@ def main(dataset, submission_date, limit=None):
     sdb.print_lambda_stats(submission_date, submission_date)
 
 
-def wrap_streams_main(*args, **kwargs):
+def wrap_streams_update(*args, **kwargs):
     buffer = StringIO()
     sys.stdout = buffer
     sys.stderr = buffer
-    main(*args, **kwargs)
+    update(*args, **kwargs)
     return buffer.getvalue()
+
+
+def main(dataset, from_date, to_date, limit):
+    from_date = datetime.strptime(from_date, "%Y%m%d")
+    to_date = datetime.strptime(to_date, "%Y%m%d")
+
+    dates = []
+    for i in range((to_date - from_date).days + 1):
+        dates.append((from_date + relativedelta(days=i)).strftime("%Y%m%d"))
+
+    out = Parallel(n_jobs=-1, backend="multiprocessing")(delayed(wrap_streams_update)(limit=limit, dataset=dataset, submission_date=d) for d in dates)
+
+    for o in out:
+        print o
 
 
 if __name__ == "__main__":
@@ -318,14 +332,4 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--to-date", help="Add only telemetry files submitted before this date (included)", default=None)
 
     args = parser.parse_args()
-    from_date = datetime.strptime(args.from_date, "%Y%m%d")
-    to_date = datetime.strptime(args.to_date, "%Y%m%d")
-
-    dates = []
-    for i in range((to_date - from_date).days + 1):
-        dates.append((from_date + relativedelta(days=i)).strftime("%Y%m%d"))
-
-    out = Parallel(n_jobs=-1, backend="multiprocessing")(delayed(wrap_streams_main)(limit=args.limit, dataset=args.dataset, submission_date=d) for d in dates)
-
-    for o in out:
-        print o
+    main(args.dataset, args.from_date, args.to_date, args.limit)
