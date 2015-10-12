@@ -416,7 +416,10 @@ def _get_ping_properties(ping, paths, only_median, with_processes):
 
         if path[0] == "payload":
             path = path[1:]  # Translate v4 histogram queries to v2 ones
-            cursor = ping["payload"]
+            cursor = ping.get("payload", None)
+
+            if cursor is None:
+                return
 
         if path[0] == "histograms" or path[0] == "keyedHistograms":
             props = _get_merged_histograms(cursor, property_name, path, with_processes)
