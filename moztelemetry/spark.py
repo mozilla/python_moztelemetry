@@ -184,6 +184,8 @@ def get_records(sc, source_name, **kwargs):
     field_names = [f["field_name"] for f in schema["dimensions"]]
     for field_name in field_names:
         field_filter = kwargs.pop(field_name, None)
+        if field_filter is None:
+            continue
         # Special case for compatibility with get_pings:
         #   If we get a filter parameter that is a tuple of length 2, treat it
         #   as a min/max filter instead of a list of allowed values.
