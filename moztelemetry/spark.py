@@ -151,6 +151,17 @@ def get_one_ping_per_client(pings):
                     map(lambda p: p[1])
 
 
+def get_pings_with_sensible_creation_date(pings):
+    """
+    Discards pings whose creation date does not match the submission date. The
+    mismatch is usually caused by an incorrect system clock.
+    """
+    creation_date = "creationDate"
+    submission_date = "meta/submissionDate"
+    return pings.filter(
+        lambda p: strip_date(p[creation_date]) == p[submission_date])
+
+
 def get_records(sc, source_name, **kwargs):
     """ Returns a RDD of records for a given data source and filtering criteria.
 
@@ -219,6 +230,13 @@ def get_records(sc, source_name, **kwargs):
         return sc.parallelize([])
     else:
         return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
+
+
+def strip_date(date):
+    """
+    Strips away the timestamp (in JS ISO format) and the dashes in the date.
+    """
+    return date[:10].replace("-", "")
 
 
 def _get_data_sources():
