@@ -293,7 +293,7 @@ def update(dataset, submission_date, limit=None):
     curr = sdb.get_daily_stats(submission_date, submission_date)
 
     print "Filter service stats:"
-    print "Note that the following numbers are correct only if there ins't another entity concurrently pushing new submissions:"
+    print "Note that the following numbers are correct only if there isn't another entity concurrently pushing new submissions:"
     sdb.diff_stats(prev, curr)
 
     print "AWS lambda stats:"
