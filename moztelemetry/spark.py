@@ -133,22 +133,18 @@ def get_one_ping_per_client(pings):
     as it requires data to be shuffled around. It should be run only after extracting
     a subset with get_pings_properties.
     """
-    if type(pings.first()) == str:
-        pings = pings.map(lambda p: json.loads(p))
+    return _get_one_ping_per_client(pings, lambda p1, p2: p1)
 
-    filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
 
-    if not filtered:
-        raise ValueError("Missing clientID/clientId attribute.")
-
-    if "clientID" in filtered.first():
-        client_id = "clientID"  # v2
-    else:
-        client_id = "clientId"  # v4
-
-    return filtered.map(lambda p: (p[client_id], p)).\
-                    reduceByKey(lambda p1, p2: p1).\
-                    map(lambda p: p[1])
+def get_newest_ping_per_client(pings):
+    """
+    Returns the newest ping of each client in the RDD based on the submission
+    date. The caveats of get_one_ping_per_client apply here as well.
+    """
+    submission_date = "meta/submissionDate"
+    reduce_func = lambda p1, p2:\
+        p1 if p1[submission_date] > p2[submission_date] else p2
+    return _get_one_ping_per_client(pings, reduce_func)
 
 
 def get_records(sc, source_name, **kwargs):
@@ -487,3 +483,22 @@ def _get_merged_histograms(cursor, property_name, path, with_processes):
     result[property_name] = reduce(lambda x, y: x + y, merged) if merged else None
 
     return result
+
+
+def _get_one_ping_per_client(pings, reduceFunc):
+    if type(pings.first()) == str:
+        pings = pings.map(lambda p: json.loads(p))
+
+    filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
+
+    if not filtered:
+        raise ValueError("Missing clientID/clientId attribute.")
+
+    if "clientID" in filtered.first():
+        client_id = "clientID"  # v2
+    else:
+        client_id = "clientId"  # v4
+
+    return filtered.map(lambda p: (p[client_id], p)).\
+                    reduceByKey(reduceFunc).\
+                    map(lambda p: p[1])
