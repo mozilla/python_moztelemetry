@@ -136,6 +136,17 @@ def get_one_ping_per_client(pings):
     return _get_one_ping_per_client(pings, lambda p1, p2: p1)
 
 
+def get_newest_ping_per_client(pings):
+    """
+    Returns the newest ping of each client in the RDD based on the submission
+    date. The caveats of get_one_ping_per_client apply here as well.
+    """
+    submission_date = "meta/submissionDate"
+    reduce_func = lambda p1, p2:\
+        p1 if p1[submission_date] > p2[submission_date] else p2
+    return _get_one_ping_per_client(pings, reduce_func)
+
+
 def get_records(sc, source_name, **kwargs):
     """ Returns a RDD of records for a given data source and filtering criteria.
 
