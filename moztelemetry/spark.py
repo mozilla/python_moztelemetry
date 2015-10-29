@@ -127,24 +127,39 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False):
     return pings.map(lambda p: _get_ping_properties(p, paths, only_median, with_processes)).filter(lambda p: p)
 
 
-def get_one_ping_per_client(pings):
+def get_one_ping_per_client(pings, ping_selector=lambda p1, p2: p1):
     """
     Returns a single ping for each client in the RDD. This operation is expensive
     as it requires data to be shuffled around. It should be run only after extracting
     a subset with get_pings_properties.
     """
-    return _get_one_ping_per_client(pings, lambda p1, p2: p1)
+    if type(pings.first()) == str:
+        pings = pings.map(lambda p: json.loads(p))
+
+    filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
+
+    if not filtered:
+        raise ValueError("Missing clientID/clientId attribute.")
+
+    if "clientID" in filtered.first():
+        client_id = "clientID"  # v2
+    else:
+        client_id = "clientId"  # v4
+
+    return filtered.map(lambda p: (p[client_id], p)).\
+                    reduceByKey(ping_selector).\
+                    map(lambda p: p[1])
 
 
 def get_newest_ping_per_client(pings):
     """
-    Returns the newest ping of each client in the RDD based on the submission
-    date. The caveats of get_one_ping_per_client apply here as well.
+    Helper around get_one_ping_per_client that returns the newest ping of each
+    client based on the submission date.
     """
     submission_date = "meta/submissionDate"
-    reduce_func = lambda p1, p2:\
+    ping_selector = lambda p1, p2:\
         p1 if p1[submission_date] > p2[submission_date] else p2
-    return _get_one_ping_per_client(pings, reduce_func)
+    return _get_one_ping_per_client(pings, ping_selector)
 
 
 def get_records(sc, source_name, **kwargs):
@@ -483,22 +498,3 @@ def _get_merged_histograms(cursor, property_name, path, with_processes):
     result[property_name] = reduce(lambda x, y: x + y, merged) if merged else None
 
     return result
-
-
-def _get_one_ping_per_client(pings, reduceFunc):
-    if type(pings.first()) == str:
-        pings = pings.map(lambda p: json.loads(p))
-
-    filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
-
-    if not filtered:
-        raise ValueError("Missing clientID/clientId attribute.")
-
-    if "clientID" in filtered.first():
-        client_id = "clientID"  # v2
-    else:
-        client_id = "clientId"  # v4
-
-    return filtered.map(lambda p: (p[client_id], p)).\
-                    reduceByKey(reduceFunc).\
-                    map(lambda p: p[1])
