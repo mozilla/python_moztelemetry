@@ -42,7 +42,9 @@ def _parse_heka_record(record):
         name = field.name.split('.')
         value = field.value_string
         if field.value_type == 1:
-            value = field.value_bytes
+            # TODO: handle bytes in a way that doesn't cause problems with JSON
+            # value = field.value_bytes
+            continue
         elif field.value_type == 2:
             value = field.value_integer
         elif field.value_type == 3:
