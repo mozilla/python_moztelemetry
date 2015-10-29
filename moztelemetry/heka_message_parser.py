@@ -50,10 +50,10 @@ def _parse_heka_record(record):
         elif field.value_type == 4:
             value = field.value_bool
 
-    if len(name) == 1:  # Treat top-level meta fields as strings
-        result["meta"][name[0]] = value[0] if len(value) else ""
-    else:
-        _add_field(result, name, value)
+        if len(name) == 1:  # Treat top-level meta fields as strings
+            result["meta"][name[0]] = value[0] if len(value) else ""
+        else:
+            _add_field(result, name, value)
 
     return result
 
