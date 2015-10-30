@@ -217,6 +217,13 @@ def get_records(sc, source_name, **kwargs):
         return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
 
 
+def strip_date(date):
+    """
+    Strips away the timestamp (in JS ISO format) and the dashes in the date.
+    """
+    return date[:10].replace("-", "")
+
+
 def _get_data_sources():
     try:
         key = _bucket_meta.get_key("sources.json")
