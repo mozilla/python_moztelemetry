@@ -17,6 +17,9 @@ import ujson as json
 from functools32 import lru_cache
 from expiringdict import ExpiringDict
 
+HISTOGRAMS_JSON_REVISION = "https://hg.mozilla.org/mozilla-central/rev/tip"
+HISTOGRAMS_JSON_PATH = "/toolkit/components/telemetry/Histograms.json"
+
 # Ugly hack to speed-up aggregation.
 exponential_buckets = histogram_tools.exponential_buckets
 linear_buckets = histogram_tools.linear_buckets
@@ -33,11 +36,10 @@ def cached_linear_buckets(*args, **kwargs):
 histogram_tools.exponential_buckets = cached_exponential_buckets
 histogram_tools.linear_buckets = cached_linear_buckets
 
-def _fetch_histograms_definition(revision):
-    cached = definition_cache.get(revision, None)
+def _fetch_histograms_definition(url):
+    cached = definition_cache.get(url, None)
     if cached is None:
-        uri = (revision + "/toolkit/components/telemetry/Histograms.json").replace("rev", "raw-file")
-        definition = requests.get(uri).content
+        definition = requests.get(url).content
 
         # see bug 920169
         definition = definition.replace('"JS::gcreason::NUM_TELEMETRY_REASONS"', "101")
@@ -45,7 +47,7 @@ def _fetch_histograms_definition(revision):
         definition = definition.replace('"80 + 1"', "81")
 
         parsed = json.loads(definition)
-        definition_cache[revision] = parsed
+        definition_cache[url] = parsed
         return parsed
     else:
         return cached
@@ -57,10 +59,19 @@ def _get_cached_ranges(definition):
 class Histogram:
     """ A class representing a histogram. """
 
-    def __init__(self, name, instance, revision="http://hg.mozilla.org/mozilla-central/rev/tip"):
+    def __init__(self, name, instance, revision=None, histograms_url=None):
         """ Initialize a histogram from its name and a telemetry submission. """
 
-        histograms_definition = _fetch_histograms_definition(revision)
+        if revision and histograms_url:
+            raise ValueError("Invalid use of both revision and histograms_url")
+
+        # For backwards compatibility.
+        if not histograms_url:
+            revision = \
+                (revision or HISTOGRAMS_JSON_REVISION).replace("/rev/", "/raw-file/")
+            histograms_url = revision + HISTOGRAMS_JSON_PATH
+
+        histograms_definition = _fetch_histograms_definition(histograms_url)
 
         # TODO: implement centralized revision service which handles all the quirks...
         if name.startswith("USE_COUNTER_") or name.startswith("USE_COUNTER2_"):
