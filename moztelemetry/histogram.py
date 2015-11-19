@@ -71,6 +71,7 @@ class Histogram:
                 (revision or HISTOGRAMS_JSON_REVISION).replace("/rev/", "/raw-file/")
             histograms_url = revision + HISTOGRAMS_JSON_PATH
 
+        self.histograms_url = histograms_url
         histograms_definition = _fetch_histograms_definition(histograms_url)
 
         # TODO: implement centralized revision service which handles all the quirks...
@@ -148,7 +149,7 @@ class Histogram:
         return percentile_lower_boundary + width*to_count/percentile_frequency
 
     def __add__(self, other):
-        return Histogram(self.name, self.buckets + other.buckets)
+        return Histogram(self.name, self.buckets + other.buckets, histograms_url=self.histograms_url)
 
 
 if __name__ == "__main__":
