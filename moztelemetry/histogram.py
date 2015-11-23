@@ -36,6 +36,21 @@ def cached_linear_buckets(*args, **kwargs):
 histogram_tools.exponential_buckets = cached_exponential_buckets
 histogram_tools.linear_buckets = cached_linear_buckets
 
+histogram_exceptions = json.loads("""
+{
+  "EVENTLOOP_UI_LAG_EXP_MS": {
+    "alert_emails": ["perf-telemetry-alerts@mozilla.com"],
+    "expires_in_version": "never",
+    "kind": "exponential",
+    "low": 50,
+    "high": "60000",
+    "n_buckets": 20,
+    "extended_statistics_ok": true,
+    "description": "Widget: Time it takes for the message before a UI message (ms)"
+  }
+}
+""")
+
 def _fetch_histograms_definition(url):
     cached = definition_cache.get(url, None)
     if cached is None:
@@ -47,6 +62,7 @@ def _fetch_histograms_definition(url):
         definition = definition.replace('"80 + 1"', "81")
 
         parsed = json.loads(definition)
+        parsed.update(histogram_exceptions)
         definition_cache[url] = parsed
         return parsed
     else:
@@ -164,3 +180,6 @@ if __name__ == "__main__":
 
     # Startup histogram
     Histogram("STARTUP_HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1])
+
+    # Exceptional histogram
+    Histogram("EVENTLOOP_UI_LAG_EXP_MS", {"values": {"0": 0}})
