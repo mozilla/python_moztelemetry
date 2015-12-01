@@ -112,10 +112,13 @@ def get_pings(sc, **kwargs):
 
 
 def get_pings_properties(pings, paths, only_median=False, with_processes=False,
-                         histograms_url=None):
+                         histograms_url=None, additional_histograms=None):
     """
     Returns a RDD of a subset of properties of pings. Child histograms are
     automatically merged with the parent histogram.
+
+    :param histograms_url: see histogram.Histogram constructor
+    :param additional_histograms: see histogram.Histogram constructor
     """
     if type(pings.first()) == str:
         pings = pings.map(lambda p: json.loads(p))
@@ -127,7 +130,8 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
     paths = [(path, path.split("/")) for path in paths]
     return pings.map(lambda p: _get_ping_properties(p, paths, only_median,
                                                     with_processes,
-                                                    histograms_url)) \
+                                                    histograms_url,
+                                                    additional_histograms)) \
                 .filter(lambda p: p)
 
 
@@ -411,7 +415,7 @@ def _read_v4_range(filename_chunk):
 
 
 def _get_ping_properties(ping, paths, only_median, with_processes,
-                         histograms_url):
+                         histograms_url, additional_histograms):
     result = {}
 
     for property_name, path in paths:
@@ -426,18 +430,20 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
 
         if path[0] == "histograms" or path[0] == "keyedHistograms":
             props = _get_merged_histograms(cursor, property_name, path,
-                                           with_processes, histograms_url)
+                                           with_processes, histograms_url,
+                                           additional_histograms)
 
             for k, v in props.iteritems():
                 result[k] = v.get_value(only_median) if v else None
         else:
-            prop = _get_ping_property(cursor, path, histograms_url)
+            prop = _get_ping_property(cursor, path, histograms_url,
+                                      additional_histograms)
             result[property_name] = prop
 
     return result
 
 
-def _get_ping_property(cursor, path, histograms_url):
+def _get_ping_property(cursor, path, histograms_url, additional_histograms):
     is_histogram = False
     is_keyed_histogram = False
 
@@ -457,9 +463,11 @@ def _get_ping_property(cursor, path, histograms_url):
     if cursor is None:
         return None
     if is_histogram:
-        return Histogram(path[-1], cursor, histograms_url=histograms_url)
+        return Histogram(path[-1], cursor, histograms_url=histograms_url,
+                         additional_histograms=additional_histograms)
     elif is_keyed_histogram:
-        histogram = Histogram(path[-2], cursor, histograms_url=histograms_url)
+        histogram = Histogram(path[-2], cursor, histograms_url=histograms_url,
+                              additional_histograms=additional_histograms)
         histogram.name = "/".join(path[-2:])
         return histogram
     else:
@@ -467,19 +475,22 @@ def _get_ping_property(cursor, path, histograms_url):
 
 
 def _get_merged_histograms(cursor, property_name, path, with_processes,
-                           histograms_url):
+                           histograms_url, additional_histograms):
     if path[0] == "histograms" and len(path) != 2:
         raise ValueError("Histogram access requires a histogram name.")
     elif path[0] == "keyedHistograms" and len(path) != 3:
         raise ValueError("Keyed histogram access requires both a histogram name and a label.")
 
     # Get parent histogram
-    parent = _get_ping_property(cursor, path, histograms_url)
+    parent = _get_ping_property(cursor, path, histograms_url,
+                                additional_histograms)
 
     # Get children histograms
     cursor = cursor.get("childPayloads", {}) if type(cursor) == dict else {}
     children = filter(lambda h: h is not None,
-                      [_get_ping_property(child, path, histograms_url) for child in cursor]) if cursor else []
+                      [_get_ping_property(child, path, histograms_url,
+                                          additional_histograms) \
+                          for child in cursor]) if cursor else []
 
     # Merge parent and children
     merged = ([parent] if parent else []) + children

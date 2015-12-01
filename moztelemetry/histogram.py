@@ -75,8 +75,19 @@ def _get_cached_ranges(definition):
 class Histogram:
     """ A class representing a histogram. """
 
-    def __init__(self, name, instance, revision=None, histograms_url=None):
-        """ Initialize a histogram from its name and a telemetry submission. """
+    def __init__(self, name, instance, revision=None, histograms_url=None,
+                 additional_histograms=None):
+        """
+        Initialize a histogram from its name and a telemetry submission.
+
+        :param histograms_url: url to a JSON file describing available
+                               histograms. Defaults to the latest
+                               Histograms.json in mozilla-central.
+        :param additional_histograms: dict describing histograms to use in
+                                      addition to those in histograms_url. The
+                                      dict should resemble the format of
+                                      Histograms.json.
+        """
 
         if revision and histograms_url:
             raise ValueError("Invalid use of both revision and histograms_url")
@@ -89,6 +100,9 @@ class Histogram:
 
         self.histograms_url = histograms_url
         histograms_definition = _fetch_histograms_definition(histograms_url)
+
+        if additional_histograms:
+            histograms_definition.update(additional_histograms)
 
         # TODO: implement centralized revision service which handles all the quirks...
         if name.startswith("USE_COUNTER_") or name.startswith("USE_COUNTER2_"):
