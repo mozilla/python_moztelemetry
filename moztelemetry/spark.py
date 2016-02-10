@@ -397,6 +397,8 @@ def _read_v4(filename):
 def _read_v4_ranges(filename):
     try:
         key = _bucket_v4.get_key(filename)
+        if key is None:
+            return []
         n_chunks = (key.size / _chunk_size) + 1
         return zip([filename]*n_chunks, range(n_chunks))
     except ssl.SSLError:
