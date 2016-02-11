@@ -5,20 +5,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from distutils.core import setup
-
 import urllib
-import setuptools.command.install
+from setuptools import setup
+from setuptools.command.install import install
 
-
-class FetchExternal(setuptools.command.install.install):
+class FetchExternal(install):
     def run(self):
         urllib.urlretrieve("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", "moztelemetry/histogram_tools.py")
-        setuptools.command.install.install.run(self)
+        install.run(self)
 
 setup(cmdclass={'install': FetchExternal},
       name='python_moztelemetry',
-      version='0.3.8.3',
+      version='0.3.8.4',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Spark bindings for Mozilla Telemetry',
