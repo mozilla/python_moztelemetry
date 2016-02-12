@@ -349,6 +349,8 @@ def _get_filenames_v2(**kwargs):
         tk = translate.get(k, None)
         if not tk:
             raise ValueError("Invalid query attribute name specified: {}".format(k))
+        if isinstance(v, basestring) and v == "*":
+            v = None
         query[tk] = v
 
     sdb = SDB("telemetry_v2")
@@ -369,6 +371,8 @@ def _get_filenames_v4(**kwargs):
         tk = translate.get(k, None)
         if not tk:
             raise ValueError("Invalid query attribute name specified: {}".format(k))
+        if isinstance(v, basestring) and v == "*":
+            v = None
         query[tk] = v
 
     sdb = SDB("telemetry_v4")
