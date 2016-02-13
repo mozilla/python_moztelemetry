@@ -117,6 +117,11 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
     Returns a RDD of a subset of properties of pings. Child histograms are
     automatically merged with the parent histogram.
 
+    If one of the paths points to a keyedHistogram name without supplying the
+    actual key, returns a dict of all available subhistograms for that property.
+
+    :param with_processes: should separate parent and child histograms be
+                           included as well?
     :param histograms_url: see histogram.Histogram constructor
     :param additional_histograms: see histogram.Histogram constructor
     """
@@ -431,12 +436,30 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                 return
 
         if path[0] == "histograms" or path[0] == "keyedHistograms":
-            props = _get_merged_histograms(cursor, property_name, path,
-                                           with_processes, histograms_url,
-                                           additional_histograms)
+            if path[0] == "keyedHistograms" and len(path) == 2:
+                # Include histograms for all available keys.
+                # These are returned as a subdict mapped from the property_name.
+                kh_keys = cursor["keyedHistograms"][path[1]].keys()
+                if kh_keys:
+                    kh_histograms = {}
+                    for kh_key in kh_keys:
+                        props = _get_merged_histograms(cursor, kh_key,
+                                                    path + [kh_key],
+                                                    with_processes, histograms_url,
+                                                    additional_histograms)
+                        for k, v in props.iteritems():
+                            kh_histograms[k] = v.get_value(only_median) if v else None
 
-            for k, v in props.iteritems():
-                result[k] = v.get_value(only_median) if v else None
+                    result[property_name] = kh_histograms
+                else:
+                    # No available subhistograms.
+                    result[property_name] = None
+            else:
+                props = _get_merged_histograms(cursor, property_name, path,
+                                               with_processes, histograms_url,
+                                               additional_histograms)
+                for k, v in props.iteritems():
+                    result[k] = v.get_value(only_median) if v else None
         else:
             prop = _get_ping_property(cursor, path, histograms_url,
                                       additional_histograms)
