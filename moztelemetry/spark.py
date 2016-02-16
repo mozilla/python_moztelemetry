@@ -117,8 +117,17 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
     Returns a RDD of a subset of properties of pings. Child histograms are
     automatically merged with the parent histogram.
 
+    :param paths: paths to properties in the payload, with levels separated by "/".
+                  These can be supplied either as a list, eg.
+                  ["application/channel", "payload/info/subsessionStartDate"],
+                  or as the values of a dict keyed by custom identifiers, eg.
+                  {"channel": "application/channel", "ssd": "payload/info/subsessionStartDate"}.
     :param histograms_url: see histogram.Histogram constructor
     :param additional_histograms: see histogram.Histogram constructor
+
+    The returned RDD contains a dict for each ping with the required properties as values,
+    keyed by the original paths (if 'paths' is a list) or the custom identifier keys
+    (if 'paths' is a dict).
     """
     if type(pings.first()) == str:
         pings = pings.map(lambda p: json.loads(p))
@@ -127,7 +136,11 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
         paths = [paths]
 
     # Use '/' as dots can appear in keyed histograms
-    paths = [(path, path.split("/")) for path in paths]
+    if type(paths) == dict:
+        paths = [(prop_name, path.split("/")) for prop_name, path in paths.iteritems()]
+    else:
+        paths = [(path, path.split("/")) for path in paths]
+
     return pings.map(lambda p: _get_ping_properties(p, paths, only_median,
                                                     with_processes,
                                                     histograms_url,
