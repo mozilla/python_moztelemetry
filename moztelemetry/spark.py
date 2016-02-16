@@ -457,9 +457,10 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                     kh_histograms = {}
                     for kh_key in kh_keys:
                         props = _get_merged_histograms(cursor, kh_key,
-                                                    path + [kh_key],
-                                                    with_processes, histograms_url,
-                                                    additional_histograms)
+                                                       path + [kh_key],
+                                                       with_processes,
+                                                       histograms_url,
+                                                       additional_histograms)
                         for k, v in props.iteritems():
                             kh_histograms[k] = v.get_value(only_median) if v else None
 
