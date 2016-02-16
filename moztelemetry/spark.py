@@ -362,7 +362,7 @@ def _get_filenames_v2(**kwargs):
         tk = translate.get(k, None)
         if not tk:
             raise ValueError("Invalid query attribute name specified: {}".format(k))
-        if isinstance(v, basestring) and v == "*":
+        if v == "*":
             v = None
         query[tk] = v
 
@@ -384,7 +384,7 @@ def _get_filenames_v4(**kwargs):
         tk = translate.get(k, None)
         if not tk:
             raise ValueError("Invalid query attribute name specified: {}".format(k))
-        if isinstance(v, basestring) and v == "*":
+        if v == "*":
             v = None
         query[tk] = v
 
