@@ -456,7 +456,12 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
             if path[0] == "keyedHistograms" and len(path) == 2:
                 # Include histograms for all available keys.
                 # These are returned as a subdict mapped from the property_name.
-                kh_keys = cursor["keyedHistograms"][path[1]].keys()
+                try:
+                    kh_keys = cursor["keyedHistograms"][path[1]].keys()
+                except:
+                    result[property_name] = None
+                    continue
+
                 if kh_keys:
                     kh_histograms = {}
                     for kh_key in kh_keys:
