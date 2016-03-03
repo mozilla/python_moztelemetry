@@ -457,7 +457,10 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                 # Include histograms for all available keys.
                 # These are returned as a subdict mapped from the property_name.
                 try:
-                    kh_keys = cursor["keyedHistograms"][path[1]].keys()
+                    kh_keys = set(cursor["keyedHistograms"][path[1]].keys())
+                    if isinstance(cursor, dict):
+                        for payload in cursor.get("childPayloads", []):
+                            kh_keys.update(payload["keyedHistograms"][path[1]].keys())
                 except:
                     result[property_name] = None
                     continue
