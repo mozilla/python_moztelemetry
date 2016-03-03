@@ -32,7 +32,7 @@ boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/
 
 _chunk_size = 100*(2**20)
 try:
-    _conn = boto.connect_s3()
+    _conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com")
 
     _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
     _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
