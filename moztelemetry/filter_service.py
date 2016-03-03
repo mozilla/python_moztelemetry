@@ -277,7 +277,7 @@ def update(dataset, submission_date, limit=None):
     if dataset not in ["telemetry", "telemetry-release"]:
         raise ValueError("Unsupported dataset")
 
-    conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com"))
+    conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com")
     meta_bucket = conn.get_bucket(METADATA_BUCKET, validate=False)
     sources = json.loads(meta_bucket.get_key("sources.json").get_contents_as_string())
     bucket = sources[dataset]["bucket"]
