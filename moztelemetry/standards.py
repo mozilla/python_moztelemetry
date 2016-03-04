@@ -8,19 +8,38 @@
 """ This module implements some standard functionality based on Telemetry data.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 epoch = datetime.utcfromtimestamp(0)
 
 def unix_time_nanos(dt):
     return (dt - epoch).total_seconds() * 1000000000.0
 
+def daynum_to_date(daynum, max_days=1000000):
+    """ Convert a number of days to a date. If it's out of range, default to a
+    max date. If it is not a number (or a numeric string), return None. Using
+    a max_days of more than 2932896 (9999-12-31) will throw an exception if the
+    specified daynum exceeds the max.
+    :param daynum: A number of days since Jan 1, 1970
+    """
+    if daynum is None:
+        return None
+    try:
+        daycount = int(daynum)
+    except ValueError as e:
+        return None
+
+    if daycount > max_days:
+        # Using default: some time in the 48th century, clearly bogus.
+        daycount = max_days
+    return date(1970, 1, 1) + timedelta(daycount)
+
 def filter_date_range(dataframe, activity_col, min_activity_incl,
                       max_activity_excl, submission_col,
                       min_submission_incl, max_submission_incl):
-    return dataset.filter(submission_col >= min_submission_incl)
-                  .filter(submission_col <= max_submission_incl)
-                  .filter(activity_col >= min_activity_incl)
+    return dataset.filter(submission_col >= min_submission_incl) \
+                  .filter(submission_col <= max_submission_incl) \
+                  .filter(activity_col >= min_activity_incl) \
                   .filter(activity_col < max_activity_excl)
 
 def count_distinct_clientids(dataframe):
