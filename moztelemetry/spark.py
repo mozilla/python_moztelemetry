@@ -42,6 +42,15 @@ except:
 
 _sources = None
 
+# cache SimpleDB instances; they can be reused pretty easily as they do not keep much state
+_simpledb_instances = {}
+def _get_simpledb(prefix, months_retention=12, read_only=True):
+    key = (prefix, months_retention, read_only)
+    if key in _simpledb_instances:
+        return _simpledb_instances[key]
+    _simpledb_instances[key] = SDB(prefix, months_retention, read_only)
+    return _simpledb_instances[key]
+
 def get_clients_history(sc, **kwargs):
     """ Returns RDD[client_id, ping]. This API is experimental and might change entirely at any point!
     """
@@ -371,7 +380,7 @@ def _get_filenames_v2(**kwargs):
             v = None
         query[tk] = v
 
-    sdb = SDB("telemetry_v2")
+    sdb = _get_simpledb("telemetry_v2")
     return sdb.query(**query)
 
 
@@ -393,7 +402,7 @@ def _get_filenames_v4(**kwargs):
             v = None
         query[tk] = v
 
-    sdb = SDB("telemetry_v4")
+    sdb = _get_simpledb("telemetry_v4")
     return sdb.query(**query)
 
 
