@@ -79,6 +79,7 @@ class Histogram:
                  additional_histograms=None):
         """
         Initialize a histogram from its name and a telemetry submission.
+        Raises a KeyError if a definition for the histogram could not be found.
 
         :param histograms_url: url to a JSON file describing available
                                histograms. Defaults to the latest
@@ -109,12 +110,19 @@ class Histogram:
             self.definition = histogram_tools.Histogram(name, {"kind": "boolean", "description": "", "expires_in_version": "never"})
         else:
             proper_name = name
-            if "/" in name: # key in a keyed histogram, like BLOCKED_ON_PLUGIN_INSTANCE_INIT_MS/Shockwave Flash14.0.0.145
+            if "/" in name: # key in a keyed histogram, like BLOCKED_ON_PLUGIN_INSTANCE_INIT_MS/'Shockwave Flash14.0.0.145'
                 proper_name = name.split("/")[0] # just keep the name of the parent histogram
-            if name.startswith("STARTUP_"): # startup histogram, like STARTUP_CRASH_DETECTED
-                proper_name = name[8:] # strip the startup prefix
-            assert proper_name in histograms_definition, "Invalid histogram name '{}' (converted form: '{}')".format(name, proper_name)
-            self.definition = histogram_tools.Histogram(name, histograms_definition[proper_name])
+
+            try:
+                self.definition = histogram_tools.Histogram(name, histograms_definition[proper_name])
+
+            except KeyError:
+                # Some histograms are collected twice: during startup and during normal execution.
+                # In the former case the STARTUP_ prefix prepends the histogram name, even though
+                # the prefixed histogram name is not part of the histogram definition file.
+                # Other histograms, like STARTUP_CRASH_DETECTED, are instead collected only once
+                # and are defined the histogram definition file.
+                self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", proper_name)])
 
         self.kind = self.definition.kind()
         self.name = name
