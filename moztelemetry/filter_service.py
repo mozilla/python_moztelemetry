@@ -71,6 +71,17 @@ class SDB:
         for domain_name in domains:
             self._domains[domain_name[len(self.prefix) + 1:]] = self.sdb.get_domain(domain_name)
 
+    def __del__(self):
+        # We terminate rather than closing because if we're destroying the SDB object,
+        # then the workers' results won't matter anyways.
+        # Although this is called automatically when self._pool goes out of scope,
+        # we also need to join() below
+        self._pool.terminate()
+
+        # Wait for the thread pool to terminate;
+        # this is needed in order to make sure all the processes are dead when the SDB goes out of scope.
+        self._pool.join()
+
     def __contains__(self, name):
         return name in self._domains
 
