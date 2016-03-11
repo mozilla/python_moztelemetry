@@ -359,6 +359,8 @@ def _get_pings_v4(sc, **kwargs):
         parallelism = sc.defaultParallelism
     elif len(sample) > 10*sc.defaultParallelism:
         parallelism = 10*sc.defaultParallelism
+    else: # Arbitrarily picking a value
+        parallelism = sc.defaultParallelism
 
     ranges = sc.parallelize(sample, parallelism).flatMap(_read_v4_ranges).collect()
 
