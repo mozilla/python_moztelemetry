@@ -30,6 +30,7 @@ from telemetry.telemetry_schema import TelemetrySchema
 from cStringIO import StringIO
 
 METADATA_BUCKET = "net-mozaws-prod-us-west-2-pipeline-metadata"
+S3_DEFAULT_ENDPOINT = "s3-us-west-2.amazonaws.com"
 
 
 class SDB:
@@ -232,12 +233,12 @@ def delta_sec(start, end=None):
 
 
 def update_published_v4_files(sdb, bucket, bucket_prefix, submission_date, limit=None):
-    s3 = S3Connection()
-    metadata = s3.get_bucket(METADATA_BUCKET)
+    conn = boto.connect_s3(host=S3_DEFAULT_ENDPOINT)
+    metadata = conn.get_bucket(METADATA_BUCKET, validate=False)
     schema_key = metadata.get_key("{}/schema.json".format(bucket_prefix))
     schema_string = schema_key.get_contents_as_string()
     schema = TelemetrySchema(json.loads(schema_string))
-    bucket = s3.get_bucket(bucket)
+    bucket = conn.get_bucket(bucket, validate=False)
 
     added_count = 0
     total_count = 0
@@ -288,7 +289,7 @@ def update(dataset, submission_date, limit=None):
     if dataset not in ["telemetry", "telemetry-release"]:
         raise ValueError("Unsupported dataset")
 
-    conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com")
+    conn = boto.connect_s3(host=S3_DEFAULT_ENDPOINT)
     meta_bucket = conn.get_bucket(METADATA_BUCKET, validate=False)
     sources = json.loads(meta_bucket.get_key("sources.json").get_contents_as_string())
     bucket = sources[dataset]["bucket"]
