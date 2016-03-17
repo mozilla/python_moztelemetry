@@ -37,10 +37,10 @@ def daynum_to_date(daynum, max_days=1000000):
 def filter_date_range(dataframe, activity_col, min_activity_incl,
                       max_activity_excl, submission_col,
                       min_submission_incl, max_submission_incl):
-    return dataset.filter(submission_col >= min_submission_incl) \
-                  .filter(submission_col <= max_submission_incl) \
-                  .filter(activity_col >= min_activity_incl) \
-                  .filter(activity_col < max_activity_excl)
+    return dataframe.filter(submission_col >= min_submission_incl) \
+                    .filter(submission_col <= max_submission_incl) \
+                    .filter(activity_col >= min_activity_incl) \
+                    .filter(activity_col < max_activity_excl)
 
 def count_distinct_clientids(dataframe):
     return dataframe.select('clientId').distinct().count()
@@ -59,7 +59,7 @@ def dau(dataframe, target_day, future_days=10, date_format="%Y%m%d"):
     max_submission = datetime.strftime(max_submission_date, date_format)
     sub_col = dataframe.submission_date_s3
 
-    filtered = filter_date_range(dataset, act_col, min_activity, max_activity,
+    filtered = filter_date_range(dataframe, act_col, min_activity, max_activity,
         sub_col, min_submission, max_submission)
     return count_distinct_clientids(filtered)
 
@@ -80,6 +80,6 @@ def mau(dataframe, target_day, past_days=28, future_days=10, date_format="%Y%m%d
     max_submission = datetime.strftime(max_submission_date, date_format)
     sub_col = dataframe.submission_date_s3
 
-    filtered = filter_date_range(dataset, act_col, min_activity, max_activity,
+    filtered = filter_date_range(dataframe, act_col, min_activity, max_activity,
         sub_col, min_submission, max_submission)
     return count_distinct_clientids(filtered)
