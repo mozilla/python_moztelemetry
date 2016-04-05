@@ -14,3 +14,8 @@ password:example_pass
 ```
 - Fetch the latest code with `git pull`
 - Update PyPI with `python setup.py sdist upload`
+
+## Running the tests
+
+- python setup.py install
+- python setup.py test
