@@ -241,15 +241,8 @@ def get_records(sc, source_name, **kwargs):
     else:
         sample = files
 
-    # TODO: Make sure that "bucket_name" matches the v4 bucket name, otherwise
-    #       introduce a "bucket" parameter to _read_v4_ranges
     parallelism = max(len(sample), sc.defaultParallelism)
-    ranges = sc.parallelize(sample, parallelism).flatMap(_read_v4_ranges).collect()
-
-    if len(ranges) == 0:
-        return sc.parallelize([])
-    else:
-        return sc.parallelize(ranges, len(ranges)).flatMap(_read_v4_range)
+    return sc.parallelize(sample, parallelism).flatMap(_read_v4)
 
 
 def _get_data_sources():
@@ -362,12 +355,7 @@ def _get_pings_v4(sc, **kwargs):
     else:
         parallelism = len(sample)
 
-    ranges = sc.parallelize(sample, parallelism).flatMap(_read_v4_ranges).collect()
-
-    if len(ranges) == 0:
-        return sc.parallelize([])
-    else:
-        return sc.parallelize(ranges, parallelism).flatMap(_read_v4_range)
+    return sc.parallelize(sample, parallelism).flatMap(_read_v4)
 
 
 def _get_filenames_v2(**kwargs):
@@ -427,28 +415,6 @@ def _read_v4(filename):
         key = _bucket_v4.get_key(filename)
         key.open_read()
         return parse_heka_message(key)
-    except ssl.SSLError:
-        return []
-
-
-def _read_v4_ranges(filename):
-    try:
-        key = _bucket_v4.get_key(filename)
-        if key is None:
-            return []
-        n_chunks = (key.size / _chunk_size) + 1
-        return zip([filename]*n_chunks, range(n_chunks))
-    except ssl.SSLError:
-        return []
-
-
-def _read_v4_range(filename_chunk):
-    try:
-        filename, chunk = filename_chunk
-        start = _chunk_size*chunk
-        key = _bucket_v4.get_key(filename)
-        key.open_read(headers={'Range': "bytes={}-".format(start)})
-        return parse_heka_message(key, boundary_bytes=_chunk_size)
     except ssl.SSLError:
         return []
 

@@ -8,19 +8,13 @@
 import ujson as json
 import ssl
 
-from telemetry.util.heka_message import unpack, BacktrackableFile
+from telemetry.util.heka_message import unpack
 
 
-def parse_heka_message(message, boundary_bytes=None):
+def parse_heka_message(message):
     try:
-        message = BacktrackableFile(message)
-
-        for record, total_bytes in unpack(message, backtrack=True):
+        for record, total_bytes in unpack(message):
             yield _parse_heka_record(record)
-
-            if boundary_bytes and (total_bytes >= boundary_bytes):
-                message.close()
-                break
 
     except ssl.SSLError:
         pass  # https://github.com/boto/boto/issues/2830
