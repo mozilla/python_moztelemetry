@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, you can obtain one at http://mozilla.org/MPL/2.0/.
+import os
+
+import requests
+
+
+"""Replace histogram_tools.py with the latest version from mozilla-central"""
+
+print "Downloading latest histogram_tools.py..."
+
+url = ("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/"
+       "components/telemetry/histogram_tools.py")
+project_root = os.path.dirname(
+                  os.path.dirname(os.path.realpath(__file__)))
+target_dir = os.path.join(project_root, 'moztelemetry')
+
+response = requests.get(url, timeout=10)
+response.raise_for_status()
+
+print "histogram_tools.py downloaded."
+
+with open(os.path.join(target_dir, "histogram_tools.py"), "w") as fh:
+    fh.write(response.content)
+
+print "histogram_tools.py successfully updated."
