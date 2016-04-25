@@ -5,16 +5,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import urllib
 from setuptools import setup
-from setuptools.command.install import install
 
-class FetchExternal(install):
-    def run(self):
-        urllib.urlretrieve("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py", "moztelemetry/histogram_tools.py")
-        install.run(self)
-
-setup(cmdclass={'install': FetchExternal},
+setup(
       name='python_moztelemetry',
       version='0.3.9.8',
       author='Roberto Agostino Vitillo',
