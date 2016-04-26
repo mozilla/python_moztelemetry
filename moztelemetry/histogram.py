@@ -191,20 +191,3 @@ class Histogram:
 
     def __add__(self, other):
         return Histogram(self.name, self.buckets + other.buckets, histograms_url=self.histograms_url)
-
-
-if __name__ == "__main__":
-    # Histogram with computed value
-    Histogram("GC_REASON_2", [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 11, 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2517, -1, -1, 116979, 0])
-
-    # Histogram without revision
-    Histogram("STARTUP_CRASH_DETECTED", [1, 0, 0, 0, -1, -1, 0, 0], "http://hg.mozilla.org/mozilla-central/rev/da2f28836843")
-
-    # Histogram with revision
-    Histogram("HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1], "http://hg.mozilla.org/mozilla-central/rev/37ddc5e2eb72")
-
-    # Startup histogram
-    Histogram("STARTUP_HTTPCONNMGR_USED_SPECULATIVE_CONN", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1, -1])
-
-    # Exceptional histogram
-    Histogram("EVENTLOOP_UI_LAG_EXP_MS", {"values": {"0": 0}})
