@@ -7,7 +7,7 @@
 
 """ This module implements some standard functionality based on Telemetry data.
 """
-
+import binascii
 from datetime import datetime, timedelta, date
 
 epoch = datetime.utcfromtimestamp(0)
@@ -83,3 +83,29 @@ def mau(dataframe, target_day, past_days=28, future_days=10, date_format="%Y%m%d
     filtered = filter_date_range(dataframe, act_col, min_activity, max_activity,
         sub_col, min_submission, max_submission)
     return count_distinct_clientids(filtered)
+
+_REMAINDERS = {
+    10: 2,
+    100: 42,
+    1000: 42, # I.e. 042
+}
+def _do_sample_modulo(clientId, modulus):
+    '''
+    Provide canonical sampling of the clientId space.
+
+    The server-side library is unsigned.
+    '''
+    if modulus not in _REMAINDERS:
+        msg = "Update standards._REMAINDERS to support %s" % modulus
+        raise ValueError(msg)
+    crc = binascii.crc32(clientId)
+    if crc < 0:
+        crc += (2**32)
+    return crc % modulus
+
+def in_sample(ping, divisor):
+    clientId = ping.get('clientId', '')
+    if len(clientId) != 36:
+        return False
+    remainder = _do_sample_modulo(clientId, divisor)
+    return _REMAINDERS.get(divisor) == remainder
