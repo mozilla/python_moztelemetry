@@ -84,23 +84,23 @@ def mau(dataframe, target_day, past_days=28, future_days=10, date_format="%Y%m%d
         sub_col, min_submission, max_submission)
     return count_distinct_clientids(filtered)
 
-def snap_to_beginning_of_week(date, weekday_start="Sunday"):
+def snap_to_beginning_of_week(day, weekday_start="Sunday"):
     """ Get the first day of the current week.
 
-    :param date: The input date to snap.
+    :param day: The input date to snap.
     :param weekday_start: Either "Monday" or "Sunday", indicating the first day of the week.
     :returns: A date representing the first day of the current week.
     """
-    delta_days = ((date.weekday() + 1) % 7) if weekday_start is "Sunday" else date.weekday()
-    return date - timedelta(days=delta_days)
+    delta_days = ((day.weekday() + 1) % 7) if weekday_start is "Sunday" else day.weekday()
+    return day - timedelta(days=delta_days)
 
-def snap_to_beginning_of_month(date):
+def snap_to_beginning_of_month(day):
     """ Get the date for the first day of this month.
 
-    :param date: The input date to snap.
+    :param day: The input date to snap.
     :returns: A date representing the first day of the current month.
     """
-    return date.replace(day=1)
+    return day.replace(day=1)
 
 def get_last_week_range(weekday_start="Sunday"):
     """ Gets the date for the first and the last day of the previous complete week.
