@@ -83,3 +83,46 @@ def mau(dataframe, target_day, past_days=28, future_days=10, date_format="%Y%m%d
     filtered = filter_date_range(dataframe, act_col, min_activity, max_activity,
         sub_col, min_submission, max_submission)
     return count_distinct_clientids(filtered)
+
+def snap_to_beginning_of_week(day, weekday_start="Sunday"):
+    """ Get the first day of the current week.
+
+    :param day: The input date to snap.
+    :param weekday_start: Either "Monday" or "Sunday", indicating the first day of the week.
+    :returns: A date representing the first day of the current week.
+    """
+    delta_days = ((day.weekday() + 1) % 7) if weekday_start is "Sunday" else day.weekday()
+    return day - timedelta(days=delta_days)
+
+def snap_to_beginning_of_month(day):
+    """ Get the date for the first day of this month.
+
+    :param day: The input date to snap.
+    :returns: A date representing the first day of the current month.
+    """
+    return day.replace(day=1)
+
+def get_last_week_range(weekday_start="Sunday"):
+    """ Gets the date for the first and the last day of the previous complete week.
+
+    :param weekday_start: Either "Monday" or "Sunday", indicating the first day of the week.
+    :returns: A tuple containing two date objects, for the first and the last day of the week
+              respectively.
+    """
+    today = date.today()
+    # Get the first day of the past complete week.
+    start_of_week = snap_to_beginning_of_week(today, weekday_start) - timedelta(weeks=1)
+    end_of_week = start_of_week + timedelta(days=6)
+    return (start_of_week, end_of_week)
+
+def get_last_month_range():
+    """ Gets the date for the first and the last day of the previous complete month.
+
+    :returns: A tuple containing two date objects, for the first and the last day of the month
+              respectively.
+    """
+    today = date.today()
+    # Get the last day for the previous month.
+    end_of_last_month = snap_to_beginning_of_month(today) - timedelta(days=1)
+    start_of_last_month = snap_to_beginning_of_month(end_of_last_month)
+    return (start_of_last_month, end_of_last_month)
