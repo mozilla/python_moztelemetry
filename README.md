@@ -1,6 +1,12 @@
 # python_moztelemetry
 Spark bindings for Mozilla Telemetry
 
+## Installing from pypi
+- To install this package from pypi run:
+```
+pip install python_moztelemetry
+```
+
 ## Updating the package on PyPI
 - Create / update your `~/.pypirc`
 ```
