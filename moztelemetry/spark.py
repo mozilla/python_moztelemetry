@@ -16,6 +16,7 @@ histories = get_clients_history(sc, fraction = 0.01)
 import boto
 import backports.lzma as lzma
 import json as json
+import logging
 import numpy.random as random
 import ssl
 
@@ -25,6 +26,9 @@ from heka_message_parser import parse_heka_message
 from xml.sax import SAXParseException
 from telemetry.telemetry_schema import TelemetrySchema
 import telemetry.util.s3 as s3u
+
+
+logger = logging.getLogger(__name__)
 
 if not boto.config.has_section('Boto'):
     boto.config.add_section('Boto')
@@ -413,6 +417,14 @@ def _read_v2(filename):
 def _read_v4(filename):
     try:
         key = _bucket_v4.get_key(filename)
+
+        if key is None:
+            # In some rare cases it's not possible to retrieve the content of a
+            # file (see bug 1282441 for more details).
+            # Let's log the problem and move on.
+            logger.error("File not found: {}".format(filename))
+            return []
+
         key.open_read()
         return parse_heka_message(key)
     except ssl.SSLError:
