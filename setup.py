@@ -16,7 +16,7 @@ setup(
     url='https://github.com/vitillo/python_moztelemetry',
     packages=['moztelemetry'],
     package_dir={'moztelemetry': 'moztelemetry'},
-    install_requires=['boto', 'backports.lzma', 'ujson', 'requests', 'protobuf', 'expiringdict', 'functools32', 'py4j', 'pandas>=0.14.1', 'numpy>=1.8.2', 'joblib', 'telemetry-tools'],
+    install_requires=['boto', 'boto3', 'backports.lzma', 'ujson', 'requests', 'protobuf', 'expiringdict', 'functools32', 'py4j', 'pandas>=0.14.1', 'numpy>=1.8.2', 'joblib', 'telemetry-tools'],
     setup_requires = ['pytest-runner'],
-    tests_require = ['mock', 'pytest'],
+    tests_require = ['mock', 'pytest', 'moto'],
 )
