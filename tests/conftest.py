@@ -22,3 +22,8 @@ def dummy_bucket(my_mock_s3):
     bucket = boto3.resource('s3').Bucket('my-test-bucket')
     bucket.create()
     return bucket
+
+
+def pytest_addoption(parser):
+    parser.addoption("--runslow", action="store_true",
+        help="run slow tests")
