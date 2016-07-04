@@ -1,6 +1,15 @@
+import pytest
+
 from moztelemetry.histogram import Histogram
 
 
+slow = pytest.mark.skipif(
+    not pytest.config.getoption("--runslow"),
+    reason="need --runslow option to run"
+)
+
+
+@slow
 def test_histogram_with_computed_value():
     # Histogram with computed value
     Histogram("GC_REASON_2",
@@ -12,6 +21,7 @@ def test_histogram_with_computed_value():
                116979, 0])
 
 
+@slow
 def test_histogram_without_revision():
     # Histogram without revision
     Histogram("STARTUP_CRASH_DETECTED",
@@ -19,6 +29,7 @@ def test_histogram_without_revision():
               "http://hg.mozilla.org/mozilla-central/rev/da2f28836843")
 
 
+@slow
 def test_histogram_with_revision():
     # Histogram with revision
     Histogram("HTTPCONNMGR_USED_SPECULATIVE_CONN",
@@ -29,6 +40,7 @@ def test_histogram_with_revision():
               "http://hg.mozilla.org/mozilla-central/rev/37ddc5e2eb72")
 
 
+@slow
 def test_startup_histogram():
     # Startup histogram
     Histogram("STARTUP_HTTPCONNMGR_USED_SPECULATIVE_CONN",
