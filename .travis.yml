@@ -1,9 +1,18 @@
 language: python
-python:
-  - "2.7"
-cache: pip
-install:
-  - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
+cache:
+  pip: true
+  directories:
+    - $HOME/.ivy2
+scala:
+   - 2.10.4
+sudo: false
+env:
+  - SPARK_VERSION=1.6.1
+before_install:
+  - "wget https://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.6.tgz"
+  # Install Python deps.
+  # The conda installation steps here are based on http://conda.pydata.org/docs/travis.html
+  - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
@@ -11,12 +20,12 @@ install:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION python-snappy
+install:
+  - conda create -q -n test-environment python=2.7 python-snappy pandas numpy
   - source activate test-environment
-  - pip --version
   - pip install .
   - pip install coverage
-
+  - tar -xzvf spark-${SPARK_VERSION}-bin-hadoop2.6.tgz && export SPARK_HOME=`pwd`/spark-${SPARK_VERSION}-bin-hadoop2.6
 script:
   - coverage run --source=moztelemetry setup.py test --addopts --runslow
 after_success:
