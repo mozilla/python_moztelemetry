@@ -452,8 +452,14 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                 try:
                     kh_keys = set(cursor["keyedHistograms"][path[1]].keys())
                     if isinstance(cursor, dict):
-                        for payload in cursor.get("childPayloads", []):
-                            kh_keys.update(payload["keyedHistograms"][path[1]].keys())
+                        content_kh = cursor.get("processes", {}) \
+                                           .get("content", {}) \
+                                           .get("keyedHistograms", None)
+                        if content_kh is not None:
+                            kh_keys.update(content_kh[path[1]].keys())
+                        else:
+                            for payload in cursor.get("childPayloads", []):
+                                kh_keys.update(payload["keyedHistograms"][path[1]].keys())
                 except:
                     result[property_name] = None
                     continue
@@ -525,16 +531,22 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
     elif path[0] == "keyedHistograms" and len(path) != 3:
         raise ValueError("Keyed histogram access requires both a histogram name and a label.")
 
-    # Get parent histogram
+    # Get parent property
     parent = _get_ping_property(cursor, path, histograms_url,
                                 additional_histograms)
 
-    # Get children histograms
-    cursor = cursor.get("childPayloads", {}) if type(cursor) == dict else {}
-    children = filter(lambda h: h is not None,
-                      [_get_ping_property(child, path, histograms_url,
-                                          additional_histograms) \
-                          for child in cursor]) if cursor else []
+    # Get children properties
+    if not isinstance(cursor, dict):
+        children = []
+    else:
+        children = [_get_ping_property(cursor.get("processes", {}) \
+                                             .get("content", {}),
+                                       path, histograms_url,
+                                       additional_histograms)]
+        children += [_get_ping_property(child, path, histograms_url,
+                                        additional_histograms) \
+                        for child in cursor.get("childPayloads", {})]
+        children = filter(lambda h: h is not None, children)
 
     # Merge parent and children
     merged = ([parent] if parent else []) + children
