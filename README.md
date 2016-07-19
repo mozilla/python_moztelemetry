@@ -1,4 +1,4 @@
-# python_moztelemetry
+# python_moztelemetry [![Build Status](https://travis-ci.org/mozilla/python_moztelemetry.svg?branch=master)](https://travis-ci.org/mozilla/python_moztelemetry)
 Spark bindings for Mozilla Telemetry
 
 ## Installing from pypi
