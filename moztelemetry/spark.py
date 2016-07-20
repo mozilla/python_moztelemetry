@@ -38,7 +38,6 @@ _chunk_size = 100*(2**20)
 try:
     _conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com")
 
-    _bucket_v2 = _conn.get_bucket("telemetry-published-v2", validate=False)
     _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
     _bucket_meta = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-metadata", validate=False)
 except:
@@ -87,10 +86,6 @@ def get_clients_history(sc, **kwargs):
 def get_pings(sc, **kwargs):
     """ Returns a RDD of Telemetry submissions for a given filtering criteria.
 
-    Depending on the value of the 'schema' argument, different filtering criteria
-    are available. By default, the 'v4' schema is assumed (unified Telemetry/FHR).
-
-    If schema == "v4" then:
     :param app: an application name, e.g.: "Firefox"
     :param channel: a channel name, e.g.: "nightly"
     :param version: the application version, e.g.: "40.0a1"
@@ -102,26 +97,14 @@ def get_pings(sc, **kwargs):
     :param source_version: source version, set to "4" by default
     :param doc_type: ping type, set to "saved_session" by default
     :param fraction: the fraction of pings to return, set to 1.0 by default
-
-    If schema == "v2" then:
-    :param app: an application name, e.g.: "Firefox"
-    :param channel: a channel name, e.g.: "nightly"
-    :param version: the application version, e.g.: "40.0a1"
-    :param build_id: a build_id or a range of build_ids, e.g.:
-                     "20150601000000" or ("20150601000000", "20150610999999")
-    :param submission_date: a submission date or a range of submission dates, e.g:
-                            "20150601" or ("20150601", "20150610")
-    :param fraction: the fraction of pings to return, set to 1.0 by default
-    :param reason: submission reason, set to "saved_session" by default, e.g: "saved_session"
-
     """
-    schema = kwargs.pop("schema", "v4")
-    if schema == "v2":
-        return _get_pings_v2(sc, **kwargs)
-    elif schema == "v4":
-        return _get_pings_v4(sc, **kwargs)
-    else:
-        raise ValueError("Invalid schema version")
+    schema = kwargs.pop("schema", None)
+    if schema:
+        print ("The 'schema' parameter is deprecated. "
+               "Version 4 is now the only schema supported.")
+        if schema != "v4":
+            raise ValueError("Invalid schema version")
+    return _get_pings_v4(sc, **kwargs)
 
 
 def get_pings_properties(pings, paths, only_median=False, with_processes=False,
@@ -300,33 +283,6 @@ def _get_client_history(client_prefix):
         return None
 
 
-def _get_pings_v2(sc, **kwargs):
-    app = kwargs.pop("app", None)
-    channel = kwargs.pop("channel", None)
-    version = kwargs.pop("version", None)
-    build_id = kwargs.pop("build_id", None)
-    submission_date = kwargs.pop("submission_date", None)
-    fraction = kwargs.pop("fraction", 1.0)
-    reason = kwargs.pop("reason", "saved_session")
-
-    if fraction < 0 or fraction > 1:
-        raise ValueError("Invalid fraction argument")
-
-    if kwargs:
-        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
-
-    files = _get_filenames_v2(app=app, channel=channel, version=version, build_id=build_id,
-                              submission_date=submission_date, reason=reason)
-
-    if files and fraction != 1.0:
-        sample = random.choice(files, size=len(files)*fraction, replace=False)
-    else:
-        sample = files
-
-    parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).flatMap(lambda x: _read_v2(x))
-
-
 def _get_pings_v4(sc, **kwargs):
     app = kwargs.pop("app", None)
     channel = kwargs.pop("channel", None)
@@ -362,26 +318,6 @@ def _get_pings_v4(sc, **kwargs):
     return sc.parallelize(sample, parallelism).flatMap(_read_v4)
 
 
-def _get_filenames_v2(**kwargs):
-    translate = {"app": "appName",
-                 "channel": "appUpdateChannel",
-                 "version": "appVersion",
-                 "build_id": "appBuildID",
-                 "submission_date": "submissionDate",
-                 "reason": "reason"}
-    query = {}
-    for k, v in kwargs.iteritems():
-        tk = translate.get(k, None)
-        if not tk:
-            raise ValueError("Invalid query attribute name specified: {}".format(k))
-        if v == "*":
-            v = None
-        query[tk] = v
-
-    sdb = _get_simpledb("telemetry_v2")
-    return sdb.query(**query)
-
-
 def _get_filenames_v4(**kwargs):
     translate = {"app": "appName",
                  "channel": "appUpdateChannel",
@@ -402,16 +338,6 @@ def _get_filenames_v4(**kwargs):
 
     sdb = _get_simpledb("telemetry_v4")
     return sdb.query(**query)
-
-
-def _read_v2(filename):
-    try:
-        key = _bucket_v2.get_key(filename)
-        compressed = key.get_contents_as_string()
-        raw = lzma.decompress(compressed).split("\n")[:-1]
-        return map(lambda x: x.split("\t", 1)[1], raw)
-    except ssl.SSLError:
-        return []
 
 
 def _read_v4(filename):
