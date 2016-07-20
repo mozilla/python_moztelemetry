@@ -38,7 +38,7 @@ _chunk_size = 100*(2**20)
 try:
     _conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com")
 
-    _bucket_v4 = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
+    _bucket = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
     _bucket_meta = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-metadata", validate=False)
 except:
     pass  # Handy for testing purposes...
@@ -66,7 +66,7 @@ def get_clients_history(sc, **kwargs):
     if kwargs:
         raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
 
-    clients = [x.name for x in list(_bucket_v4.list(prefix="telemetry_sample_42/", delimiter="/"))]
+    clients = [x.name for x in list(_bucket.list(prefix="telemetry_sample_42/", delimiter="/"))]
 
     if clients and fraction != 1.0:
         sample = random.choice(clients, size=len(clients)*fraction, replace=False)
@@ -80,7 +80,7 @@ def get_clients_history(sc, **kwargs):
               partitionBy(len(sample)).\
               flatMapValues(_get_client_history).\
               filter(lambda x: x[1] is not None).\
-              flatMapValues(lambda x: _read_v4(x))
+              flatMapValues(lambda x: _read(x))
 
 
 def get_pings(sc, **kwargs):
@@ -104,7 +104,42 @@ def get_pings(sc, **kwargs):
                "Version 4 is now the only schema supported.")
         if schema != "v4":
             raise ValueError("Invalid schema version")
-    return _get_pings_v4(sc, **kwargs)
+
+    app = kwargs.pop("app", None)
+    channel = kwargs.pop("channel", None)
+    version = kwargs.pop("version", None)
+    build_id = kwargs.pop("build_id", None)
+    submission_date = kwargs.pop("submission_date", None)
+    source_name = kwargs.pop("source_name", "telemetry")
+    source_version = kwargs.pop("source_version", "4")
+    doc_type = kwargs.pop("doc_type", "saved_session")
+    fraction = kwargs.pop("fraction", 1.0)
+
+    if fraction < 0 or fraction > 1:
+        raise ValueError("Invalid fraction argument")
+
+    if kwargs:
+        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
+
+    files = _get_filenames(app=app, channel=channel, version=version,
+                           build_id=build_id,
+                           submission_date=submission_date,
+                           source_name=source_name,
+                           source_version=source_version, doc_type=doc_type)
+
+    if files and fraction != 1.0:
+        sample = random.choice(files, size=len(files) * fraction, replace=False)
+    else:
+        sample = files
+
+    if len(sample) <= sc.defaultParallelism:
+        parallelism = sc.defaultParallelism
+    elif len(sample) > 10 * sc.defaultParallelism:
+        parallelism = 10 * sc.defaultParallelism
+    else:
+        parallelism = len(sample)
+
+    return sc.parallelize(sample, parallelism).flatMap(_read)
 
 
 def get_pings_properties(pings, paths, only_median=False, with_processes=False,
@@ -216,10 +251,10 @@ def get_records(sc, source_name, **kwargs):
 
     # We should eventually support data sources in other buckets, but for now,
     # assume that everything lives in the v4 data bucket.
-    assert(bucket_name == _bucket_v4.name)
+    assert(bucket_name == _bucket.name)
     # TODO: cache the buckets, or at least recognize the ones we already have
     #       handles to (_bucket_* vars)
-    bucket = _bucket_v4 # TODO: bucket = _conn.get_bucket(bucket_name, validate=False)
+    bucket = _bucket # TODO: bucket = _conn.get_bucket(bucket_name, validate=False)
     filter_schema = _filter_to_schema(schema, filter_args)
     files = _list_s3_filenames(bucket, bucket_prefix, filter_schema)
 
@@ -229,7 +264,7 @@ def get_records(sc, source_name, **kwargs):
         sample = files
 
     parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).flatMap(_read_v4)
+    return sc.parallelize(sample, parallelism).flatMap(_read)
 
 
 def _get_data_sources():
@@ -278,47 +313,12 @@ def _filter_to_schema(schema, filter_args):
 
 def _get_client_history(client_prefix):
     try:
-        return [x.name for x in list(_bucket_v4.list(prefix=client_prefix))]
+        return [x.name for x in list(_bucket.list(prefix=client_prefix))]
     except SAXParseException:  # https://groups.google.com/forum/#!topic/boto-users/XCtTFzvtKRs
         return None
 
 
-def _get_pings_v4(sc, **kwargs):
-    app = kwargs.pop("app", None)
-    channel = kwargs.pop("channel", None)
-    version = kwargs.pop("version", None)
-    build_id = kwargs.pop("build_id", None)
-    submission_date = kwargs.pop("submission_date", None)
-    source_name = kwargs.pop("source_name", "telemetry")
-    source_version = kwargs.pop("source_version", "4")
-    doc_type = kwargs.pop("doc_type", "saved_session")
-    fraction = kwargs.pop("fraction", 1.0)
-
-    if fraction < 0 or fraction > 1:
-        raise ValueError("Invalid fraction argument")
-
-    if kwargs:
-        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
-
-    files = _get_filenames_v4(app=app, channel=channel, version=version, build_id=build_id, submission_date=submission_date,
-                              source_name=source_name, source_version=source_version, doc_type=doc_type)
-
-    if files and fraction != 1.0:
-        sample = random.choice(files, size=len(files)*fraction, replace=False)
-    else:
-        sample = files
-
-    if len(sample) <= sc.defaultParallelism:
-        parallelism = sc.defaultParallelism
-    elif len(sample) > 10*sc.defaultParallelism:
-        parallelism = 10*sc.defaultParallelism
-    else:
-        parallelism = len(sample)
-
-    return sc.parallelize(sample, parallelism).flatMap(_read_v4)
-
-
-def _get_filenames_v4(**kwargs):
+def _get_filenames(**kwargs):
     translate = {"app": "appName",
                  "channel": "appUpdateChannel",
                  "version": "appVersion",
@@ -340,9 +340,9 @@ def _get_filenames_v4(**kwargs):
     return sdb.query(**query)
 
 
-def _read_v4(filename):
+def _read(filename):
     try:
-        key = _bucket_v4.get_key(filename)
+        key = _bucket.get_key(filename)
 
         if key is None:
             # In some rare cases it's not possible to retrieve the content of a
