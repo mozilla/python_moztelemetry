@@ -14,7 +14,6 @@ histories = get_clients_history(sc, fraction = 0.01)
 """
 
 import boto
-import backports.lzma as lzma
 import json as json
 import logging
 import numpy.random as random
