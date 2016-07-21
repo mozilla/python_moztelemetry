@@ -106,7 +106,7 @@ class Dataset:
 
             return self._scan(dimensions[1:], matched, clauses, executor)
 
-    def _summaries(self, limit=None):
+    def _summaries(self):
         clauses = copy(self.clauses)
         schema = self.schema
 
@@ -118,8 +118,7 @@ class Dataset:
             scanned = self._scan(schema, [self.prefix], clauses, executor)
             keys = executor.map(self.store.list_keys, scanned)
         # Using chain to keep the list of keys as a generator
-        keys = chain(*keys)
-        return islice(keys, limit) if limit else keys
+        return chain(*keys)
 
     def records(self, sc, limit=None, decode=parse_heka_message):
         """Retrieve the elements of a dataset
@@ -130,7 +129,10 @@ class Dataset:
         retrieved
         :return: a Spark rdd containing the elements retrieved
         """
-        groups = group_by_size(self._summaries(limit))
+        summaries = self._summaries()
+        if limit:
+            summaries = islice(summaries, limit)
+        groups = group_by_size(summaries)
 
         return sc.parallelize(groups, len(groups)) \
             .flatMap(lambda x:x) \

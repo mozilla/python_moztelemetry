@@ -105,19 +105,6 @@ def test_summaries(dummy_executor):
         assert item['size'] == len(store.store[item['key']])
 
 
-def test_summaries_with_limit(dummy_executor):
-    bucket_name = 'test-bucket'
-    store = InMemoryStore(bucket_name)
-    store.store['dir1/subdir1/key1'] = 'value1'
-    store.store['dir2/subdir2/key2'] = 'value2'
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    summaries = list(dataset._summaries(1))
-
-    assert len(summaries) == 1
-
-    assert summaries[0]['key'] in store.store
-
-
 def test_group_by_size():
     obj_list = [dict(size=2**29)] * 5
     groups = group_by_size(obj_list)
@@ -142,3 +129,16 @@ def test_records(spark_context, dummy_executor):
     records = records.collect()
 
     assert records == ['value1', 'value2']
+
+
+@slow
+def test_records_with_limit(spark_context, dummy_executor):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    store.store['dir1/subdir1/key1'] = 'value1'
+    store.store['dir2/subdir2/key2'] = 'value2'
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+
+    records = dataset.records(spark_context, decode=lambda x: x, limit=1)
+    records = records.collect()
+    assert records == ['value1']
