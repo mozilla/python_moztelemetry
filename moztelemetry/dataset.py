@@ -71,6 +71,7 @@ class Dataset:
         self.prefix = prefix or ''
         self.clauses = clauses or {}
         self.store = store or S3Store(self.bucket)
+        self._cached_summaries = None
 
     def __repr__(self):
         return ('Dataset(bucket=%s, schema=%s, store=%s, prefix=%s, clauses=%s)'
@@ -107,18 +108,22 @@ class Dataset:
             return self._scan(dimensions[1:], matched, clauses, executor)
 
     def _summaries(self):
-        clauses = copy(self.clauses)
-        schema = self.schema
+        if self._cached_summaries is None:
+            clauses = copy(self.clauses)
+            schema = self.schema
 
-        if self.prefix:
-            schema = ['prefix'] + schema
-            clauses['prefix'] = lambda x: x == self.prefix
+            if self.prefix:
+                schema = ['prefix'] + schema
+                clauses['prefix'] = lambda x: x == self.prefix
 
-        with futures.ProcessPoolExecutor(MAX_CONCURRENCY) as executor:
-            scanned = self._scan(schema, [self.prefix], clauses, executor)
-            keys = executor.map(self.store.list_keys, scanned)
-        # Using chain to keep the list of keys as a generator
-        return chain(*keys)
+            with futures.ProcessPoolExecutor(MAX_CONCURRENCY) as executor:
+                scanned = self._scan(schema, [self.prefix], clauses, executor)
+                keys = executor.map(self.store.list_keys, scanned)
+
+            # Convert the summaries to a list to maintain Dataset objects
+            # serializable.
+            self._cached_summaries = list(chain(*keys))
+        return self._cached_summaries
 
     def records(self, sc, limit=None, decode=parse_heka_message):
         """Retrieve the elements of a dataset
@@ -131,7 +136,7 @@ class Dataset:
         """
         summaries = self._summaries()
         if limit:
-            summaries = islice(summaries, limit)
+            summaries = summaries[0:limit]
         groups = group_by_size(summaries)
 
         return sc.parallelize(groups, len(groups)) \
