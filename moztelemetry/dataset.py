@@ -3,6 +3,7 @@
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 import copy_reg
 import json
+import random
 import types
 from copy import copy
 from itertools import chain, islice
@@ -147,16 +148,28 @@ class Dataset:
         keys = chain(*keys)
         return islice(keys, limit) if limit else keys
 
-    def records(self, sc, limit=None, decode=parse_heka_message):
+    def records(self, sc, limit=None, decode=parse_heka_message, sample=1):
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
         :param limit: maximum number of objects to retrieve
         :param decode: an optional transformation to apply to the objects
         retrieved
+        :param sample: percentage of results to return. Useful to return
+        a representative sample of the dataset.
         :return: a Spark rdd containing the elements retrieved
         """
-        groups = _group_by_size(self._summaries(limit))
+        summaries = self._summaries(limit)
+
+        # Calculate the sample if summaries is not empty and limit is not set
+        if summaries and limit is None and sample != 1:
+            if sample < 0 or sample > 1:
+                raise ValueError('sample must be between 0 and 1')
+            summaries = list(summaries)
+            summaries = random.sample(summaries,
+                                      int(len(summaries) * sample))
+
+        groups = _group_by_size(summaries)
 
         return sc.parallelize(groups, len(groups)) \
             .flatMap(lambda x:x) \
