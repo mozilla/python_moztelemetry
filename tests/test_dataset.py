@@ -151,3 +151,42 @@ def test_records(spark_context):
     records = records.collect()
 
     assert records == ['value1', 'value2']
+
+
+@slow
+def test_records_sample(spark_context):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    for i in range(1, 100+1):
+        key = 'dir{}/subdir{}/key{}'.format(*[i]*3)
+        value = 'value{}'.format(i)
+        store.store[key] = value
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    records = dataset.records(spark_context, decode=lambda x: x, sample=0.1)
+    assert records.count() == 10
+
+
+@slow
+def test_records_limit(spark_context):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    for i in range(1, 100+1):
+        key = 'dir{}/subdir{}/key{}'.format(*[i]*3)
+        value = 'value{}'.format(i)
+        store.store[key] = value
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    records = dataset.records(spark_context, decode=lambda x: x, limit=5)
+    assert records.count() == 5
+
+
+@slow
+def test_records_limit_and_sample(spark_context):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    for i in range(1, 100+1):
+        key = 'dir{}/subdir{}/key{}'.format(*[i]*3)
+        value = 'value{}'.format(i)
+        store.store[key] = value
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    records = dataset.records(spark_context, decode=lambda x: x, limit=5, sample=0.9)
+    assert records.count() == 5
