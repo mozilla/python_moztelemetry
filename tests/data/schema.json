@@ -1,0 +1,28 @@
+{
+	"version": 2,
+	"dimensions": [{
+		"field_name": "submissionDate",
+		"allowed_values": "*"
+	}, {
+		"field_name": "sourceName",
+		"allowed_values": "*"
+	}, {
+		"field_name": "sourceVersion",
+		"allowed_values": "*"
+	}, {
+		"field_name": "docType",
+		"allowed_values": ["idle-daily", "saved-session", "android-anr-report", "ftu", "loop", "flash-video", "main", "activation", "deletion", "crash", "uitour-tag", "heartbeat", "core", "b2g-installer-device", "b2g-installer-flash", "advancedtelemetry", "appusage"]
+	}, {
+		"field_name": "appName",
+		"allowed_values": ["Firefox", "Fennec", "Thunderbird", "FirefoxOS", "B2G"]
+	}, {
+		"field_name": "appUpdateChannel",
+		"allowed_values": ["default", "nightly", "aurora", "beta", "release", "esr"]
+	}, {
+		"field_name": "appVersion",
+		"allowed_values": "*"
+	}, {
+		"field_name": "appBuildId",
+		"allowed_values": "*"
+	}]
+}
