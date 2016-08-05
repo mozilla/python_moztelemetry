@@ -135,12 +135,7 @@ def test_group_by_size():
     assert grouped_sizes == [[2**29, 2**29, 2**29], [2**29, 2**29]]
 
 
-slow = pytest.mark.skipif(
-    not pytest.config.getoption("--runslow"),
-    reason="need --runslow option to run"
-)
-
-@slow
+@pytest.mark.slow
 def test_records(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -153,7 +148,7 @@ def test_records(spark_context):
     assert records == ['value1', 'value2']
 
 
-@slow
+@pytest.mark.slow
 def test_records_sample(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -166,7 +161,7 @@ def test_records_sample(spark_context):
     assert records.count() == 10
 
 
-@slow
+@pytest.mark.slow
 def test_records_limit(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -179,7 +174,7 @@ def test_records_limit(spark_context):
     assert records.count() == 5
 
 
-@slow
+@pytest.mark.slow
 def test_records_limit_and_sample(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)

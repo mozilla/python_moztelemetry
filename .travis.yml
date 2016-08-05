@@ -27,7 +27,7 @@ install:
   - pip install coverage
   - tar -xzvf spark-${SPARK_VERSION}-bin-hadoop2.6.tgz && export SPARK_HOME=`pwd`/spark-${SPARK_VERSION}-bin-hadoop2.6
 script:
-  - coverage run --source=moztelemetry setup.py test --addopts --runslow
+  - coverage run --source=moztelemetry setup.py test
 after_success:
   - pip install coveralls
   - coveralls
