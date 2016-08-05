@@ -10,7 +10,7 @@ from itertools import chain, islice
 from multiprocessing import cpu_count
 from concurrent import futures
 
-from moztelemetry import parse_heka_message
+from moztelemetry import heka_message_parser
 from .store import S3Store
 
 
@@ -148,7 +148,7 @@ class Dataset:
         keys = chain(*keys)
         return islice(keys, limit) if limit else keys
 
-    def records(self, sc, limit=None, decode=parse_heka_message, sample=1):
+    def records(self, sc, limit=None, sample=1, decode=None):
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
@@ -170,6 +170,9 @@ class Dataset:
                                       int(len(summaries) * sample))
 
         groups = _group_by_size(summaries)
+
+        if decode is None:
+            decode = heka_message_parser.parse_heka_message
 
         return sc.parallelize(groups, len(groups)) \
             .flatMap(lambda x:x) \
