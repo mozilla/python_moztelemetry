@@ -19,7 +19,6 @@ import logging
 import numpy.random as random
 import ssl
 
-from filter_service import SDB
 from histogram import Histogram
 from moztelemetry.heka_message_parser import parse_heka_message
 from xml.sax import SAXParseException
@@ -45,14 +44,6 @@ except:
 
 _sources = None
 
-# cache SimpleDB instances; they can be reused pretty easily as they do not keep much state
-_simpledb_instances = {}
-def _get_simpledb(prefix, months_retention=12, read_only=True):
-    key = (prefix, months_retention, read_only)
-    if key in _simpledb_instances:
-        return _simpledb_instances[key]
-    _simpledb_instances[key] = SDB(prefix, months_retention, read_only)
-    return _simpledb_instances[key]
 
 def get_clients_history(sc, **kwargs):
     """ Returns RDD[client_id, ping]. This API is experimental and might change entirely at any point!
@@ -310,28 +301,6 @@ def _get_client_history(client_prefix):
         return [x.name for x in list(_bucket.list(prefix=client_prefix))]
     except SAXParseException:  # https://groups.google.com/forum/#!topic/boto-users/XCtTFzvtKRs
         return None
-
-
-def _get_filenames(**kwargs):
-    translate = {"app": "appName",
-                 "channel": "appUpdateChannel",
-                 "version": "appVersion",
-                 "build_id": "appBuildId",
-                 "submission_date": "submissionDate",
-                 "source_name": "sourceName",
-                 "source_version": "sourceVersion",
-                 "doc_type": "docType"}
-    query = {}
-    for k, v in kwargs.iteritems():
-        tk = translate.get(k, None)
-        if not tk:
-            raise ValueError("Invalid query attribute name specified: {}".format(k))
-        if v == "*":
-            v = None
-        query[tk] = v
-
-    sdb = _get_simpledb("telemetry_v4")
-    return sdb.query(**query)
 
 
 def _read(filename):
