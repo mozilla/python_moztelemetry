@@ -107,17 +107,18 @@ class Dataset:
         elements of the dataset. `condition` can either be an exact value or a
         callable returning a boolean value.
         """
+        clauses = copy(self.clauses)
         for dimension, condition in kwargs.items():
             if dimension in self.clauses:
                 raise Exception('There should be only one clause for {}'.format(dimension))
             if dimension not in self.schema:
                 raise Exception('The dimension {} doesn\'t exist'.format(dimension))
             if not hasattr(condition, '__call__'):
-                self.clauses[dimension] = lambda x: x == condition
+                clauses[dimension] = lambda x: x == condition
             else:
-                self.clauses[dimension] = condition
+                clauses[dimension] = condition
             return Dataset(self.bucket, self.schema, store=self.store,
-                           prefix=self.prefix, clauses=self.clauses)
+                           prefix=self.prefix, clauses=clauses)
 
     def _scan(self, dimensions, prefixes, clauses, executor):
         if not dimensions:
