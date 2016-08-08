@@ -67,10 +67,10 @@ class Dataset:
         bucket = 'test-bucket'
         schema = ['submission_date', 'doc_type', 'platform']
 
-        records = Dataset(bucket, schema) \
-            .where(doc_type='main') \
-            .where(submission_date=lambda x: x.startswith('201607')) \
-            .where(dim1='linux') \
+        records = Dataset(bucket, schema) \\
+            .where(doc_type='main') \\
+            .where(submission_date=lambda x: x.startswith('201607')) \\
+            .where(dim1='linux') \\
             .records(sc)
 
     For convenience Dataset objects can be created using the factory method
@@ -103,9 +103,9 @@ class Dataset:
     def where(self, **kwargs):
         """Return a new Dataset refined using the given condition
 
-        :param kwargs: a map of `dimension` => `condition` to filter the
-        elements of the dataset. `condition` can either be an exact value or a
-        callable returning a boolean value.
+        :param kwargs: a map of `dimension` => `condition` to filter the elements
+            of the dataset. `condition` can either be an exact value or a
+            callable returning a boolean value.
         """
         clauses = copy(self.clauses)
         for dimension, condition in kwargs.items():
@@ -154,11 +154,11 @@ class Dataset:
 
         :param sc: a SparkContext object
         :param limit: maximum number of objects to retrieve
-        :param decode: an optional transformation to apply to the objects
-        retrieved
-        :param sample: percentage of results to return. Useful to return
-        a sample of the dataset. This parameter is ignored when `limit` is set.
+        :param decode: an optional transformation to apply to the objects retrieved
+        :param sample: percentage of results to return. Useful to return a sample
+            of the dataset. This parameter is ignored when `limit` is set.
         :return: a Spark rdd containing the elements retrieved
+
         """
         summaries = self._summaries(limit)
 
@@ -182,6 +182,17 @@ class Dataset:
 
     @staticmethod
     def from_source(source_name):
+        """Create a Dataset configured for the given source_name
+
+        This is particularly convenient when the user doesn't know
+        the list of dimensions or the bucket name, but only the source name.
+
+        Usage example::
+
+            records = Dataset.from_source('telemetry) \\
+                .where(doc_type='main') \\
+                .where(submission_date='20160701')
+        """
         meta_bucket = 'net-mozaws-prod-us-west-2-pipeline-metadata'
         store = S3Store(meta_bucket)
 
