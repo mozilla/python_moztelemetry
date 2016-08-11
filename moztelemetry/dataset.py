@@ -126,7 +126,7 @@ class Dataset:
         else:
             dimension = dimensions[0]
             clause = clauses.get(dimension)
-            matched = executor.map(self.store.list_folders, prefixes, timeout=10)
+            matched = executor.map(self.store.list_folders, prefixes)
             # Using chain to flatten the results of map
             matched = chain(*matched)
             if clause:
