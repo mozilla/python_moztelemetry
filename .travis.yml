@@ -21,7 +21,7 @@ before_install:
   # Useful for debugging any issues with conda
   - conda info -a
 install:
-  - conda create -q -n test-environment python=2.7 python-snappy pandas numpy
+  - conda env create -f environment.yml
   - source activate test-environment
   - pip install .
   - pip install coverage

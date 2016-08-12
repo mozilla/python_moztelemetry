@@ -1,0 +1,6 @@
+name: test-environment
+dependencies:
+- python=2.7
+- pandas
+- python-snappy
+- snappy
