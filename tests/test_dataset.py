@@ -1,11 +1,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
+import json
+import os
+
+import boto3
 from concurrent import futures
 import pytest
 
 from moztelemetry.dataset import Dataset, _group_by_size
-from moztelemetry.store import InMemoryStore
+from moztelemetry.store import InMemoryStore, S3Store
 
 
 def test_repr():
@@ -135,12 +139,7 @@ def test_group_by_size():
     assert grouped_sizes == [[2**29, 2**29, 2**29], [2**29, 2**29]]
 
 
-slow = pytest.mark.skipif(
-    not pytest.config.getoption("--runslow"),
-    reason="need --runslow option to run"
-)
-
-@slow
+@pytest.mark.slow
 def test_records(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -153,7 +152,7 @@ def test_records(spark_context):
     assert records == ['value1', 'value2']
 
 
-@slow
+@pytest.mark.slow
 def test_records_sample(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -166,7 +165,7 @@ def test_records_sample(spark_context):
     assert records.count() == 10
 
 
-@slow
+@pytest.mark.slow
 def test_records_limit(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -179,7 +178,7 @@ def test_records_limit(spark_context):
     assert records.count() == 5
 
 
-@slow
+@pytest.mark.slow
 def test_records_limit_and_sample(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -190,3 +189,24 @@ def test_records_limit_and_sample(spark_context):
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     records = dataset.records(spark_context, decode=lambda x: x, limit=5, sample=0.9)
     assert records.count() == 5
+
+
+def test_dataset_from_source(my_mock_s3, monkeypatch):
+    meta_bucket_name = 'net-mozaws-prod-us-west-2-pipeline-metadata'
+
+    bucket = boto3.resource('s3').Bucket(meta_bucket_name)
+    bucket.create()
+
+    store = S3Store(meta_bucket_name)
+    data_dir = os.path.join(os.path.dirname(__file__), 'data')
+
+    with open(os.path.join(data_dir, 'sources.json')) as f:
+        store.upload_file(f, '', 'sources.json')
+    with open(os.path.join(data_dir, 'schema.json')) as f:
+        store.upload_file(f, 'telemetry-2/', 'schema.json')
+        f.seek(0)
+        expected_dimensions = json.loads(f.read())['dimensions']
+
+    dimensions = [f['field_name'] for f in expected_dimensions]
+
+    assert Dataset.from_source('telemetry').schema == dimensions

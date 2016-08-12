@@ -10,7 +10,7 @@ from itertools import chain, islice
 from multiprocessing import cpu_count
 from concurrent import futures
 
-from moztelemetry import parse_heka_message
+from moztelemetry import heka_message_parser
 from .store import S3Store
 
 
@@ -67,10 +67,10 @@ class Dataset:
         bucket = 'test-bucket'
         schema = ['submission_date', 'doc_type', 'platform']
 
-        records = Dataset(bucket, schema) \
-            .where(doc_type='main') \
-            .where(submission_date=lambda x: x.startswith('201607')) \
-            .where(dim1='linux') \
+        records = Dataset(bucket, schema) \\
+            .where(doc_type='main') \\
+            .where(submission_date=lambda x: x.startswith('201607')) \\
+            .where(dim1='linux') \\
             .records(sc)
 
     For convenience Dataset objects can be created using the factory method
@@ -103,21 +103,22 @@ class Dataset:
     def where(self, **kwargs):
         """Return a new Dataset refined using the given condition
 
-        :param kwargs: a map of `dimension` => `condition` to filter the
-        elements of the dataset. `condition` can either be an exact value or a
-        callable returning a boolean value.
+        :param kwargs: a map of `dimension` => `condition` to filter the elements
+            of the dataset. `condition` can either be an exact value or a
+            callable returning a boolean value.
         """
+        clauses = copy(self.clauses)
         for dimension, condition in kwargs.items():
             if dimension in self.clauses:
                 raise Exception('There should be only one clause for {}'.format(dimension))
             if dimension not in self.schema:
                 raise Exception('The dimension {} doesn\'t exist'.format(dimension))
             if not hasattr(condition, '__call__'):
-                self.clauses[dimension] = lambda x: x == condition
+                clauses[dimension] = lambda x: x == condition
             else:
-                self.clauses[dimension] = condition
+                clauses[dimension] = condition
             return Dataset(self.bucket, self.schema, store=self.store,
-                           prefix=self.prefix, clauses=self.clauses)
+                           prefix=self.prefix, clauses=clauses)
 
     def _scan(self, dimensions, prefixes, clauses, executor):
         if not dimensions:
@@ -125,7 +126,7 @@ class Dataset:
         else:
             dimension = dimensions[0]
             clause = clauses.get(dimension)
-            matched = executor.map(self.store.list_folders, prefixes, timeout=10)
+            matched = executor.map(self.store.list_folders, prefixes)
             # Using chain to flatten the results of map
             matched = chain(*matched)
             if clause:
@@ -148,16 +149,16 @@ class Dataset:
         keys = chain(*keys)
         return islice(keys, limit) if limit else keys
 
-    def records(self, sc, limit=None, decode=parse_heka_message, sample=1):
+    def records(self, sc, limit=None, sample=1, decode=None):
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
         :param limit: maximum number of objects to retrieve
-        :param decode: an optional transformation to apply to the objects
-        retrieved
-        :param sample: percentage of results to return. Useful to return
-        a sample of the dataset. This parameter is ignored when `limit` is set.
+        :param decode: an optional transformation to apply to the objects retrieved
+        :param sample: percentage of results to return. Useful to return a sample
+            of the dataset. This parameter is ignored when `limit` is set.
         :return: a Spark rdd containing the elements retrieved
+
         """
         summaries = self._summaries(limit)
 
@@ -171,6 +172,9 @@ class Dataset:
 
         groups = _group_by_size(summaries)
 
+        if decode is None:
+            decode = heka_message_parser.parse_heka_message
+
         return sc.parallelize(groups, len(groups)) \
             .flatMap(lambda x:x) \
             .map(lambda x: self.store.get_key(x['key'])) \
@@ -178,6 +182,17 @@ class Dataset:
 
     @staticmethod
     def from_source(source_name):
+        """Create a Dataset configured for the given source_name
+
+        This is particularly convenient when the user doesn't know
+        the list of dimensions or the bucket name, but only the source name.
+
+        Usage example::
+
+            records = Dataset.from_source('telemetry) \\
+                .where(doc_type='main') \\
+                .where(submission_date='20160701')
+        """
         meta_bucket = 'net-mozaws-prod-us-west-2-pipeline-metadata'
         store = S3Store(meta_bucket)
 

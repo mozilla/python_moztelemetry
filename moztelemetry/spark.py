@@ -19,12 +19,12 @@ import logging
 import numpy.random as random
 import ssl
 
-from filter_service import SDB
 from histogram import Histogram
 from heka_message_parser import parse_heka_message
 from xml.sax import SAXParseException
 from telemetry.telemetry_schema import TelemetrySchema
 import telemetry.util.s3 as s3u
+from .dataset import Dataset
 
 
 logger = logging.getLogger(__name__)
@@ -44,14 +44,6 @@ except:
 
 _sources = None
 
-# cache SimpleDB instances; they can be reused pretty easily as they do not keep much state
-_simpledb_instances = {}
-def _get_simpledb(prefix, months_retention=12, read_only=True):
-    key = (prefix, months_retention, read_only)
-    if key in _simpledb_instances:
-        return _simpledb_instances[key]
-    _simpledb_instances[key] = SDB(prefix, months_retention, read_only)
-    return _simpledb_instances[key]
 
 def get_clients_history(sc, **kwargs):
     """ Returns RDD[client_id, ping]. This API is experimental and might change entirely at any point!
@@ -82,7 +74,9 @@ def get_clients_history(sc, **kwargs):
               flatMapValues(lambda x: _read(x))
 
 
-def get_pings(sc, **kwargs):
+def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session',
+              fraction=1.0, schema=None, source_name='telemetry', source_version='4',
+              submission_date=None, version=None):
     """ Returns a RDD of Telemetry submissions for a given filtering criteria.
 
     :param app: an application name, e.g.: "Firefox"
@@ -97,48 +91,43 @@ def get_pings(sc, **kwargs):
     :param doc_type: ping type, set to "saved_session" by default
     :param fraction: the fraction of pings to return, set to 1.0 by default
     """
-    schema = kwargs.pop("schema", None)
     if schema:
         print ("The 'schema' parameter is deprecated. "
                "Version 4 is now the only schema supported.")
         if schema != "v4":
             raise ValueError("Invalid schema version")
 
-    app = kwargs.pop("app", None)
-    channel = kwargs.pop("channel", None)
-    version = kwargs.pop("version", None)
-    build_id = kwargs.pop("build_id", None)
-    submission_date = kwargs.pop("submission_date", None)
-    source_name = kwargs.pop("source_name", "telemetry")
-    source_version = kwargs.pop("source_version", "4")
-    doc_type = kwargs.pop("doc_type", "saved_session")
-    fraction = kwargs.pop("fraction", 1.0)
+    dataset = Dataset.from_source('telemetry')
 
-    if fraction < 0 or fraction > 1:
-        raise ValueError("Invalid fraction argument")
+    filters = (
+        ('docType', doc_type),
+        ('sourceName', source_name),
+        ('sourceVersion', source_version),
+        ('appName', app),
+        ('appUpdateChannel', channel),
+        ('appVersion', version),
+    )
 
-    if kwargs:
-        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
+    for key, condition in filters:
+        if condition and condition != '*':
+            dataset = dataset.where(**{key: condition})
 
-    files = _get_filenames(app=app, channel=channel, version=version,
-                           build_id=build_id,
-                           submission_date=submission_date,
-                           source_name=source_name,
-                           source_version=source_version, doc_type=doc_type)
+    # build_id and submission_date can be either strings or tuples or lists,
+    # so they deserve a special treatment
+    special_cases = dict(appBuildId=build_id, submissionDate=submission_date)
+    for key, value in special_cases.items():
+        if value is not None and value != '*':
+            if isinstance(value, basestring):
+                condition = value
+            elif type(value) in (list, tuple) and len(value) == 2:
+                start, end = value
+                condition = lambda x: start <= x <= end
+            else:
+                raise ValueError(('{} must be either a string or a 2 elements '
+                                  'list/tuple'. format(key)))
+            dataset = dataset.where(**{key: condition})
 
-    if files and fraction != 1.0:
-        sample = random.choice(files, size=len(files) * fraction, replace=False)
-    else:
-        sample = files
-
-    if len(sample) <= sc.defaultParallelism:
-        parallelism = sc.defaultParallelism
-    elif len(sample) > 10 * sc.defaultParallelism:
-        parallelism = 10 * sc.defaultParallelism
-    else:
-        parallelism = len(sample)
-
-    return sc.parallelize(sample, parallelism).flatMap(_read)
+    return dataset.records(sc, sample=fraction)
 
 
 def get_pings_properties(pings, paths, only_median=False, with_processes=False,
@@ -315,28 +304,6 @@ def _get_client_history(client_prefix):
         return [x.name for x in list(_bucket.list(prefix=client_prefix))]
     except SAXParseException:  # https://groups.google.com/forum/#!topic/boto-users/XCtTFzvtKRs
         return None
-
-
-def _get_filenames(**kwargs):
-    translate = {"app": "appName",
-                 "channel": "appUpdateChannel",
-                 "version": "appVersion",
-                 "build_id": "appBuildId",
-                 "submission_date": "submissionDate",
-                 "source_name": "sourceName",
-                 "source_version": "sourceVersion",
-                 "doc_type": "docType"}
-    query = {}
-    for k, v in kwargs.iteritems():
-        tk = translate.get(k, None)
-        if not tk:
-            raise ValueError("Invalid query attribute name specified: {}".format(k))
-        if v == "*":
-            v = None
-        query[tk] = v
-
-    sdb = _get_simpledb("telemetry_v4")
-    return sdb.query(**query)
 
 
 def _read(filename):
