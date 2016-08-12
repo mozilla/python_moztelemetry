@@ -17,7 +17,7 @@ Dataset API
 
 
 get_pings() (deprecated)
------------
+------------------------
 
 .. autofunction:: moztelemetry.spark.get_pings
 
