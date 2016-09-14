@@ -73,8 +73,8 @@ def test_scan_no_clause():
 
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     with futures.ProcessPoolExecutor(1) as executor:
-        folders = dataset._scan(['dim1', 'subdir'], [''], {}, executor)
-    assert list(folders) == ['dir1/dir2/']
+        folders = dataset._scan(['dim1', 'subdir'], ['prefix'], {}, executor)
+    assert list(folders) == ['prefix']
 
 
 def test_scan_with_clause():
@@ -87,7 +87,7 @@ def test_scan_with_clause():
                       clauses={'dim1': lambda x: x == 'dir1'}, store=store)
     with futures.ProcessPoolExecutor(1) as executor:
         folders = dataset._scan(['dim1', 'dim2'], [''], dataset.clauses, executor)
-    assert list(folders) == ['dir1/subdir1/']
+    assert list(folders) == ['dir1/']
 
 
 def test_scan_with_prefix():
@@ -96,10 +96,10 @@ def test_scan_with_prefix():
     store.store['prefix1/dir1/subdir1/key1'] = 'value1'
     store.store['prefix2/dir2/another-dir/key2'] = 'value2'
     dataset = Dataset(bucket_name, ['dim1', 'dim2'],
-                      clauses={'dim2': lambda x: x == 'subdir1'}, store=store)
+                      clauses={'dim1': lambda x: x == 'dir1'}, store=store)
     with futures.ProcessPoolExecutor(1) as executor:
-        folders = dataset._scan(['dim1', 'dim2',], ['prefix1/',], {}, executor)
-    assert list(folders) == ['prefix1/dir1/subdir1/']
+        folders = dataset._scan(['dim1', 'dim2',], ['prefix1/',], dataset.clauses, executor)
+    assert list(folders) == ['prefix1/dir1/']
 
 
 def test_summaries():

@@ -121,7 +121,7 @@ class Dataset:
                            prefix=self.prefix, clauses=clauses)
 
     def _scan(self, dimensions, prefixes, clauses, executor):
-        if not dimensions:
+        if not dimensions or not clauses:
             return prefixes
         else:
             dimension = dimensions[0]
@@ -131,6 +131,7 @@ class Dataset:
             matched = chain(*matched)
             if clause:
                 matched = [x for x in matched if clause(x.strip('/').split('/')[-1])]
+                del clauses[dimension]
 
             return self._scan(dimensions[1:], matched, clauses, executor)
 
