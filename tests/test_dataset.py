@@ -8,6 +8,7 @@ import boto3
 from concurrent import futures
 import pytest
 
+import moztelemetry
 from moztelemetry.dataset import Dataset, _group_by_size
 from moztelemetry.store import InMemoryStore, S3Store
 
@@ -150,6 +151,21 @@ def test_records(spark_context):
     records = records.collect()
 
     assert records == ['value1', 'value2']
+
+
+@pytest.mark.slow
+def test_records_many_groups(spark_context, monkeypatch):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    for i in range(1, spark_context.defaultParallelism + 2):
+        store.store['dir1/subdir1/key{}'.format(i)] = 'value{}'.format(i)
+    # create one group per item
+    monkeypatch.setattr(moztelemetry.dataset, '_group_by_size', lambda x: [[y] for y in x])
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    records = dataset.records(spark_context, decode=lambda x: x)
+    records = records.collect()
+
+    assert records == ['value{}'.format(i) for i in range(1, spark_context.defaultParallelism + 2)]
 
 
 @pytest.mark.slow
