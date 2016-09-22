@@ -161,7 +161,7 @@ class Dataset:
         :return: a Spark rdd containing the elements retrieved
 
         """
-        summaries = self._summaries(limit)
+        summaries = list(self._summaries(limit))
 
         # Calculate the sample if summaries is not empty and limit is not set
         if summaries and limit is None and sample != 1:
@@ -171,15 +171,20 @@ class Dataset:
             summaries = random.sample(summaries,
                                       int(len(summaries) * sample))
 
-        groups = _group_by_size(summaries)
+        groups = list(_group_by_size(summaries))
+        if len(groups) < sc.defaultParallelism:
+            # If there are not enough groups to fill the available resources
+            # we have many small files, so no need to group by cumulative size.
+            rdd = sc.parallelize(summaries, 2*sc.defaultParallelism)
+        else:
+            rdd = sc.parallelize(groups, len(groups)) \
+                    .flatMap(lambda x:x)
 
         if decode is None:
             decode = heka_message_parser.parse_heka_message
 
-        return sc.parallelize(groups, len(groups)) \
-            .flatMap(lambda x:x) \
-            .map(lambda x: self.store.get_key(x['key'])) \
-            .flatMap(lambda x: decode(x))
+        return rdd.map(lambda x: self.store.get_key(x['key'])) \
+                  .flatMap(lambda x: decode(x))
 
     @staticmethod
     def from_source(source_name):
