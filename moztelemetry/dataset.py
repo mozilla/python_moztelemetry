@@ -117,8 +117,8 @@ class Dataset:
                 clauses[dimension] = lambda x: x == condition
             else:
                 clauses[dimension] = condition
-            return Dataset(self.bucket, self.schema, store=self.store,
-                           prefix=self.prefix, clauses=clauses)
+        return Dataset(self.bucket, self.schema, store=self.store,
+                       prefix=self.prefix, clauses=clauses)
 
     def _scan(self, dimensions, prefixes, clauses, executor):
         if not dimensions or not clauses:
