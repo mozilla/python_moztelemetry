@@ -195,7 +195,7 @@ class Dataset:
 
         Usage example::
 
-            records = Dataset.from_source('telemetry) \\
+            records = Dataset.from_source('telemetry') \\
                 .where(doc_type='main') \\
                 .where(submission_date='20160701')
         """
