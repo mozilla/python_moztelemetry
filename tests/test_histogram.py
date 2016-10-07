@@ -1,7 +1,10 @@
 import pytest
+import pandas as pd
+from moztelemetry.histogram import Histogram, CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME
 
-from moztelemetry.histogram import Histogram
-
+def setup_module():
+    global categorical_hist
+    categorical_hist = Histogram("TELEMETRY_TEST_CATEGORICAL", [2, 1, 0, 0])
 
 @pytest.mark.slow
 def test_histogram_with_computed_value():
@@ -42,3 +45,28 @@ def test_startup_histogram():
                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779,
                -1, -1])
+
+
+def test_categorical_histogram():
+    series = pd.Series([2, 1, 0, 0], index=['CommonLabel', 'Label2', 'Label3', CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME], dtype='int64')
+    for i, v in series.iteritems():
+        assert categorical_hist.buckets[i] == v
+
+
+def test_cateogrical_histogram_value():
+    with pytest.raises(AssertionError):
+        categorical_hist.get_value()
+
+
+def test_categorical_histogram_percentile():
+    with pytest.raises(AssertionError):
+        categorical_hist.percentile(50)
+
+
+def test_categorical_histogram_add():
+    cat2 = Histogram("TELEMETRY_TEST_CATEGORICAL", [1, 1, 0, 1])
+    added = categorical_hist + cat2
+    assert added.buckets['CommonLabel'] == 3
+    assert added.buckets['Label2'] == 2
+    assert added.buckets['Label3'] == 0
+    assert added.buckets[CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME] == 1
