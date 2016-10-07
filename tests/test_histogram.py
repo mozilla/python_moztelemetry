@@ -42,3 +42,7 @@ def test_startup_histogram():
                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                0, 0, 0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779,
                -1, -1])
+
+def test_categorical_histogram():
+    hist = Histogram("TELEMETRY_TEST_CATEGORICAL", [2, 1, 0, 0])
+    assert hist.labels == ["CommonLabel", "Label2", "Label3"]

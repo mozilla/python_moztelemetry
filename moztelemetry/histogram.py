@@ -126,6 +126,7 @@ class Histogram:
 
         self.kind = self.definition.kind()
         self.name = name
+        self.labels = self.definition.labels()
 
         if isinstance(instance, list) or isinstance(instance, np.ndarray) or isinstance(instance, pd.Series):
             if len(instance) == self.definition.n_buckets():
