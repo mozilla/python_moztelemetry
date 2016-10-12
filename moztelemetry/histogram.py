@@ -19,6 +19,7 @@ from expiringdict import ExpiringDict
 
 HISTOGRAMS_JSON_REVISION = "https://hg.mozilla.org/mozilla-central/rev/tip"
 HISTOGRAMS_JSON_PATH = "/toolkit/components/telemetry/Histograms.json"
+CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME = 'spill'
 
 # Ugly hack to speed-up aggregation.
 exponential_buckets = histogram_tools.exponential_buckets
@@ -126,16 +127,19 @@ class Histogram:
 
         self.kind = self.definition.kind()
         self.name = name
+        labels, ranges = self.definition.labels(), self.definition.ranges()
+
+        pd_index = labels + [CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME] if self.kind == 'categorical' else ranges
 
         if isinstance(instance, list) or isinstance(instance, np.ndarray) or isinstance(instance, pd.Series):
             if len(instance) == self.definition.n_buckets():
                 values = instance
             else:
                 values = instance[:-5]
-            self.buckets = pd.Series(values, index=self.definition.ranges(), dtype='int64')
+            self.buckets = pd.Series(values, index=pd_index, dtype='int64')
         else:
             entries = {int(k): v for k, v in instance["values"].items()}
-            self.buckets = pd.Series(entries, index=self.definition.ranges(), dtype='int64').fillna(0)
+            self.buckets = pd.Series(entries, index=pd_index, dtype='int64').fillna(0)
 
     def __str__(self):
         """ Returns a string representation of the histogram. """
@@ -154,6 +158,8 @@ class Histogram:
 
         if self.kind in ["exponential", "linear", "enumerated", "boolean"]:
             return float(self.percentile(50)) if only_median else self.buckets
+        elif self.kind == "categorical" and not only_median:
+            return self.buckets
         elif self.kind == "count":
             return long(self.buckets[0])
         elif self.kind == "flag":
