@@ -207,6 +207,6 @@ class Dataset:
         except KeyError:
             raise Exception('Unknown source {}'.format(source_name))
 
-        schema = store.get_key('{}/schema.json'.format(source['prefix'])).read()
+        schema = store.get_key('{}/schema.json'.format(source['metadata_prefix'])).read()
         dimensions = [f['field_name'] for f in json.loads(schema)['dimensions']]
         return Dataset(source['bucket'], dimensions, prefix=source['prefix'])
