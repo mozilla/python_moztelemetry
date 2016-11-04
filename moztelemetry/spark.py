@@ -14,6 +14,7 @@ histories = get_clients_history(sc, fraction = 0.01)
 """
 
 import boto
+from functools import partial
 import json as json
 import logging
 import numpy.random as random
@@ -115,13 +116,17 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
     # build_id and submission_date can be either strings or tuples or lists,
     # so they deserve a special treatment
     special_cases = dict(appBuildId=build_id, submissionDate=submission_date)
+
+    def range_compare(min_val, max_val, val):
+        return min_val <= val <= max_val
+
     for key, value in special_cases.items():
         if value is not None and value != '*':
             if isinstance(value, basestring):
                 condition = value
             elif type(value) in (list, tuple) and len(value) == 2:
                 start, end = value
-                condition = lambda x: start <= x <= end
+                condition = partial(range_compare, start, end)
             else:
                 raise ValueError(('{} must be either a string or a 2 elements '
                                   'list/tuple'. format(key)))

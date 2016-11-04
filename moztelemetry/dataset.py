@@ -2,10 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 import copy_reg
+import functools
 import json
 import random
 import types
 from copy import copy
+from inspect import isfunction
 from itertools import chain, islice
 from multiprocessing import cpu_count
 from concurrent import futures
@@ -113,10 +115,10 @@ class Dataset:
                 raise Exception('There should be only one clause for {}'.format(dimension))
             if dimension not in self.schema:
                 raise Exception('The dimension {} doesn\'t exist'.format(dimension))
-            if not hasattr(condition, '__call__'):
-                clauses[dimension] = lambda x: x == condition
-            else:
+            if isfunction(condition) or isinstance(condition, functools.partial):
                 clauses[dimension] = condition
+            else:
+                clauses[dimension] = lambda x: x == condition
         return Dataset(self.bucket, self.schema, store=self.store,
                        prefix=self.prefix, clauses=clauses)
 
