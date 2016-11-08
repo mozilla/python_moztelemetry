@@ -5,6 +5,8 @@ import StringIO
 
 import boto3
 
+from telemetry.util.streaming_gzip import streaming_gzip_wrapper
+
 
 class S3Store:
 
@@ -36,7 +38,12 @@ class S3Store:
         try:
             # get_key must return a file-like object because that's what's
             # required by parse_heka_message
-            return bucket.Object(key).get()['Body']
+            s3object = bucket.Object(key).get()
+            if s3object['ResponseMetadata']['HTTPHeaders'].get(
+                    'content-encoding') == "gzip":
+                return streaming_gzip_wrapper(s3object['Body'])
+            else:
+                return s3object['Body']
         except:
             raise Exception('Error retrieving key "{}" from S3'.format(key))
 

@@ -24,6 +24,7 @@ from histogram import Histogram
 from heka_message_parser import parse_heka_message
 from xml.sax import SAXParseException
 from telemetry.telemetry_schema import TelemetrySchema
+from telemetry.util.streaming_gzip import streaming_gzip_wrapper
 import telemetry.util.s3 as s3u
 from .dataset import Dataset
 
@@ -323,7 +324,10 @@ def _read(filename):
             return []
 
         key.open_read()
-        return parse_heka_message(key)
+        if key.content_encoding == "gzip":
+            return parse_heka_message(streaming_gzip_wrapper(key))
+        else:
+            return parse_heka_message(key)
     except ssl.SSLError:
         return []
 

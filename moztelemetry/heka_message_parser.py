@@ -36,6 +36,10 @@ def _parse_heka_record(record):
         name = field.name.split('.')
         value = field.value_string
         if field.value_type == 1:
+            # Special case: the submission field (bytes) replaces the top level
+            # Payload in the hindsight-based infra
+            if name[0] == 'submission':
+                result.update(json.loads(field.value_bytes[0].decode('utf-8')))
             # TODO: handle bytes in a way that doesn't cause problems with JSON
             # value = field.value_bytes
             continue
