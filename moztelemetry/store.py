@@ -39,8 +39,7 @@ class S3Store:
             # get_key must return a file-like object because that's what's
             # required by parse_heka_message
             s3object = bucket.Object(key).get()
-            if s3object['ResponseMetadata']['HTTPHeaders'].get(
-                    'content-encoding') == "gzip":
+            if s3object.get('ContentEncoding') == "gzip":
                 return streaming_gzip_wrapper(s3object['Body'])
             else:
                 return s3object['Body']
