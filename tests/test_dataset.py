@@ -91,16 +91,26 @@ def test_scan_with_clause():
     assert list(folders) == ['dir1/']
 
 
-def test_scan_with_prefix():
+def test_scan_multiple_where_params():
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
-    store.store['prefix1/dir1/subdir1/key1'] = 'value1'
-    store.store['prefix2/dir2/another-dir/key2'] = 'value2'
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'],
-                      clauses={'dim1': lambda x: x == 'dir1'}, store=store)
-    with futures.ProcessPoolExecutor(1) as executor:
-        folders = dataset._scan(['dim1', 'dim2',], ['prefix1/',], dataset.clauses, executor)
-    assert list(folders) == ['prefix1/dir1/']
+    store.store['dir1/subdir1/key1'] = 'value1'
+    store.store['dir1/another-dir/key2'] = 'value2'
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store).where(dim1='dir1', dim2='subdir1')
+    summaries = dataset._summaries()
+    # with futures.ProcessPoolExecutor(1) as executor:
+    #     folders = dataset._scan(['dim1', 'dim2', ], ['prefix1/', ], dataset.clauses, executor)
+    expected_key = 'dir1/subdir1/key1'
+    assert list(summaries) == [{'key': expected_key, 'size': len(store.store[expected_key])}]
+
+
+def test_scan_multiple_params():
+    dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
+    new_dataset = dataset.where(dim1='my-value')
+    assert new_dataset is not dataset
+    assert new_dataset.clauses.keys() == ['dim1']
+    condition = new_dataset.clauses['dim1']
+    assert condition('my-value')
 
 
 def test_summaries():
