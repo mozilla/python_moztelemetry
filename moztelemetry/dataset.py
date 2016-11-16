@@ -118,7 +118,7 @@ class Dataset:
             if isfunction(condition) or isinstance(condition, functools.partial):
                 clauses[dimension] = condition
             else:
-                clauses[dimension] = lambda x: x == condition
+                clauses[dimension] = functools.partial((lambda x, y: x == y), condition)
         return Dataset(self.bucket, self.schema, store=self.store,
                        prefix=self.prefix, clauses=clauses)
 
