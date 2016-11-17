@@ -190,6 +190,20 @@ def test_records_sample(spark_context):
 
 
 @pytest.mark.slow
+def test_records_summaries(spark_context):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    store.store['dir1/subdir1/key1'] = 'value1'
+    store.store['dir2/subdir2/key2'] = 'value2'
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    records = dataset.records(spark_context, decode=lambda x: x,
+                              summaries=[{'key': 'dir1/subdir1/key1', 'size': len('value1')}])
+    records = records.collect()
+
+    assert records == ['value1']
+
+
+@pytest.mark.slow
 def test_records_limit(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
