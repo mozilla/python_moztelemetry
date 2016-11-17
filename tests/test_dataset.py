@@ -97,7 +97,7 @@ def test_scan_multiple_where_params():
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir1/another-dir/key2'] = 'value2'
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store).where(dim1='dir1', dim2='subdir1')
-    summaries = dataset._summaries()
+    summaries = dataset.summaries()
     expected_key = 'dir1/subdir1/key1'
     assert list(summaries) == [{'key': expected_key, 'size': len(store.store[expected_key])}]
 
@@ -119,7 +119,7 @@ def test_summaries():
 
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
 
-    summaries = dataset._summaries()
+    summaries = dataset.summaries()
     assert len(list(summaries)) == 2
 
     for item in summaries:
@@ -133,7 +133,7 @@ def test_summaries_with_limit():
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir2/subdir2/key2'] = 'value2'
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    summaries = list(dataset._summaries(1))
+    summaries = list(dataset.summaries(1))
 
     assert len(summaries) == 1
 
