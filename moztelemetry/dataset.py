@@ -67,11 +67,11 @@ class Dataset:
     Usage example::
 
         bucket = 'test-bucket'
-        schema = ['submission_date', 'doc_type', 'platform']
+        schema = ['submissionDate', 'docType', 'platform']
 
         records = Dataset(bucket, schema) \\
-            .where(doc_type='main') \\
-            .where(submission_date=lambda x: x.startswith('201607')) \\
+            .where(docType='main') \\
+            .where(submissionDate=lambda x: x.startswith('201607')) \\
             .where(dim1='linux') \\
             .records(sc)
 
@@ -198,8 +198,9 @@ class Dataset:
         Usage example::
 
             records = Dataset.from_source('telemetry') \\
-                .where(doc_type='main') \\
-                .where(submission_date='20160701')
+                .where(docType='main') \\
+                .where(submissionDate='20160701') \\
+                .where(appUpdateChannel='nightly')
         """
         meta_bucket = 'net-mozaws-prod-us-west-2-pipeline-metadata'
         store = S3Store(meta_bucket)
