@@ -161,7 +161,7 @@ class Dataset:
         keys = chain(*keys)
         return islice(keys, limit) if limit else keys
 
-    def records(self, sc, limit=None, sample=1, decode=None):
+    def records(self, sc, limit=None, sample=1, decode=None, summaries=None):
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
@@ -169,10 +169,12 @@ class Dataset:
         :param decode: an optional transformation to apply to the objects retrieved
         :param sample: percentage of results to return. Useful to return a sample
             of the dataset. This parameter is ignored when `limit` is set.
+        :param summaries: an iterable containing a summary for each item in the dataset. If None,
+            it will computed calling the summaries dataset.
         :return: a Spark rdd containing the elements retrieved
 
         """
-        summaries = list(self.summaries(limit))
+        summaries = list(summaries or self.summaries(limit))
 
         # Calculate the sample if summaries is not empty and limit is not set
         if summaries and limit is None and sample != 1:
