@@ -137,7 +137,16 @@ class Dataset:
 
             return self._scan(dimensions[1:], matched, clauses, executor)
 
-    def _summaries(self, limit=None):
+    def summaries(self, limit=None):
+        """Summary of the files contained in the current dataset
+
+        Every item in the summary is a dict containing a key name and the corresponding size of
+        the key item in bytes, e.g.::
+            {'key': 'full/path/to/my/key', 'size': 200}
+
+        :param limit: Max number of objects to retrieve
+        :return: An iterable of summaries
+        """
         clauses = copy(self.clauses)
         schema = self.schema
 
@@ -163,7 +172,7 @@ class Dataset:
         :return: a Spark rdd containing the elements retrieved
 
         """
-        summaries = list(self._summaries(limit))
+        summaries = list(self.summaries(limit))
 
         # Calculate the sample if summaries is not empty and limit is not set
         if summaries and limit is None and sample != 1:
