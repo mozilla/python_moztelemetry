@@ -9,7 +9,7 @@ from setuptools import setup
 
 setup(
     name='python_moztelemetry',
-    version='0.4.7',
+    use_scm_version=True,
     author='Roberto Agostino Vitillo',
     author_email='rvitillo@mozilla.com',
     description='Spark bindings for Mozilla Telemetry',
@@ -17,6 +17,6 @@ setup(
     packages=['moztelemetry'],
     package_dir={'moztelemetry': 'moztelemetry'},
     install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf', 'expiringdict', 'functools32', 'futures', 'py4j', 'pandas>=0.14.1', 'numpy>=1.8.2', 'joblib', 'telemetry-tools', 'findspark'],
-    setup_requires = ['pytest-runner'],
-    tests_require = ['mock', 'pytest', 'moto'],
+    setup_requires=['pytest-runner', 'setuptools_scm'],
+    tests_require=['mock', 'pytest', 'moto'],
 )
