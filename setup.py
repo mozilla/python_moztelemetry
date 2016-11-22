@@ -9,7 +9,7 @@ from setuptools import setup
 
 setup(
     name='python_moztelemetry',
-    version='0.4.6',
+    version='0.4.7',
     author='Roberto Agostino Vitillo',
     author_email='rvitillo@mozilla.com',
     description='Spark bindings for Mozilla Telemetry',
