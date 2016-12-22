@@ -85,6 +85,7 @@ try:
             raise BaseException, 'error parsing whitelist (%s)' % whitelist_path
 except IOError:
     whitelists = None
+    print 'Unable to parse whitelist (%s). Assuming all histograms are acceptable.' % whitelist_path
 
 class Histogram:
     """A class for representing a histogram definition."""
