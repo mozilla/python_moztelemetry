@@ -41,13 +41,27 @@ class HBaseMainSummaryView:
 
         if hostname is None:
             try:
-                client = boto3.client('ec2')
-                hbase_elastic_ip = "52.24.192.75"
-                self.hostname = client.describe_addresses(PublicIps=[hbase_elastic_ip])["Addresses"][0]["PrivateIpAddress"]
+                self.hostname = self._get_master_address()
             except:
                 raise Exception("Failure to retrieve HBase address")
         else:
             self.hostname = hostname
+
+    def _get_master_address(self):
+        client = boto3.client('ec2')
+        reservations = client.describe_instances(
+            Filters=[{'Name': 'tag:Name',
+                      'Values': ['telemetry-hbase']},
+                     {'Name': 'tag:aws:elasticmapreduce:instance-group-role',
+                      'Values': ['MASTER']}])["Reservations"]
+
+        if len(reservations) == 0:
+            raise Exception("HBase master not found!")
+
+        if len(reservations) > 1:
+            raise Exception("Multiple HBase masters found!")
+
+        return reservations[0]["Instances"][0]["NetworkInterfaces"][0]["PrivateIpAddress"]
 
     def _validate_client_id(self, client_id):
         try:
