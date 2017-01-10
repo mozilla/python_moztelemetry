@@ -14,8 +14,7 @@ from moztelemetry.spark import get_pings
 
 
 @pytest.fixture()
-def test_store(monkeypatch):
-    data_dir = os.path.join(os.path.dirname(__file__), 'data')
+def test_store(monkeypatch, data_dir):
     with open(os.path.join(data_dir, 'schema.json')) as s:
         schema = json.loads(s.read())
     dimensions = [f['field_name'] for f in schema['dimensions']]
@@ -54,7 +53,7 @@ def upload_ping(store, value, **kwargs):
 @pytest.fixture
 def mock_message_parser(monkeypatch):
     # monkeypatch the default `decoder` argument of `records`
-    monkeypatch.setattr('moztelemetry.heka_message_parser.parse_heka_message',
+    monkeypatch.setattr('moztelemetry.heka.message_parser.parse_heka_message',
                         lambda message: (message.getvalue(),))
 
 

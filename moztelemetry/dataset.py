@@ -12,7 +12,7 @@ from itertools import chain, islice
 from multiprocessing import cpu_count
 
 from concurrent import futures
-from moztelemetry.heka import message_parser
+from .heka import message_parser
 
 from .store import S3Store
 

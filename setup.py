@@ -4,8 +4,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from setuptools import setup
-
+from setuptools import setup, find_packages
 
 setup(
     name='python_moztelemetry',
@@ -14,7 +13,7 @@ setup(
     author_email='rvitillo@mozilla.com',
     description='Spark bindings for Mozilla Telemetry',
     url='https://github.com/mozilla/python_moztelemetry',
-    packages=['moztelemetry'],
+    packages=find_packages(),
     package_dir={'moztelemetry': 'moztelemetry'},
     install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf',
                       'expiringdict', 'functools32', 'futures', 'py4j',
