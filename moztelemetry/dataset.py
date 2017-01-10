@@ -10,11 +10,11 @@ from copy import copy
 from inspect import isfunction
 from itertools import chain, islice
 from multiprocessing import cpu_count
+
 from concurrent import futures
+from moztelemetry.heka import message_parser
 
-from moztelemetry import heka_message_parser
 from .store import S3Store
-
 
 MAX_CONCURRENCY = int(cpu_count() * 1.5)
 
@@ -194,7 +194,7 @@ class Dataset:
                     .flatMap(lambda x:x)
 
         if decode is None:
-            decode = heka_message_parser.parse_heka_message
+            decode = message_parser.parse_heka_message
 
         return rdd.map(lambda x: self.store.get_key(x['key'])) \
                   .flatMap(lambda x: decode(x))
