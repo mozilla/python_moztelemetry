@@ -23,8 +23,6 @@ import ssl
 from histogram import Histogram
 from heka_message_parser import parse_heka_message
 from xml.sax import SAXParseException
-from telemetry.telemetry_schema import TelemetrySchema
-import telemetry.util.s3 as s3u
 from .dataset import Dataset
 
 
@@ -195,113 +193,6 @@ def get_newest_ping_per_client(pings):
     reduce_func = lambda p1, p2:\
         p1 if p1[submission_date] > p2[submission_date] else p2
     return _get_one_ping_per_client(pings, reduce_func)
-
-
-def get_records(sc, source_name, **kwargs):
-    """ Returns a RDD of records for a given data source and filtering criteria.
-
-    All data sources support
-    :param fraction: the fraction of files read from the data source, set to 1.0
-                     by default.
-
-    Depending on the data source, different filtering criteria will be available.
-
-    Filtering criteria should be specified using the TelemetrySchema approach:
-    Range filter: submissionDate={"min": "20150901", "max": "20150908"}
-                  or submissionDate=("20150901", "20150908")
-    List filter: appUpdateChannel=["nightly", "aurora", "beta"]
-    Value filter: docType="main"
-
-    """
-    schema = _get_source_schema(source_name)
-    if schema is None:
-        raise ValueError("Error getting schema for {}".format(source_name))
-
-    bucket_name = _sources[source_name]["bucket"]
-    bucket_prefix = _sources[source_name]["prefix"]
-    if bucket_prefix[-1] != "/":
-        bucket_prefix = bucket_prefix + "/"
-
-    fraction = kwargs.pop("fraction", 1.0)
-    if fraction < 0 or fraction > 1:
-        raise ValueError("Invalid fraction argument")
-
-    filter_args = {}
-    field_names = [f["field_name"] for f in schema["dimensions"]]
-    for field_name in field_names:
-        field_filter = kwargs.pop(field_name, None)
-        if field_filter is None:
-            continue
-        # Special case for compatibility with get_pings:
-        #   If we get a filter parameter that is a tuple of length 2, treat it
-        #   as a min/max filter instead of a list of allowed values.
-        if isinstance(field_filter, tuple) and len(field_filter) == 2:
-            field_filter = {"min": field_filter[0], "max": field_filter[1]}
-        filter_args[field_name] = field_filter
-
-    if kwargs:
-        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
-
-    # We should eventually support data sources in other buckets, but for now,
-    # assume that everything lives in the v4 data bucket.
-    assert(bucket_name == _bucket.name)
-    # TODO: cache the buckets, or at least recognize the ones we already have
-    #       handles to (_bucket_* vars)
-    bucket = _bucket # TODO: bucket = _conn.get_bucket(bucket_name, validate=False)
-    filter_schema = _filter_to_schema(schema, filter_args)
-    files = _list_s3_filenames(bucket, bucket_prefix, filter_schema)
-
-    if files and fraction != 1.0:
-        sample = random.choice(files, size=len(files)*fraction, replace=False)
-    else:
-        sample = files
-
-    parallelism = max(len(sample), sc.defaultParallelism)
-    return sc.parallelize(sample, parallelism).flatMap(_read)
-
-
-def _get_data_sources():
-    try:
-        key = _bucket_meta.get_key("sources.json")
-        sources = key.get_contents_as_string()
-        return json.loads(sources)
-    except ssl.SSLError:
-        return {}
-
-
-def _get_source_schema(source_name):
-    global _sources
-    if _sources is None:
-        _sources = _get_data_sources()
-
-    if source_name not in _sources:
-        raise ValueError("Unknown data source: {}. Known sources: [{}].".format(source_name, ", ".join(sorted(_sources.keys()))))
-
-    if "schema" not in _sources[source_name]:
-        try:
-            key = _bucket_meta.get_key("{}/schema.json".format(_sources[source_name].get("metadata_prefix", source_name)))
-            schema = key.get_contents_as_string()
-            _sources[source_name]["schema"] = json.loads(schema)
-        except ssl.SSLError:
-            return None
-    return _sources[source_name]["schema"]
-
-
-def _list_s3_filenames(bucket, prefix, schema):
-    return [k.name for k in s3u.list_heka_partitions(bucket, prefix, schema=schema)]
-
-
-def _filter_to_schema(schema, filter_args):
-    new_schema = {"version": 1, "dimensions": []}
-    for i, dim in enumerate(schema["dimensions"]):
-        new_filter = {
-            "field_name": schema["dimensions"][i].get("field_name", "field{}".format(i)),
-            "allowed_values": "*"
-        }
-        if dim["field_name"] in filter_args:
-            new_filter["allowed_values"] = filter_args[dim["field_name"]]
-        new_schema["dimensions"].append(new_filter)
-    return TelemetrySchema(new_schema)
 
 
 def _get_client_history(client_prefix):
