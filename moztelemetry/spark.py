@@ -13,18 +13,18 @@ histories = get_clients_history(sc, fraction = 0.01)
 
 """
 
-import boto
-from functools import partial
 import json as json
 import logging
-import numpy.random as random
 import ssl
-
-from histogram import Histogram
-from heka_message_parser import parse_heka_message
+from functools import partial
 from xml.sax import SAXParseException
-from .dataset import Dataset
 
+import boto
+import numpy.random as random
+
+from .dataset import Dataset
+from .heka.message_parser import parse_heka_message
+from .histogram import Histogram
 
 logger = logging.getLogger(__name__)
 
