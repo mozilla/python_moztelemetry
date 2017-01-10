@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
+import os
 
 import boto3
 import pytest
@@ -53,3 +54,8 @@ def spark_context(request):
 
     return sc
 
+
+@pytest.fixture(scope='session')
+def data_dir():
+    here = os.path.dirname(__file__)
+    return os.path.join(here, 'data')
