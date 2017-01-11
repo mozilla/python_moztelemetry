@@ -20,19 +20,17 @@ class HBaseMainSummaryView:
 
     Usage example::
 
+        for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10).collect():
+                print client_id
+                for ping in pings:
+                    print ping["subsession_start_date"]
 
-    for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10).collect():
-            print client_id
-            for ping in pings:
-                print ping["subsession_start_date"]
+        for client_id, pings in view.get_range(sc, ["00000000-0000-0000-0000-000000000000"],
+                range_start=date(2016, 12, 1), range_end=date(2016, 12, 2)).collect():
+                print client_id
+                for ping in pings:
+                    print ping["subsession_start_date"]
 
-    for client_id, pings in view.get_range(sc, ["00000000-0000-0000-0000-000000000000"],
-            range_start=date(2016, 12, 1), range_end=date(2016, 12, 2)).collect():
-            print client_id
-            for ping in pings:
-                print ping["subsession_start_date"]
-
-        ...
     """
     def __init__(self, hostname=None):
         self.tablename = 'main_summary'
@@ -70,16 +68,16 @@ class HBaseMainSummaryView:
         except ValueError:
             return False
 
-    """ Return RDD[client_id, [ping1, ..., pingK]]
-
-    Pings are sorted in ascending order sorted by activity day.
-
-    :param sc: a SparkContext
-    :param client_ids: the client ids represented as UUIDs
-    :param limit: the maximum number of pings to return per client id
-    :param parallelism: the number of partitions of the resulting RDD
-    """
     def get(self, sc, client_ids, limit=None, parallelism=None):
+        """ Return RDD[client_id, [ping1, ..., pingK]]
+
+        Pings are sorted in ascending order sorted by activity day.
+
+        :param sc: a SparkContext
+        :param client_ids: the client ids represented as UUIDs
+        :param limit: the maximum number of pings to return per client id
+        :param parallelism: the number of partitions of the resulting RDD
+        """
         if not isinstance(client_ids, (list, tuple, )):
             raise TypeError('client_ids must be a list or a tuple'.format(type(client_ids)))
 
@@ -104,19 +102,19 @@ class HBaseMainSummaryView:
         return sc.parallelize(client_ids, parallelism)\
             .map(partial(_get, limit=limit))
 
-    """ Return RDD[client_id, [ping1, ..., pingK]] where pings are limited
-    to a given activity period.
-
-    Pings are sorted in ascending order sorted by activity day.
-
-    :param sc: a SparkContext
-    :param client_id: the client ids represented as UUIDs
-    :param range_start: the beginning of the time period represented as a datetime.date instance
-    :param range_end: the end of the time period (inclusive) represented as a datetime.date instance
-    :param limit: the maximum number of pings to return per client id
-    :param parallelism: the number of partitions of the resulting RDD
-    """
     def get_range(self, sc, client_ids, range_start, range_end, limit=None, parallelism=None):
+        """ Return RDD[client_id, [ping1, ..., pingK]] where pings are limited
+        to a given activity period.
+
+        Pings are sorted in ascending order sorted by activity day.
+
+        :param sc: a SparkContext
+        :param client_id: the client ids represented as UUIDs
+        :param range_start: the beginning of the time period represented as a datetime.date instance
+        :param range_end: the end of the time period (inclusive) represented as a datetime.date instance
+        :param limit: the maximum number of pings to return per client id
+        :param parallelism: the number of partitions of the resulting RDD
+        """
         if not isinstance(range_start, date):
             raise TypeError('range_start must be a datetime.date, not {}'.format(type(range_start)))
 
