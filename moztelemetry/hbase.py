@@ -19,6 +19,7 @@ class HBaseMainSummaryView:
     The retrieval can optionally be limited to a time period of activity for said client.
 
     Usage example::
+
         view = HBaseMainSummaryView()
 
         for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10).collect():
@@ -36,7 +37,6 @@ class HBaseMainSummaryView:
     Please try to collect back to the driver only the data you really need.
 
     Fast retrieval example::
-        view = HBaseMainSummaryView()
 
         for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10) \
                                     .map(lambda kv: (kv[0], [p["subsession_start_date"] for p in kv[1]])) \
