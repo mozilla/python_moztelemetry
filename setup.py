@@ -17,8 +17,7 @@ setup(
     package_dir={'moztelemetry': 'moztelemetry'},
     install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf',
                       'expiringdict', 'functools32', 'futures', 'py4j',
-                      'pandas>=0.14.1', 'numpy>=1.8.2', 'joblib',
-                      'telemetry-tools', 'findspark', 'happybase'],
+                      'pandas>=0.14.1', 'numpy>=1.8.2', 'findspark', 'happybase'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
     tests_require=['mock', 'pytest', 'moto'],
 )
