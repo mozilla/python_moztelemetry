@@ -136,12 +136,12 @@ class BacktrackableFile:
             self._stream.close()
 
     def backtrack(self):
-        buffer = self._buffer.getvalue()
-        index = buffer.find(chr(_record_separator), 1)
+        buf = self._buffer.getvalue()
+        index = buf.find(chr(_record_separator), 1)
 
         self._buffer = StringIO()
         if index >= 0:
-            self._buffer.write(buffer[index:])
+            self._buffer.write(buf[index:])
             self._buffer.seek(0)
 
 
@@ -159,12 +159,12 @@ def read_until_next(fin, separator=_record_separator):
     while True:
         c = fin.read(1)
         if c == '':
-            return (bytes_skipped, True)
+            return bytes_skipped, True
         elif ord(c) != separator:
             bytes_skipped += 1
         else:
             break
-    return (bytes_skipped, False)
+    return bytes_skipped, False
 
 
 # Stream Framing:
@@ -212,15 +212,14 @@ def read_one_record(input_stream, raw=False, verbose=False, strict=False, try_sn
     unit_separator = input_stream.read(1)
     total_bytes += 1
     if ord(unit_separator[0]) != 0x1f:
-        error_msg = "Unexpected unit separator character in record #{} " \
-                "at offset {}: {}".format(record_count, total_bytes,
-                ord(unit_separator[0]))
+        error_msg = "Unexpected unit separator character at offset {}: {}".format(
+            total_bytes, ord(unit_separator[0])
+        )
         if strict:
             raise ValueError(error_msg)
         return UnpackedRecord(raw_record, header, error=error_msg), total_bytes
     raw_record += unit_separator
 
-    #print "message length:", header.message_length
     message_raw = input_stream.read(header.message_length)
 
     total_bytes += header.message_length
@@ -246,11 +245,7 @@ def read_one_record(input_stream, raw=False, verbose=False, strict=False, try_sn
 
 
 def unpack_file(filename, **kwargs):
-    fin = None
-    if filename.endswith(".gz"):
-        fin = gzip.open(filename, "rb")
-    else:
-        fin = open(filename, "rb")
+    fin = gzip.open(filename, "rb") if filename.endswith(".gz") else open(filename, "rb")
     return unpack(fin, **kwargs)
 
 
@@ -260,13 +255,12 @@ def unpack_string(string, **kwargs):
 
 def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_snappy=True):
     record_count = 0
-    bad_records = 0
     total_bytes = 0
 
     while True:
         r = None
         try:
-            r, bytes = read_one_record(fin, raw, verbose, strict, try_snappy)
+            r, size = read_one_record(fin, raw, verbose, strict, try_snappy)
         except Exception as e:
             if strict:
                 fin.close()
@@ -285,7 +279,7 @@ def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_sna
             print r.error
 
         record_count += 1
-        total_bytes += bytes
+        total_bytes += size
 
         yield r, total_bytes
 

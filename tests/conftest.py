@@ -13,11 +13,9 @@ import findspark
 findspark.init()
 import pyspark
 
-from moztelemetry import store
-
 
 @pytest.fixture
-def my_mock_s3(request, monkeypatch):
+def my_mock_s3(request):
     """The purpose of this fixture is to setUp/tearDown the moto library"""
     m = mock_s3()
     m.start()
