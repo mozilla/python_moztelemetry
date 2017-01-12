@@ -73,3 +73,8 @@ def test_categorical_histogram_add():
     assert added.buckets['Label2'] == 2
     assert added.buckets['Label3'] == 0
     assert added.buckets[CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME] == 1
+
+
+def test_categorical_histogram_dict_value():
+    cat2 = Histogram('TELEMETRY_TEST_CATEGORICAL', {'values': {u'0': 2, u'1': 1, u'2': 0, u'3': 0}})
+    assert all(cat2.get_value() == series)

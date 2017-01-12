@@ -129,7 +129,14 @@ class Histogram:
         self.name = name
         labels, ranges = self.definition.labels(), self.definition.ranges()
 
-        pd_index = labels + [CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME] if self.kind == 'categorical' else ranges
+        if self.kind == 'categorical':
+            pd_index = labels + [CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME]
+            if isinstance(instance, dict):
+                # pandas clobbers values if instance is a dict with string labels
+                entries = {int(k): v for k, v in instance["values"].items()}
+                instance = [entries.get(k, 0) for k in ranges]
+        else:
+            pd_index = ranges
 
         if isinstance(instance, list) or isinstance(instance, np.ndarray) or isinstance(instance, pd.Series):
             if len(instance) == self.definition.n_buckets():
