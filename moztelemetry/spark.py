@@ -1,29 +1,13 @@
-#!/usr/bin/env python
-# encoding: utf-8
-
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-""" This module implements the Telemetry API for Spark.
-
-Example usage:
-pings = get_pings(None, app="Firefox", channel="nightly", build_id=("20140401000000", "20140402999999"), reason="saved_session")
-histories = get_clients_history(sc, fraction = 0.01)
-
-"""
-
 import json as json
 import logging
-import ssl
 from functools import partial
-from xml.sax import SAXParseException
 
 import boto
-import numpy.random as random
 
 from .dataset import Dataset
-from .heka.message_parser import parse_heka_message
 from .histogram import Histogram
 
 logger = logging.getLogger(__name__)
@@ -42,35 +26,6 @@ except:
     pass  # Handy for testing purposes...
 
 _sources = None
-
-
-def get_clients_history(sc, **kwargs):
-    """ Returns RDD[client_id, ping]. This API is experimental and might change entirely at any point!
-    """
-
-    fraction = kwargs.pop("fraction", 1.0)
-
-    if fraction < 0 or fraction > 1:
-        raise ValueError("Invalid fraction argument")
-
-    if kwargs:
-        raise TypeError("Unexpected **kwargs {}".format(repr(kwargs)))
-
-    clients = [x.name for x in list(_bucket.list(prefix="telemetry_sample_42/", delimiter="/"))]
-
-    if clients and fraction != 1.0:
-        sample = random.choice(clients, size=len(clients)*fraction, replace=False)
-    else:
-        sample = clients
-
-    client_ids = [client_prefix[20:-1] for client_prefix in sample]
-    parallelism = max(len(sample), sc.defaultParallelism)
-
-    return sc.parallelize(zip(client_ids, sample), parallelism).\
-              partitionBy(len(sample)).\
-              flatMapValues(_get_client_history).\
-              filter(lambda x: x[1] is not None).\
-              flatMapValues(lambda x: _read(x))
 
 
 def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session',
@@ -182,41 +137,6 @@ def get_one_ping_per_client(pings):
     a subset with get_pings_properties.
     """
     return _get_one_ping_per_client(pings, lambda p1, p2: p1)
-
-
-def get_newest_ping_per_client(pings):
-    """
-    Returns the newest ping of each client in the RDD based on the submission
-    date. The caveats of get_one_ping_per_client apply here as well.
-    """
-    submission_date = "meta/submissionDate"
-    reduce_func = lambda p1, p2:\
-        p1 if p1[submission_date] > p2[submission_date] else p2
-    return _get_one_ping_per_client(pings, reduce_func)
-
-
-def _get_client_history(client_prefix):
-    try:
-        return [x.name for x in list(_bucket.list(prefix=client_prefix))]
-    except SAXParseException:  # https://groups.google.com/forum/#!topic/boto-users/XCtTFzvtKRs
-        return None
-
-
-def _read(filename):
-    try:
-        key = _bucket.get_key(filename)
-
-        if key is None:
-            # In some rare cases it's not possible to retrieve the content of a
-            # file (see bug 1282441 for more details).
-            # Let's log the problem and move on.
-            logger.error("File not found: {}".format(filename))
-            return []
-
-        key.open_read()
-        return parse_heka_message(key)
-    except ssl.SSLError:
-        return []
 
 
 def _get_ping_properties(ping, paths, only_median, with_processes,
