@@ -8,6 +8,7 @@ import struct
 import boto
 import snappy
 import ujson as json
+import json as standard_json
 from cStringIO import StringIO
 from google.protobuf.message import DecodeError
 
@@ -24,24 +25,36 @@ def parse_heka_message(message):
 
 
 def _parse_heka_record(record):
-    if record.message.payload:
-        result = json.loads(record.message.payload)
-    else:
-        result = {}
-    result["meta"] = {
+    result = {"meta": {
         # TODO: uuid, logger, severity, env_version, pid
         "Timestamp": record.message.timestamp,
         "Type":      record.message.type,
         "Hostname":  record.message.hostname,
-    }
+    }}
+
+    if record.message.payload:
+        payload = json.loads(record.message.payload)
+    else:
+        payload = {}
 
     for field in record.message.fields:
         name = field.name.split('.')
         value = field.value_string
         if field.value_type == 1:
-            # TODO: handle bytes in a way that doesn't cause problems with JSON
-            # value = field.value_bytes
-            continue
+            string = field.value_bytes[0].decode('utf-8')
+            # Special case: the submission field (bytes) replaces the top level
+            # Payload in the hindsight-based infra
+            if name[0] == 'submission':
+                try:
+                    payload = json.loads(string)
+                except:
+                    # Fall back to the standard parser if ujson fails
+                    # TODO: possibly annotate records with whether they
+                    # required the fallback parser
+                    payload = standard_json.loads(string)
+                continue
+            # handle bytes in a way that doesn't cause problems with JSON
+            value = [string]
         elif field.value_type == 2:
             value = field.value_integer
         elif field.value_type == 3:
@@ -54,7 +67,12 @@ def _parse_heka_record(record):
         else:
             _add_field(result, name, value)
 
-    return result
+    # merge results back into the payload/submission
+    # payload may contain NULLed out structures in the new infra and must
+    # therefore be the receiver of the update
+    payload.update(result)
+
+    return payload
 
 
 def _add_field(container, keys, value):

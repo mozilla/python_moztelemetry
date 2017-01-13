@@ -5,7 +5,7 @@ import StringIO
 
 import boto3
 
-from telemetry.util.streaming_gzip import streaming_gzip_wrapper
+from .util.streaming_gzip import streaming_gzip_wrapper
 
 
 class S3Store:
