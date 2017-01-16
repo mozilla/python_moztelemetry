@@ -6,12 +6,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
 from moztelemetry.heka import message_parser
+from moztelemetry.util.streaming_gzip import streaming_gzip_wrapper
 
 
 def test_unpack(data_dir):
-    for t in ["plain", "snappy", "mixed"]:
+    for t in ["plain", "snappy", "mixed", "gzip", "gzip_mixed"]:
         filename = "{}/test_{}.heka".format(data_dir, t)
         with open(filename, "rb") as o:
+            if "gzip" in t:
+                o = streaming_gzip_wrapper(o)
             msg = 0
             for r, b in message_parser.unpack(o, try_snappy=True):
                 j = json.loads(r.message.payload)
@@ -21,11 +24,14 @@ def test_unpack(data_dir):
 
 
 def test_unpack_nosnappy(data_dir):
-    expected_counts = {"plain": 10, "snappy": 0, "mixed": 5}
+    expected_counts = {"plain": 10, "snappy": 0, "mixed": 5,
+                       "gzip": 10, "gzip_mixed": 5}
     for t in expected_counts.keys():
         count = 0
         filename = "{}/test_{}.heka".format(data_dir, t)
         with open(filename, "rb") as o:
+            if "gzip" in t:
+                o = streaming_gzip_wrapper(o)
             try:
                 for r, b in message_parser.unpack(o, try_snappy=False):
                     count += 1
@@ -35,13 +41,16 @@ def test_unpack_nosnappy(data_dir):
 
 
 def test_unpack_strict(data_dir):
-    expected_exceptions = {"plain": False, "snappy": True, "mixed": True}
+    expected_exceptions = {"plain": False, "snappy": True, "mixed": True,
+                           "gzip": False, "gzip_mixed": True}
     for t in expected_exceptions.keys():
         count = 0
         filename = "{}/test_{}.heka".format(data_dir, t)
         threw = False
         got_err = False
         with open(filename, "rb") as o:
+            if "gzip" in t:
+                o = streaming_gzip_wrapper(o)
             try:
                 for r, b in message_parser.unpack(o, strict=True, try_snappy=False):
                     if r.error is not None:
