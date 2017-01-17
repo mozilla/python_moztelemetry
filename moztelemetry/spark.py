@@ -186,6 +186,12 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                         else:
                             for payload in cursor.get("childPayloads", []):
                                 kh_keys.update(payload["keyedHistograms"][path[1]].keys())
+
+                        gpu_kh = cursor.get("processes", {}) \
+                                       .get("gpu", {}) \
+                                       .get("keyedHistograms", None)
+                        if gpu_kh is not None:
+                            kh_keys.update(gpu_kh[path[1]].keys())
                 except:
                     result[property_name] = None
                     continue
@@ -271,6 +277,10 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
                                        additional_histograms)]
         children += [_get_ping_property(child, path, histograms_url, additional_histograms)
                      for child in cursor.get("childPayloads", {})]
+        children += [_get_ping_property(cursor.get("processes", {}) \
+                                              .get("gpu", {}),
+                                       path, histograms_url,
+                                       additional_histograms)]
         children = filter(lambda h: h is not None, children)
 
     # Merge parent and children
