@@ -33,6 +33,7 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
               submission_date=None, version=None):
     """ Returns a RDD of Telemetry submissions for a given filtering criteria.
 
+    :param sc: an instance of SparkContext
     :param app: an application name, e.g.: "Firefox"
     :param channel: a channel name, e.g.: "nightly"
     :param version: the application version, e.g.: "40.0a1"
@@ -43,6 +44,7 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
     :param source_name: source name, set to "telemetry" by default
     :param source_version: source version, set to "4" by default
     :param doc_type: ping type, set to "saved_session" by default
+    :param schema: (deprecated) version of the schema to use
     :param fraction: the fraction of pings to return, set to 1.0 by default
     """
     if schema:
