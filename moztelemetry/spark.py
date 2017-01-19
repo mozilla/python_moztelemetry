@@ -79,7 +79,7 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
         if value is not None and value != '*':
             if isinstance(value, basestring):
                 condition = value
-            elif type(value) in (list, tuple) and len(value) == 2:
+            elif isinstance(value, (list, tuple)) and len(value) == 2:
                 start, end = value
                 condition = partial(range_compare, start, end)
             else:
@@ -113,14 +113,14 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
     keyed by the original paths (if 'paths' is a list) or the custom identifier keys
     (if 'paths' is a dict).
     """
-    if type(pings.first()) == str:
+    if isinstance(pings.first(), str):
         pings = pings.map(lambda p: json.loads(p))
 
-    if type(paths) == str:
+    if isinstance(paths, str):
         paths = [paths]
 
     # Use '/' as dots can appear in keyed histograms
-    if type(paths) == dict:
+    if isinstance(paths, dict):
         paths = [(prop_name, path.split("/")) for prop_name, path in paths.iteritems()]
     else:
         paths = [(path, path.split("/")) for path in paths]
@@ -271,7 +271,7 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
 
 
 def _get_one_ping_per_client(pings, reduceFunc):
-    if type(pings.first()) == str:
+    if isinstance(pings.first(), str):
         pings = pings.map(lambda p: json.loads(p))
 
     filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
