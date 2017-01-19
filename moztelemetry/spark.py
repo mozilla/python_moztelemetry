@@ -10,8 +10,6 @@ import boto
 from .dataset import Dataset
 from .histogram import Histogram
 
-from .util.streaming_gzip import streaming_gzip_wrapper
-
 logger = logging.getLogger(__name__)
 
 if not boto.config.has_section('Boto'):
