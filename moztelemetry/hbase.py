@@ -16,7 +16,7 @@ class HBaseMainSummaryView:
     """ The access gateway to the HBase main summary view
 
     The gateway allows to retrieve the history of pings for a *small* set of client ids.
-    The retrieval can optionally be limited to a time period of activity for said client.
+    The retrieval can optionally be limited to a time period of activity for said clients.
 
     Usage example::
 
@@ -38,8 +38,8 @@ class HBaseMainSummaryView:
 
     Fast retrieval example::
 
-        for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10) \
-                                    .map(lambda kv: (kv[0], [p["subsession_start_date"] for p in kv[1]])) \
+        for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10) \ 
+                                    .map(lambda kv: (kv[0], [p["subsession_start_date"] for p in kv[1]])) \ 
                                     .collect():
             print client_id
             for ping in pings:
@@ -123,7 +123,7 @@ class HBaseMainSummaryView:
         Pings are sorted in ascending order sorted by activity day.
 
         :param sc: a SparkContext
-        :param client_id: the client ids represented as UUIDs
+        :param client_ids: the client ids represented as UUIDs
         :param range_start: the beginning of the time period represented as a datetime.date instance
         :param range_end: the end of the time period (inclusive) represented as a datetime.date instance
         :param limit: the maximum number of pings to return per client id
