@@ -4,6 +4,7 @@
 import json as json
 import logging
 from functools import partial
+from operator import add
 
 import boto
 
@@ -16,7 +17,7 @@ if not boto.config.has_section('Boto'):
     boto.config.add_section('Boto')
 boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
 
-_chunk_size = 100*(2**20)
+_chunk_size = 100 * (2 ** 20)
 try:
     _conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com")
 
@@ -249,13 +250,12 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
     if not isinstance(cursor, dict):
         children = []
     else:
-        children = [_get_ping_property(cursor.get("processes", {}) \
+        children = [_get_ping_property(cursor.get("processes", {})
                                              .get("content", {}),
                                        path, histograms_url,
                                        additional_histograms)]
-        children += [_get_ping_property(child, path, histograms_url,
-                                        additional_histograms) \
-                        for child in cursor.get("childPayloads", {})]
+        children += [_get_ping_property(child, path, histograms_url, additional_histograms)
+                     for child in cursor.get("childPayloads", {})]
         children = filter(lambda h: h is not None, children)
 
     # Merge parent and children
@@ -264,8 +264,8 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
     result = {}
     if with_processes:
         result[property_name + "_parent"] = parent
-        result[property_name + "_children"] = reduce(lambda x, y: x + y, children) if children else None
-    result[property_name] = reduce(lambda x, y: x + y, merged) if merged else None
+        result[property_name + "_children"] = reduce(add, children) if children else None
+    result[property_name] = reduce(add, merged) if merged else None
 
     return result
 
