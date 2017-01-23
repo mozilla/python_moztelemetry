@@ -4,13 +4,12 @@
 import json as json
 import logging
 from functools import partial
+from operator import add
 
 import boto
 
 from .dataset import Dataset
 from .histogram import Histogram
-
-from .util.streaming_gzip import streaming_gzip_wrapper
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ if not boto.config.has_section('Boto'):
     boto.config.add_section('Boto')
 boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
 
-_chunk_size = 100*(2**20)
+_chunk_size = 100 * (2 ** 20)
 try:
     _conn = boto.connect_s3(host="s3-us-west-2.amazonaws.com")
 
@@ -35,6 +34,7 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
               submission_date=None, version=None):
     """ Returns a RDD of Telemetry submissions for a given filtering criteria.
 
+    :param sc: an instance of SparkContext
     :param app: an application name, e.g.: "Firefox"
     :param channel: a channel name, e.g.: "nightly"
     :param version: the application version, e.g.: "40.0a1"
@@ -45,6 +45,7 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
     :param source_name: source name, set to "telemetry" by default
     :param source_version: source version, set to "4" by default
     :param doc_type: ping type, set to "saved_session" by default
+    :param schema: (deprecated) version of the schema to use
     :param fraction: the fraction of pings to return, set to 1.0 by default
     """
     if schema:
@@ -79,7 +80,7 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
         if value is not None and value != '*':
             if isinstance(value, basestring):
                 condition = value
-            elif type(value) in (list, tuple) and len(value) == 2:
+            elif isinstance(value, (list, tuple)) and len(value) == 2:
                 start, end = value
                 condition = partial(range_compare, start, end)
             else:
@@ -113,14 +114,14 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
     keyed by the original paths (if 'paths' is a list) or the custom identifier keys
     (if 'paths' is a dict).
     """
-    if type(pings.first()) == str:
+    if isinstance(pings.first(), str):
         pings = pings.map(lambda p: json.loads(p))
 
-    if type(paths) == str:
+    if isinstance(paths, str):
         paths = [paths]
 
     # Use '/' as dots can appear in keyed histograms
-    if type(paths) == dict:
+    if isinstance(paths, dict):
         paths = [(prop_name, path.split("/")) for prop_name, path in paths.iteritems()]
     else:
         paths = [(path, path.split("/")) for path in paths]
@@ -138,7 +139,22 @@ def get_one_ping_per_client(pings):
     as it requires data to be shuffled around. It should be run only after extracting
     a subset with get_pings_properties.
     """
-    return _get_one_ping_per_client(pings, lambda p1, p2: p1)
+    if isinstance(pings.first(), str):
+        pings = pings.map(lambda p: json.loads(p))
+
+    filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
+
+    if not filtered:
+        raise ValueError("Missing clientID/clientId attribute.")
+
+    if "clientID" in filtered.first():
+        client_id = "clientID"  # v2
+    else:
+        client_id = "clientId"  # v4
+
+    return filtered.map(lambda p: (p[client_id], p)) \
+                   .reduceByKey(lambda p1, p2: p1) \
+                   .map(lambda p: p[1])
 
 
 def _get_ping_properties(ping, paths, only_median, with_processes,
@@ -249,13 +265,12 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
     if not isinstance(cursor, dict):
         children = []
     else:
-        children = [_get_ping_property(cursor.get("processes", {}) \
+        children = [_get_ping_property(cursor.get("processes", {})
                                              .get("content", {}),
                                        path, histograms_url,
                                        additional_histograms)]
-        children += [_get_ping_property(child, path, histograms_url,
-                                        additional_histograms) \
-                        for child in cursor.get("childPayloads", {})]
+        children += [_get_ping_property(child, path, histograms_url, additional_histograms)
+                     for child in cursor.get("childPayloads", {})]
         children = filter(lambda h: h is not None, children)
 
     # Merge parent and children
@@ -264,26 +279,7 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
     result = {}
     if with_processes:
         result[property_name + "_parent"] = parent
-        result[property_name + "_children"] = reduce(lambda x, y: x + y, children) if children else None
-    result[property_name] = reduce(lambda x, y: x + y, merged) if merged else None
+        result[property_name + "_children"] = reduce(add, children) if children else None
+    result[property_name] = reduce(add, merged) if merged else None
 
     return result
-
-
-def _get_one_ping_per_client(pings, reduceFunc):
-    if type(pings.first()) == str:
-        pings = pings.map(lambda p: json.loads(p))
-
-    filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
-
-    if not filtered:
-        raise ValueError("Missing clientID/clientId attribute.")
-
-    if "clientID" in filtered.first():
-        client_id = "clientID"  # v2
-    else:
-        client_id = "clientId"  # v4
-
-    return filtered.map(lambda p: (p[client_id], p)).\
-                    reduceByKey(reduceFunc).\
-                    map(lambda p: p[1])
