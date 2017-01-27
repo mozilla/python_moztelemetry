@@ -81,6 +81,8 @@ class Dataset:
     dimensions, available on its `schema` attribute for inspection.
     """
 
+    default_clauses = {'sourceVersion': '4'}
+
     def __init__(self, bucket, schema, store=None,
         prefix=None, clauses=None):
         """Initialize a Dataset provided bucket and schema
@@ -115,12 +117,17 @@ class Dataset:
                 raise Exception('There should be only one clause for {}'.format(dimension))
             if dimension not in self.schema:
                 raise Exception('The dimension {} doesn\'t exist'.format(dimension))
-            if isfunction(condition) or isinstance(condition, functools.partial):
-                clauses[dimension] = condition
             else:
-                clauses[dimension] = functools.partial((lambda x, y: x == y), condition)
+                clauses[dimension] = self._condition_to_clause(condition)
         return Dataset(self.bucket, self.schema, store=self.store,
                        prefix=self.prefix, clauses=clauses)
+
+    def _condition_to_clause(self, condition):
+            if isfunction(condition) or isinstance(condition, functools.partial):
+                return condition
+            else:
+                return functools.partial((lambda x, y: x == y), condition)
+
 
     def _scan(self, dimensions, prefixes, clauses, executor):
         if not dimensions or not clauses:
@@ -137,6 +144,14 @@ class Dataset:
 
             return self._scan(dimensions[1:], matched, clauses, executor)
 
+    def _get_clauses(self):
+        clauses = copy(self.clauses)
+        for dim, cond in Dataset.default_clauses.iteritems():
+            if dim not in clauses and dim in self.schema:
+                clauses[dim] = self._condition_to_clause(cond)
+
+        return clauses
+
     def summaries(self, limit=None):
         """Summary of the files contained in the current dataset
 
@@ -147,7 +162,7 @@ class Dataset:
         :param limit: Max number of objects to retrieve
         :return: An iterable of summaries
         """
-        clauses = copy(self.clauses)
+        clauses = self._get_clauses()
         schema = self.schema
 
         if self.prefix:

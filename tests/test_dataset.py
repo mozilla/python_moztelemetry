@@ -248,3 +248,27 @@ def test_dataset_from_source(my_mock_s3, monkeypatch):
     dimensions = [f['field_name'] for f in expected_dimensions]
 
     assert Dataset.from_source('telemetry').schema == dimensions
+
+def test_get_clauses():
+    dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
+    new_dataset = dataset.where(dim1='test')
+
+    assert new_dataset._get_clauses()['dim1']('test')
+    assert 'sourceVersion' not in new_dataset._get_clauses()
+
+
+def test_get_clauses_with_default():
+    dataset = Dataset('test-bucket', ['dim1', 'dim2', 'sourceVersion'], prefix='prefix/')
+    new_dataset = dataset.where(dim1='test')
+
+    assert new_dataset._get_clauses()['dim1']('test')
+    assert new_dataset._get_clauses()['sourceVersion']('4')
+
+def test_get_clauses_with_default_clobbered():
+    dataset = Dataset('test-bucket', ['dim1', 'dim2', 'sourceVersion'], prefix='prefix/')
+    new_dataset = dataset.where(dim1='test').where(sourceVersion='atest')
+
+    assert new_dataset._get_clauses()['dim1']('test')
+    assert new_dataset._get_clauses()['sourceVersion']('atest')
+
+
