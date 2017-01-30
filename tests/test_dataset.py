@@ -91,15 +91,15 @@ def test_scan_with_clause():
     assert list(folders) == ['dir1/']
 
 
-def test_scan_multiple_where_params():
+def test_scan_multiple_where_params(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir1/another-dir/key2'] = 'value2'
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store).where(dim1='dir1', dim2='subdir1')
-    summaries = dataset.summaries()
+    summaries = dataset.summaries(spark_context)
     expected_key = 'dir1/subdir1/key1'
-    assert list(summaries) == [{'key': expected_key, 'size': len(store.store[expected_key])}]
+    assert summaries == [{'key': expected_key, 'size': len(store.store[expected_key])}]
 
 
 def test_scan_multiple_params():
@@ -111,7 +111,7 @@ def test_scan_multiple_params():
     assert condition('my-value')
 
 
-def test_summaries():
+def test_summaries(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = 'value1'
@@ -119,21 +119,21 @@ def test_summaries():
 
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
 
-    summaries = dataset.summaries()
-    assert len(list(summaries)) == 2
+    summaries = dataset.summaries(spark_context)
+    assert len(summaries) == 2
 
     for item in summaries:
         assert item['key'] in store.store
         assert item['size'] == len(store.store[item['key']])
 
 
-def test_summaries_with_limit():
+def test_summaries_with_limit(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir2/subdir2/key2'] = 'value2'
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    summaries = list(dataset.summaries(1))
+    summaries = dataset.summaries(spark_context, 1)
 
     assert len(summaries) == 1
 
