@@ -137,7 +137,7 @@ class Dataset:
 
             return self._scan(dimensions[1:], matched, clauses, executor)
 
-    def summaries(self, limit=None):
+    def summaries(self, sc, limit=None):
         """Summary of the files contained in the current dataset
 
         Every item in the summary is a dict containing a key name and the corresponding size of
@@ -156,10 +156,8 @@ class Dataset:
 
         with futures.ProcessPoolExecutor(MAX_CONCURRENCY) as executor:
             scanned = self._scan(schema, [self.prefix], clauses, executor)
-            keys = executor.map(self.store.list_keys, scanned)
-        # Using chain to keep the list of keys as a generator
-        keys = chain(*keys)
-        return islice(keys, limit) if limit else keys
+        keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
+        return keys.take(limit) if limit else keys.collect()
 
     def records(self, sc, limit=None, sample=1, decode=None, summaries=None):
         """Retrieve the elements of a Dataset
@@ -174,13 +172,12 @@ class Dataset:
         :return: a Spark rdd containing the elements retrieved
 
         """
-        summaries = list(summaries or self.summaries(limit))
+        summaries = summaries or self.summaries(sc, limit)
 
         # Calculate the sample if summaries is not empty and limit is not set
         if summaries and limit is None and sample != 1:
             if sample < 0 or sample > 1:
                 raise ValueError('sample must be between 0 and 1')
-            summaries = list(summaries)
             summaries = random.sample(summaries,
                                       int(len(summaries) * sample))
 
