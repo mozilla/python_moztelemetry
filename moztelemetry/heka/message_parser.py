@@ -25,19 +25,35 @@ def parse_heka_message(message):
 
 
 def _parse_heka_record(record):
-    result = {"meta": {
-        # TODO: uuid, logger, severity, env_version, pid
-        "Timestamp": record.message.timestamp,
-        "Type":      record.message.type,
-        "Hostname":  record.message.hostname,
-    }}
-
+    payload = None
     if record.message.payload:
         payload = _parse_json(record.message.payload)
     else:
+        for field in record.message.fields:
+            # Special case: the submission field (bytes) replaces the top level
+            # Payload in the hindsight-based infra. Make sure to parse it first
+            # because it contains null values for JSON fields that have been
+            # split out.
+            if field.name == 'submission':
+                payload = _parse_json(field.value_bytes[0].decode('utf-8'))
+                break
+
+    if payload is None:
         payload = {}
 
+    payload["meta"] = {
+        # If any other Heka Message fields are desired (uuid, logger, severity,
+        # env_version, pid), add them here.
+        "Timestamp": record.message.timestamp,
+        "Type":      record.message.type,
+        "Hostname":  record.message.hostname,
+    }
+
     for field in record.message.fields:
+        # Already handled above. Skip it.
+        if field.name == 'submission':
+            continue
+
         name = field.name.split('.')
         value = field.value_string
         if field.value_type == 1:
@@ -45,11 +61,6 @@ def _parse_heka_record(record):
             try:
                 string = field.value_bytes[0].decode('utf-8')
             except UnicodeDecodeError:
-                continue
-            # Special case: the submission field (bytes) replaces the top level
-            # Payload in the hindsight-based infra
-            if name[0] == 'submission':
-                payload = _parse_json(string)
                 continue
             # handle bytes in a way that doesn't cause problems with JSON
             value = [string]
@@ -61,14 +72,9 @@ def _parse_heka_record(record):
             value = field.value_bool
 
         if len(name) == 1:  # Treat top-level meta fields as strings
-            result["meta"][name[0]] = value[0] if len(value) else ""
+            payload["meta"][name[0]] = value[0] if len(value) else ""
         else:
-            _add_field(result, name, value)
-
-    # merge results back into the payload/submission
-    # payload may contain NULLed out structures in the new infra and must
-    # therefore be the receiver of the update
-    payload.update(result)
+            _add_field(payload, name, value)
 
     return payload
 
