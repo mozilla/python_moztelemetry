@@ -123,19 +123,17 @@ class Dataset:
                        prefix=self.prefix, clauses=clauses)
 
     def _scan(self, dimensions, prefixes, clauses, executor):
-        if not dimensions or not clauses:
-            return prefixes
-        else:
-            dimension = dimensions[0]
-            clause = clauses.get(dimension)
-            matched = executor.map(self.store.list_folders, prefixes)
-            # Using chain to flatten the results of map
-            matched = chain(*matched)
-            if clause:
-                matched = [x for x in matched if clause(x.strip('/').split('/')[-1])]
-                del clauses[dimension]
+        while dimensions and clauses:
+            dimension = dimensions.pop(0)
+            prefixes = executor.map(self.store.list_folders, prefixes)
+            prefixes = chain(*prefixes)
+            try:
+                clause = clauses.pop(dimension)
+                prefixes = [x for x in prefixes if clause(x.strip('/').split('/')[-1])]
+            except KeyError:
+                pass
 
-            return self._scan(dimensions[1:], matched, clauses, executor)
+        return prefixes
 
     def summaries(self, sc, limit=None):
         """Summary of the files contained in the current dataset
