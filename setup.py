@@ -15,7 +15,7 @@ setup(
     url='https://github.com/mozilla/python_moztelemetry',
     packages=find_packages(),
     package_dir={'moztelemetry': 'moztelemetry'},
-    install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf',
+    install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf==3.1.0',
                       'expiringdict', 'functools32', 'futures', 'py4j',
                       'pandas>=0.14.1', 'numpy>=1.8.2', 'findspark', 
                       'happybase', 'PyYAML'],
