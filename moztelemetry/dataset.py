@@ -11,6 +11,7 @@ from inspect import isfunction
 from itertools import chain, islice
 from multiprocessing import cpu_count
 
+import jmespath
 from concurrent import futures
 from .heka import message_parser
 
@@ -66,11 +67,18 @@ class Dataset:
         bucket = 'test-bucket'
         schema = ['submissionDate', 'docType', 'platform']
 
-        records = Dataset(bucket, schema).where(
-            docType='main',
-            submissionDate=lambda x: x.startswith('201607'),
-            dim1='linux'
-        ).records(sc)
+        records = Dataset(bucket, schema) \\
+            .select(
+                'clientId',
+                os_name='environment.system.os.name',
+                first_paint='payload.simpleMeasurements.firstPaint',
+                // Take the first 2 stacks for each thread hang.
+                stack_list='payload.threadHangStats[].hangs[].stack[0:2]'
+            ).where(
+                docType='main',
+                appUpdateChannel='nightly',
+                submissionDate=lambda x: x.startswith('201607'),
+            ).records(sc)
 
     For convenience Dataset objects can be created using the factory method
     `from_source`, that takes a source name (e.g. 'telemetry') and returns a
@@ -79,7 +87,7 @@ class Dataset:
     """
 
     def __init__(self, bucket, schema, store=None,
-        prefix=None, clauses=None):
+        prefix=None, clauses=None, selection=None):
         """Initialize a Dataset provided bucket and schema
 
         :param bucket: bucket name
@@ -94,10 +102,55 @@ class Dataset:
         self.prefix = prefix or ''
         self.clauses = clauses or {}
         self.store = store or S3Store(self.bucket)
+        self.selection = selection or {}
+        self.selection_compiled = {}
 
     def __repr__(self):
         return ('Dataset(bucket=%s, schema=%s, store=%s, prefix=%s, clauses=%s)'
                 ) % (self.bucket, self.schema, self.store, self.prefix, self.clauses)
+
+    def select(self, *properties, **aliased_properties):
+        """Specify which properties of the dataset must be returned
+
+        Property extraction is based on `JMESPath <http://jmespath.org>`_ expressions.
+        This method returns a new Dataset narrowed down by the given selection.
+
+        :param properties: JMESPath to use for the property extraction.
+                           The JMESPath string will be used as a key in the output dictionary.
+        :param aliased_properties: Same as properties, but the output dictionary will contain
+                                   the parameter name instead of the JMESPath string.
+        """
+        if not (properties or aliased_properties):
+            return self
+        properties_pairs = zip(properties, properties)
+        merged_properties = dict(properties_pairs + aliased_properties.items())
+
+        for prop_name in (merged_properties.keys()):
+            if prop_name in self.selection:
+                raise Exception('The property {} has already been selected'.format(prop_name))
+
+        new_selection = dict(self.selection.items() + merged_properties.items())
+
+        return Dataset(self.bucket, self.schema, store=self.store,
+                       prefix=self.prefix, selection=new_selection)
+
+    def _compile_selection(self):
+        if not self.selection_compiled:
+            self.selection_compiled = dict((name, jmespath.compile(path))
+                                           for name, path in self.selection.items())
+
+    def _apply_selection(self, json_obj):
+        if not self.selection:
+            return json_obj
+
+        # This is mainly for testing purposes.
+        # For perfomance reasons the selection should be compiled
+        # outside of this function.
+        if not self.selection_compiled:
+            self._compile_selection()
+
+        return dict((name, path.search(json_obj))
+                    for name, path in self.selection_compiled.items())
 
     def where(self, **kwargs):
         """Return a new Dataset refined using the given condition
@@ -117,7 +170,7 @@ class Dataset:
             else:
                 clauses[dimension] = functools.partial((lambda x, y: x == y), condition)
         return Dataset(self.bucket, self.schema, store=self.store,
-                       prefix=self.prefix, clauses=clauses)
+                       prefix=self.prefix, clauses=clauses, selection=self.selection)
 
     def _scan(self, dimensions, prefixes, clauses, executor):
         if not dimensions or not clauses:
@@ -195,8 +248,11 @@ class Dataset:
         if decode is None:
             decode = message_parser.parse_heka_message
 
+        self._compile_selection()
+
         return rdd.map(lambda x: self.store.get_key(x['key'])) \
-                  .flatMap(lambda x: decode(x))
+                  .flatMap(lambda x: decode(x)) \
+                  .map(self._apply_selection)
 
     @staticmethod
     def from_source(source_name):
