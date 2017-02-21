@@ -18,7 +18,7 @@ setup(
     install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf==3.1.0',
                       'expiringdict', 'functools32', 'futures', 'py4j',
                       'pandas>=0.14.1', 'numpy>=1.8.2', 'findspark', 
-                      'happybase', 'PyYAML'],
+                      'happybase', 'PyYAML', 'python-snappy'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
     tests_require=['mock', 'pytest', 'moto', 'responses'],
 )
