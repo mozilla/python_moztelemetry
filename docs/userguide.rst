@@ -32,8 +32,5 @@ Experimental APIs
 
 .. autofunction:: moztelemetry.zeppelin.show
 
-HBaseMainSummaryView API
-------------------------
-
 .. automodule:: moztelemetry.hbase
     :members:
