@@ -142,6 +142,7 @@ class Dataset:
 
         Every item in the summary is a dict containing a key name and the corresponding size of
         the key item in bytes, e.g.::
+
             {'key': 'full/path/to/my/key', 'size': 200}
 
         :param limit: Max number of objects to retrieve
