@@ -69,11 +69,11 @@ class Dataset:
         bucket = 'test-bucket'
         schema = ['submissionDate', 'docType', 'platform']
 
-        records = Dataset(bucket, schema) \\
-            .where(docType='main') \\
-            .where(submissionDate=lambda x: x.startswith('201607')) \\
-            .where(dim1='linux') \\
-            .records(sc)
+        records = Dataset(bucket, schema).where(
+            docType='main',
+            submissionDate=lambda x: x.startswith('201607'),
+            dim1='linux'
+        ).records(sc)
 
     For convenience Dataset objects can be created using the factory method
     `from_source`, that takes a source name (e.g. 'telemetry') and returns a
@@ -205,10 +205,11 @@ class Dataset:
 
         Usage example::
 
-            records = Dataset.from_source('telemetry') \\
-                .where(docType='main') \\
-                .where(submissionDate='20160701') \\
-                .where(appUpdateChannel='nightly')
+            records = Dataset.from_source('telemetry').where(
+                docType='main',
+                submissionDate='20160701',
+                appUpdateChannel='nightly'
+            )
         """
         meta_bucket = 'net-mozaws-prod-us-west-2-pipeline-metadata'
         store = S3Store(meta_bucket)
