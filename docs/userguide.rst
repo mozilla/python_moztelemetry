@@ -30,6 +30,8 @@ Users can then use the `RDD api <http://spark.apache.org/docs/latest/programming
 Experimental APIs
 -----------------
 
+.. autofunction:: moztelemetry.zeppelin.show
+
 HBaseMainSummaryView API
 ------------------------
 
