@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import gzip
+import logging
 import ssl
 import struct
 
@@ -14,6 +15,8 @@ from google.protobuf.message import DecodeError
 
 from .message import Message, Header
 
+
+logger = logging.getLogger(__name__)
 
 def parse_heka_message(message):
     try:
@@ -35,7 +38,10 @@ def _parse_heka_record(record):
             # because it contains null values for JSON fields that have been
             # split out.
             if field.name == 'submission':
-                payload = _parse_json(field.value_bytes[0].decode('utf-8'))
+                try:
+                    payload = _parse_json(field.value_bytes[0].decode('utf-8'))
+                except UnicodeDecodeError:
+                    logger.exception("Error parsing 'submission' field")
                 break
 
     if payload is None:
