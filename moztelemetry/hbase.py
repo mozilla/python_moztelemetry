@@ -82,15 +82,16 @@ class HBaseMainSummaryView:
         except ValueError:
             return False
 
-    def get(self, sc, client_ids, limit=None, parallelism=None):
+    def get(self, sc, client_ids, limit=None, parallelism=None, reverse=False):
         """ Return RDD[client_id, [ping1, ..., pingK]]
 
-        Pings are sorted in ascending order sorted by activity day.
+        The list of pings is sorted by activity date.
 
         :param sc: a SparkContext
         :param client_ids: the client ids represented as UUIDs
         :param limit: the maximum number of pings to return per client id
         :param parallelism: the number of partitions of the resulting RDD
+        :param reverse: whether to return pings in reverse chronological order, defaults to False
         """
         if not isinstance(client_ids, (list, tuple, )):
             raise TypeError('client_ids must be a list or a tuple'.format(type(client_ids)))
@@ -108,7 +109,10 @@ class HBaseMainSummaryView:
             payloads = []
             with contextlib.closing(happybase.Connection(self.hostname)) as connection:
                 table = connection.table(self.tablename)
-                for key, data in table.scan(row_prefix=client_id, limit=limit, columns=[self.column_family]):
+                row_start = "{}:{}".format(client_id, "99999999" if reverse else "")
+
+                for key, data in table.scan(row_start=row_start, limit=limit,
+                                            columns=[self.column_family], reverse=reverse):
                     payloads.append(json.loads(data[self.column]))
 
             return (client_id, payloads)
@@ -116,11 +120,11 @@ class HBaseMainSummaryView:
         return sc.parallelize(client_ids, parallelism)\
             .map(partial(_get, limit=limit))
 
-    def get_range(self, sc, client_ids, range_start, range_end, limit=None, parallelism=None):
+    def get_range(self, sc, client_ids, range_start, range_end, limit=None, parallelism=None, reverse=False):
         """ Return RDD[client_id, [ping1, ..., pingK]] where pings are limited
         to a given activity period.
 
-        Pings are sorted in ascending order sorted by activity day.
+        The list of pings is sorted by activity date.
 
         :param sc: a SparkContext
         :param client_ids: the client ids represented as UUIDs
@@ -128,6 +132,7 @@ class HBaseMainSummaryView:
         :param range_end: the end of the time period (inclusive) represented as a datetime.date instance
         :param limit: the maximum number of pings to return per client id
         :param parallelism: the number of partitions of the resulting RDD
+        :param reverse: whether to return pings in reverse chronological order, defaults to False
         """
         if not isinstance(range_start, date):
             raise TypeError('range_start must be a datetime.date, not {}'.format(type(range_start)))
@@ -151,11 +156,14 @@ class HBaseMainSummaryView:
             row_start = "{}:{}".format(client_id, range_start)
             row_stop = "{}:{}".format(client_id, range_end)
 
+            if reverse:
+                row_start, row_stop = row_stop, row_start
+
             payloads = []
             with contextlib.closing(happybase.Connection(self.hostname)) as connection:
                 table = connection.table(self.tablename)
                 for key, data in table.scan(row_start=row_start, row_stop=row_stop, limit=limit,
-                                            columns=[self.column_family]):
+                                            columns=[self.column_family], reverse=reverse):
                     payloads.append(json.loads(data[self.column]))
 
             return (client_id, payloads)

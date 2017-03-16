@@ -5,6 +5,7 @@
 import pytest
 import happybase
 import uuid
+import json
 
 from datetime import date, timedelta
 from moztelemetry.hbase import HBaseMainSummaryView
@@ -31,7 +32,7 @@ def view():
     for i in range(0, _num_pings):
         d = date(2016, 12, 1) + timedelta(days=i)
         key = "{}:{}:{}".format(_client_id, d.strftime("%Y%m%d"), uuid.uuid4())
-        table.put(key, {column: "{}"})
+        table.put(key, {column: json.dumps({"date": d.strftime("%Y%m%d")})})
 
     view = HBaseMainSummaryView("localhost")
     return view
@@ -43,6 +44,9 @@ def test_get(spark_context, view):
     assert histories[0][0] == _client_id
     assert len(histories[0][1]) == _num_pings
 
+    for i in range(1, _num_pings):
+        assert histories[0][1][i - 1]["date"] < histories[0][1][i]["date"]
+
     with pytest.raises(TypeError):
         view.get(spark_context, _client_id)
 
@@ -53,11 +57,21 @@ def test_get(spark_context, view):
         view.get(spark_context, ["foo"]).collect()
 
 
+def test_get_reverse(spark_context, view):
+    histories = view.get(spark_context, [_client_id], reverse=True).collect()
+    for i in range(1, _num_pings):
+        assert histories[0][1][i - 1]["date"] > histories[0][1][i]["date"]
+
+
 def test_get_range(spark_context, view):
     histories = view.get_range(spark_context, [_client_id], date(2016, 12, 1), date(2016, 12, 3)).collect()
     assert len(histories) == 1
     assert histories[0][0] == _client_id
     assert len(histories[0][1]) == 3
+
+    assert histories[0][1][0]["date"] == "20161201"
+    assert histories[0][1][1]["date"] == "20161202"
+    assert histories[0][1][2]["date"] == "20161203"
 
     with pytest.raises(Py4JJavaError):
         view.get_range(spark_context, ["foo"], date(2016, 12, 1), date(2016, 12, 3)).collect()
@@ -67,3 +81,15 @@ def test_get_range(spark_context, view):
 
     with pytest.raises(TypeError):
         view.get_range(spark_context, [_client_id], date(2016, 12, 1), date(2016, 12, 3), limit=3.0)
+
+
+def test_get_range_reverse(spark_context, view):
+    histories = view.get_range(spark_context,
+                               [_client_id],
+                               date(2016, 12, 1),
+                               date(2016, 12, 3),
+                               reverse=True).collect()
+
+    assert histories[0][1][0]["date"] == "20161203"
+    assert histories[0][1][1]["date"] == "20161202"
+    assert histories[0][1][2]["date"] == "20161201"
