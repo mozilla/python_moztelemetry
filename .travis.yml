@@ -23,7 +23,7 @@ before_install:
 install:
   - conda env create -f environment.yml
   - source activate test-environment
-  - pip install .
+  - pip install . --process-dependency-links
   - pip install coverage
   - tar -xzvf spark-${SPARK_VERSION}-bin-hadoop2.6.tgz && export SPARK_HOME=`pwd`/spark-${SPARK_VERSION}-bin-hadoop2.6
   - wget https://archive.apache.org/dist/hbase/1.2.3/hbase-1.2.3-bin.tar.gz
