@@ -35,7 +35,7 @@ def _parse_heka_record(record):
             # because it contains null values for JSON fields that have been
             # split out.
             if field.name == 'submission':
-                payload = _parse_json(field.value_bytes[0].decode('utf-8'))
+                payload = _parse_json(field.value_bytes[0].decode('utf-8', 'replace'))
                 break
 
     if payload is None:

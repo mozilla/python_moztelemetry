@@ -78,3 +78,10 @@ def test_telemetry(data_dir):
         for r in message_parser.parse_heka_message(o):
             assert set(r.keys()) == top_keys
             assert set(r["payload"].keys()) == payload_keys
+
+
+def test_invalid_utf8(data_dir):
+    filename = "{}/test_invalid_utf8.heka".format(data_dir)
+    with open(filename, "rb") as o:
+        for r in message_parser.parse_heka_message(o):
+            assert(u'\ufffd' in r['info']['adapterDescription'])
