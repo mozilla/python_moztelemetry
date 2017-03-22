@@ -9,7 +9,7 @@ from concurrent import futures
 import pytest
 
 import moztelemetry
-from moztelemetry.dataset import Dataset, _group_by_size
+from moztelemetry.dataset import Dataset, _group_by_size_greedy
 from moztelemetry.store import InMemoryStore, S3Store
 
 
@@ -140,12 +140,24 @@ def test_summaries_with_limit(spark_context):
     assert summaries[0]['key'] in store.store
 
 
-def test_group_by_size():
-    obj_list = [dict(size=2**29)] * 5
-    groups = _group_by_size(obj_list)
-    grouped_sizes = [[obj['size'] for obj in obj_list] for obj_list in groups]
+def test_group_by_size_greedy():
+    obj_list = [dict(size=i) for i in range(1, 5)]
 
-    assert grouped_sizes == [[2**29, 2**29, 2**29], [2**29, 2**29]]
+    groups = _group_by_size_greedy(obj_list, 1)
+    assert groups == [
+        [{'size': 4}, {'size': 3}, {'size': 2}, {'size': 1}]
+    ]
+    groups = _group_by_size_greedy(obj_list, 2)
+    assert groups == [
+        [{'size': 4}, {'size': 2}],
+        [{'size': 3}, {'size': 1}]
+    ]
+    groups = _group_by_size_greedy(obj_list, 3)
+    assert groups == [
+        [{'size': 4}, {'size': 1}],
+        [{'size': 3}],
+        [{'size': 2}]
+    ]
 
 
 @pytest.mark.slow
@@ -168,7 +180,8 @@ def test_records_many_groups(spark_context, monkeypatch):
     for i in range(1, spark_context.defaultParallelism + 2):
         store.store['dir1/subdir1/key{}'.format(i)] = 'value{}'.format(i)
     # create one group per item
-    monkeypatch.setattr(moztelemetry.dataset, '_group_by_size', lambda x: [[y] for y in x])
+    monkeypatch.setattr(moztelemetry.dataset, '_group_by_size_greedy',
+                        lambda x, _: [[y] for y in x])
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     records = dataset.records(spark_context, decode=lambda x: x)
     records = records.collect()
