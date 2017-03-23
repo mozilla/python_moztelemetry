@@ -68,7 +68,8 @@ test_data_for_exact_match = [
 
 @pytest.mark.slow
 @pytest.mark.parametrize('filter_name,exact,wrong', test_data_for_exact_match)
-def test_get_pings_by_exact_match(test_store, mock_message_parser, spark_context,
+def test_get_pings_by_exact_match(test_store, dummy_pool_executor,
+                                  mock_message_parser, spark_context,
                                   filter_name, exact, wrong):
     upload_ping(test_store, 'value1', **{filter_name: exact})
     upload_ping(test_store, 'value2', **{filter_name: wrong})
@@ -85,7 +86,8 @@ test_data_for_range_match = [
 
 @pytest.mark.slow
 @pytest.mark.parametrize('filter_name,exact,wrong,start,end', test_data_for_range_match)
-def test_get_pings_by_range(test_store, mock_message_parser, spark_context,
+def test_get_pings_by_range(test_store, dummy_pool_executor,
+                            mock_message_parser, spark_context,
                             filter_name, exact, wrong, start, end):
     upload_ping(test_store, 'value1', **{filter_name: exact})
     upload_ping(test_store, 'value2', **{filter_name: wrong})
@@ -99,7 +101,8 @@ def test_get_pings_by_range(test_store, mock_message_parser, spark_context,
 
 
 @pytest.mark.slow
-def test_get_pings_multiple_by_range(test_store, mock_message_parser, spark_context):
+def test_get_pings_multiple_by_range(test_store, dummy_pool_executor,
+                                     mock_message_parser, spark_context):
     upload_ping(test_store, 'value1', **{f[0]: f[1] for f in test_data_for_range_match})
     upload_ping(test_store, 'value2', **{f[0]: f[2] for f in test_data_for_range_match})
     pings = get_pings(spark_context, **{f[0]: f[1] for f in test_data_for_range_match})
@@ -111,7 +114,8 @@ def test_get_pings_multiple_by_range(test_store, mock_message_parser, spark_cont
     assert pings.collect() == ['value1']
 
 
-def test_get_pings_fraction(test_store, mock_message_parser, spark_context):
+def test_get_pings_fraction(test_store, dummy_pool_executor,
+                            mock_message_parser, spark_context):
     for i in range(1, 10+1):
         upload_ping(test_store, 'value', build_id=str(i))
 
@@ -124,12 +128,14 @@ def test_get_pings_fraction(test_store, mock_message_parser, spark_context):
     assert pings.count() == 1
 
 
-def test_get_pings_wrong_schema(test_store, mock_message_parser, spark_context):
+def test_get_pings_wrong_schema(test_store, dummy_pool_executor,
+                                mock_message_parser, spark_context):
     with pytest.raises(ValueError):
         pings = get_pings(spark_context, schema=1)
 
 
-def test_get_pings_multiple_filters(test_store, mock_message_parser, spark_context):
+def test_get_pings_multiple_filters(test_store, dummy_pool_executor,
+                                    mock_message_parser, spark_context):
     filters = dict(submission_date='20160101', channel='beta')
     upload_ping(test_store, 'value1', **filters)
     filters['app'] = 'Thunderbird'
@@ -139,7 +145,8 @@ def test_get_pings_multiple_filters(test_store, mock_message_parser, spark_conte
     assert pings.collect() == ['value2']
 
 
-def test_get_pings_none_filter(test_store, mock_message_parser, spark_context):
+def test_get_pings_none_filter(test_store, dummy_pool_executor,
+                               mock_message_parser, spark_context):
     upload_ping(test_store, 'value1', app='Firefox')
     upload_ping(test_store, 'value2', app='Thuderbird')
     pings = get_pings(spark_context, app=None)
