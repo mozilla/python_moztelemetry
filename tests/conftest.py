@@ -35,6 +35,13 @@ class DummyPoolExecutor(futures.Executor):
 
 
 @pytest.fixture()
+def dummy_pool_executor(monkeypatch):
+    # there seems to be a bad interaction between process pool executor and
+    # the moto library, workaround this in tests by mocking it out
+    monkeypatch.setattr(futures, 'ProcessPoolExecutor', DummyPoolExecutor)
+
+
+@pytest.fixture()
 def dummy_bucket(my_mock_s3):
     bucket = boto3.resource('s3').Bucket('my-test-bucket')
     bucket.create()
