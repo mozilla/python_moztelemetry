@@ -31,7 +31,7 @@ install:
   - hbase-1.2.3/bin/start-hbase.sh
   - hbase-1.2.3/bin/hbase-daemon.sh start thrift
 script:
-  - coverage run --source=moztelemetry setup.py test --addopts "-v"
+  - coverage run --source=moztelemetry setup.py test --addopts "-v --timeout=60"
 after_success:
   - pip install coveralls
   - coveralls
