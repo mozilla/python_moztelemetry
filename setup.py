@@ -21,5 +21,7 @@ setup(
                       'happybase>=1.0.0', 'PyYAML', 'python-snappy'],
     dependency_links=['https://github.com/wbolster/happybase/archive/33b7700375ba59f1810c30c8cd531577b0718498.zip#egg=happybase-1.0.1'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
-    tests_require=['mock', 'pytest', 'moto', 'responses'],
+    # put pytest last to workaround this bug
+    # https://bitbucket.org/pypa/setuptools/issues/196/tests_require-pytest-pytest-cov-breaks
+    tests_require=['mock', 'pytest-timeout', 'moto', 'responses', 'pytest'],
 )
