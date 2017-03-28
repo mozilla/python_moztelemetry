@@ -198,8 +198,20 @@ def test_records_sample(spark_context):
         value = 'value{}'.format(i)
         store.store[key] = value
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    records = dataset.records(spark_context, decode=lambda x: x, sample=0.1)
-    assert records.count() == 10
+
+    records_1 = dataset.records(spark_context, decode=lambda x: x, sample=0.1, seed=None).collect()
+    assert len(records_1) == 10
+
+    records_2 = dataset.records(spark_context, decode=lambda x: x, sample=0.1, seed=None).collect()
+
+    # The sampling seed is different, so we have two different samples.
+    assert records_1 != records_2
+
+    records_1 = dataset.records(spark_context, decode=lambda x: x, sample=0.1).collect()
+    records_2 = dataset.records(spark_context, decode=lambda x: x, sample=0.1).collect()
+
+    # Same seed, same sample.
+    assert records_1 == records_2
 
 
 @pytest.mark.slow

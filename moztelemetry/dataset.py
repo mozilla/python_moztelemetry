@@ -157,7 +157,7 @@ class Dataset:
         keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
         return keys.take(limit) if limit else keys.collect()
 
-    def records(self, sc, limit=None, sample=1, decode=None, summaries=None):
+    def records(self, sc, limit=None, sample=1, seed=42, decode=None, summaries=None):
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
@@ -165,6 +165,9 @@ class Dataset:
         :param decode: an optional transformation to apply to the objects retrieved
         :param sample: percentage of results to return. Useful to return a sample
             of the dataset. This parameter is ignored when `limit` is set.
+        :param seed: initialize internal state of the random number generator (42 by default).
+            This is used to make the dataset sampling reproducible. It can be set to None to obtain
+            different samples.
         :param summaries: an iterable containing a summary for each item in the dataset. If None,
             it will computed calling the summaries dataset.
         :return: a Spark rdd containing the elements retrieved
@@ -176,8 +179,15 @@ class Dataset:
         if summaries and limit is None and sample != 1:
             if sample < 0 or sample > 1:
                 raise ValueError('sample must be between 0 and 1')
-            summaries = random.sample(summaries,
-                                      int(len(summaries) * sample))
+            # We want this sample to be reproducible.
+            # See https://bugzilla.mozilla.org/show_bug.cgi?id=1318681
+            seed_state = random.getstate()
+            try:
+                random.seed(seed)
+                summaries = random.sample(summaries,
+                                          int(len(summaries) * sample))
+            finally:
+                random.setstate(seed_state)
 
         groups = _group_by_size_greedy(summaries, 10 * sc.defaultParallelism)
         rdd = sc.parallelize(groups, len(groups)).flatMap(lambda x: x)
