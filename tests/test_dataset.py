@@ -340,6 +340,20 @@ def test_records_selection(spark_context):
     assert records.collect() == [{'field': 'value', 'field2': {'c': 'value'}}]
 
 
+@pytest.mark.slow
+def test_records_print_output(spark_context, capsys):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    for i in range(1, 100+1):
+        key = 'dir{}/subdir{}/key{}'.format(*[i]*3)
+        value = 'value{}'.format(i)
+        store.store[key] = value
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    dataset.records(spark_context, decode=lambda x: x)
+    out, err = capsys.readouterr()
+    assert out.rstrip() == "fetching 0.00066MB in 100 files..."
+
+
 def test_dataset_from_source(my_mock_s3, monkeypatch):
     meta_bucket_name = 'net-mozaws-prod-us-west-2-pipeline-metadata'
 
