@@ -273,3 +273,21 @@ def test_dataset_from_source(my_mock_s3, monkeypatch):
     dimensions = [f['field_name'] for f in expected_dimensions]
 
     assert Dataset.from_source('telemetry').schema == dimensions
+
+
+def test_prefix_slash(spark_context):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    store.store['a/b/dir1/subdir1/key1'] = 'value1'
+    store.store['a/b/dir2/subdir2/key2'] = 'value2'
+    store.store['x/b/dir3/subdir3/key3'] = 'value3'
+    store.store['a/c/dir4/subdir4/key4'] = 'value4'
+
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store, prefix='a/b')
+
+    summaries = dataset.summaries(spark_context)
+    assert len(summaries) == 2
+
+    for item in summaries:
+        assert item['key'] in store.store
+        assert item['size'] == len(store.store[item['key']])
