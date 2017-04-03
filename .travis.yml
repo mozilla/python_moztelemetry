@@ -2,7 +2,7 @@ sudo: required
 services:
   - docker
 before_install:
-  - env | grep -vE "^(PATH=)" > .travis-env
+  - env | grep TRAVIS > .travis-env
   - docker build -t moztelemetry_docker .
 script:
   - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh
