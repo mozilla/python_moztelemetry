@@ -1,37 +1,7 @@
-language: python
-cache:
-  pip: true
-  directories:
-    - $HOME/.ivy2
-scala:
-   - 2.10.4
-sudo: false
-env:
-  - SPARK_VERSION=2.0.2
+sudo: required
+services:
+  - docker
 before_install:
-  - "wget https://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.6.tgz"
-  # Install Python deps.
-  # The conda installation steps here are based on http://conda.pydata.org/docs/travis.html
-  - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  # Useful for debugging any issues with conda
-  - conda info -a
-install:
-  - conda env create -f environment.yml
-  - source activate test-environment
-  - pip install . --process-dependency-links
-  - pip install coverage
-  - tar -xzvf spark-${SPARK_VERSION}-bin-hadoop2.6.tgz && export SPARK_HOME=`pwd`/spark-${SPARK_VERSION}-bin-hadoop2.6
-  - wget https://archive.apache.org/dist/hbase/1.2.3/hbase-1.2.3-bin.tar.gz
-  - tar xzf hbase-1.2.3-bin.tar.gz
-  - hbase-1.2.3/bin/start-hbase.sh
-  - hbase-1.2.3/bin/hbase-daemon.sh start thrift
+  - docker build -t moztelemetry_docker .
 script:
-  - coverage run --source=moztelemetry setup.py test --addopts "-v --timeout=60"
-after_success:
-  - pip install coveralls
-  - coveralls
+  - docker run moztelemetry_docker ./runtests.sh
