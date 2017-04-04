@@ -27,6 +27,66 @@ def test_where():
     assert new_dataset.clauses == {'dim1': clause}
 
 
+def test_select():
+    dataset1 = Dataset('test-bucket', ['dim1', 'dim2']).select('field1', 'field2')
+    dataset2 = Dataset('test-bucket', ['dim1', 'dim2']).select('field1', field2='field2')
+    dataset3 = Dataset('test-bucket', ['dim1', 'dim2']).select(field1='field1', field2='field2')
+
+    assert dataset1.selection == {
+        'field1': 'field1',
+        'field2': 'field2',
+    }
+
+    assert dataset1.selection == dataset2.selection == dataset3.selection
+
+    dataset4 = Dataset('test-bucket', ['dim1', 'dim2']).select('field1', field2='f2', field3='f3')
+
+    assert dataset4.selection == {
+        'field1': 'field1',
+        'field2': 'f2',
+        'field3': 'f3',
+    }
+
+    dataset5 = dataset4.select('field4', field5='f5')
+
+    assert dataset5.selection == {
+        'field1': 'field1',
+        'field2': 'f2',
+        'field3': 'f3',
+        'field4': 'field4',
+        'field5': 'f5'
+    }
+
+
+def test_select_dupe_properties():
+    dataset = Dataset('test-bucket', ['dim1', 'dim2']).select('field1')
+
+    with pytest.raises(Exception) as exc_info:
+        dataset.select('field1')
+
+    assert str(exc_info.value) == 'The property field1 has already been selected'
+
+    with pytest.raises(Exception) as exc_info:
+        dataset.select(field1='keyword_field')
+
+    assert str(exc_info.value) == 'The property field1 has already been selected'
+
+
+def test_apply_selection():
+    dataset = Dataset('test-bucket', ['dim1', 'dim2']).select('field1.field2')
+    json_obj = {'field1': {'field2': 'value'}}
+
+    assert dataset._apply_selection(json_obj) == {'field1.field2': 'value'}
+
+    dataset = Dataset('test-bucket', ['dim1', 'dim2']).select(field='field1.field2')
+
+    assert dataset._apply_selection(json_obj) == {'field': 'value'}
+
+    dataset = Dataset('test-bucket', ['dim1', 'dim2']).select(field='foo.bar')
+
+    assert dataset._apply_selection(json_obj) == {'field': None}
+
+
 def test_where_exact_match():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
     new_dataset = dataset.where(dim1='my-value')
@@ -252,6 +312,27 @@ def test_records_limit_and_sample(spark_context):
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     records = dataset.records(spark_context, decode=lambda x: x, limit=5, sample=0.9)
     assert records.count() == 5
+
+
+def decode(obj):
+    value = obj.getvalue()
+    return [json.loads(value)]
+
+
+@pytest.mark.slow
+def test_records_selection(spark_context):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    key = 'dir1/subdir1/key1'
+    value = '{"a": {"b": { "c": "value"}}}'
+    store.store[key] = value
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store).select(field='a.b.c')
+    records = dataset.records(spark_context, decode=decode)
+    assert records.collect() == [{'field': 'value'}]
+
+    # Check that concatenating `select`s works as expected
+    records = dataset.select(field2='a.b').records(spark_context, decode=decode)
+    assert records.collect() == [{'field': 'value', 'field2': {'c': 'value'}}]
 
 
 def test_dataset_from_source(my_mock_s3, monkeypatch):

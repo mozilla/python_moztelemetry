@@ -52,9 +52,9 @@ def dummy_bucket(my_mock_s3):
 def spark_context(request):
     logger = logging.getLogger("py4j")
     logger.setLevel(logging.ERROR)
-    sc = pyspark.SparkContext(master="local[8]")
+    sc = pyspark.SparkContext(master="local[1]")
 
-    finalizer = lambda : sc.stop()
+    finalizer = lambda: sc.stop()
     request.addfinalizer(finalizer)
 
     return sc
