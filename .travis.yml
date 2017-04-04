@@ -6,4 +6,3 @@ before_install:
   - docker build -t moztelemetry_docker .
 script:
   - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh
-  - docker run --env-file .travis-env moztelemetry_docker coveralls
