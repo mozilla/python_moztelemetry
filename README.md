@@ -34,8 +34,8 @@ bin/update_histogram_tools
 
 ## Testing locally
 
-To test this package locally, the recommended procedure is to build a
-dockerfile with the appropriate dependencies, then execute the unit
+To test/debug this package locally, the recommended procedure is to build a
+docker image with the appropriate dependencies, then execute the unit
 tests inside it:
 
 ```bash
