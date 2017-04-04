@@ -18,7 +18,7 @@ setup(
     install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf==3.1.0',
                       'expiringdict', 'functools32', 'futures', 'py4j',
                       'pandas>=0.14.1', 'numpy>=1.8.2', 'findspark',
-                      'happybase==1.1.0', 'PyYAML', 'python-snappy'],
+                      'happybase>=1.1.0', 'PyYAML', 'python-snappy'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
     # put pytest last to workaround this bug
     # https://bitbucket.org/pypa/setuptools/issues/196/tests_require-pytest-pytest-cov-breaks
