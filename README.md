@@ -31,3 +31,14 @@ To update it to the latest version you can run
 ```bash
 bin/update_histogram_tools
 ```
+
+## Testing locally
+
+To test/debug this package locally, the recommended procedure is to build a
+docker image with the appropriate dependencies, then execute the unit
+tests inside it:
+
+```bash
+docker build -t moztelemetry_docker .
+./runtests.sh # will run tests inside docker container
+```
