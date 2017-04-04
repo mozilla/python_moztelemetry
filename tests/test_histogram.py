@@ -83,3 +83,7 @@ def test_malformed_categorical():
     # See bug 1353196
     cat2 = Histogram('TELEMETRY_TEST_CATEGORICAL', {})
     assert all(cat2.get_value() == 0)
+
+def test_malformed_non_categorical():
+    hist = Histogram('GC_REASON_2', {})
+    assert all(hist.get_value() == 0)
