@@ -23,7 +23,8 @@ def view():
     column = "{}:payload".format(column_family)
 
     if table_name in conn.tables():
-        conn.disable_table(table_name)
+        if conn.is_table_enabled(table_name):
+            conn.disable_table(table_name)
         conn.delete_table(table_name)
 
     conn.create_table(table_name, {column_family: dict()})
