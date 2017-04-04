@@ -148,7 +148,10 @@ class Histogram:
                 values = instance[:-5]
             self.buckets = pd.Series(values, index=pd_index, dtype='int64')
         else:
-            entries = {int(k): v for k, v in instance["values"].items()}
+            try:
+                entries = {int(k): v for k, v in instance["values"].items()}
+            except KeyError:
+                entries = [0 for _ in enumerate(pd_index)]
             self.buckets = pd.Series(entries, index=pd_index, dtype='int64').fillna(0)
 
     def __str__(self):
