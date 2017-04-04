@@ -52,7 +52,7 @@ def test_categorical_histogram():
     assert all(categorical_hist.buckets == series)
 
 
-def test_cateogrical_histogram_median():
+def test_categorical_histogram_median():
     with pytest.raises(AssertionError):
         categorical_hist.get_value(only_median=True)
 
@@ -78,3 +78,12 @@ def test_categorical_histogram_add():
 def test_categorical_histogram_dict_value():
     cat2 = Histogram('TELEMETRY_TEST_CATEGORICAL', {'values': {u'0': 2, u'1': 1, u'2': 0, u'3': 0}})
     assert all(cat2.get_value() == series)
+
+def test_malformed_categorical():
+    # See bug 1353196
+    cat2 = Histogram('TELEMETRY_TEST_CATEGORICAL', {})
+    assert all(cat2.get_value() == 0)
+
+def test_malformed_non_categorical():
+    hist = Histogram('GC_REASON_2', {})
+    assert all(hist.get_value() == 0)
