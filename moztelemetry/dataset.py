@@ -148,10 +148,6 @@ class Dataset:
         clauses = copy(self.clauses)
         schema = self.schema
 
-        if self.prefix:
-            schema = ['prefix'] + schema
-            clauses['prefix'] = lambda x: x == self.prefix
-
         with futures.ProcessPoolExecutor(MAX_CONCURRENCY) as executor:
             scanned = self._scan(schema, [self.prefix], clauses, executor)
         keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
