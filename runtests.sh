@@ -12,7 +12,7 @@ fi
 /hbase-$HBASE_VERSION/bin/hbase-daemon.sh start thrift
 
 # Run tests
-coverage run --source=moztelemetry setup.py test --addopts "-v --timeout=60"
+coverage run --source=moztelemetry setup.py test --addopts "-v --timeout=120"
 
 # Report coveralls output if using travis
 if [ $TRAVIS_BRANCH ]; then
