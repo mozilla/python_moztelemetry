@@ -372,3 +372,8 @@ def test_prefix_slash(spark_context):
     for item in summaries:
         assert item['key'] in store.store
         assert item['size'] == len(store.store[item['key']])
+
+    # be sure "where" still works
+    summaries_filtered = dataset.where(dim1='dir1').summaries(spark_context)
+    assert len(summaries_filtered) == 1
+    assert summaries_filtered[0]['key'] == 'a/b/dir1/subdir1/key1'
