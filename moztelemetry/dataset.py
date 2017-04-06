@@ -200,6 +200,13 @@ class Dataset:
         clauses = copy(self.clauses)
         schema = self.schema
 
+        if self.prefix:
+            schema = ['prefix'] + schema
+            # Add a clause for the prefix that always returns True, in case
+            # the output is not filtered at all (so that we do a scan/filter
+            # on the prefix directory)
+            clauses['prefix'] = lambda x: True
+
         with futures.ProcessPoolExecutor(MAX_CONCURRENCY) as executor:
             scanned = self._scan(schema, [self.prefix], clauses, executor)
         keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
