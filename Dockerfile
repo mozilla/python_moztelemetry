@@ -31,6 +31,8 @@ RUN bash -c 'source activate test-environment'
 
 # install moztelemetry specific deps into conda env
 RUN pip install /python_moztelemetry/ --process-dependency-links
-RUN pip install coverage coveralls
+# we need to explicitly install pytest and dependencies so spark
+# can pick them up
+RUN pip install 'pytest>=3' coverage coveralls
 
 WORKDIR /python_moztelemetry
