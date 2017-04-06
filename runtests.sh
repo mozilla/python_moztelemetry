@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# abort immediately on any failure
+set -e
+
 # if we are not inside the docker container, run this command *inside* the
 # docker container
 if [ ! -f /.dockerenv ]; then
