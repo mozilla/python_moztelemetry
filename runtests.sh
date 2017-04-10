@@ -1,12 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
 # abort immediately on any failure
 set -e
 
+ARGS=$@
+
 # if we are not inside the docker container, run this command *inside* the
 # docker container
 if [ ! -f /.dockerenv ]; then
-    docker run -v $PWD:/python_moztelemetry moztelemetry_docker ./runtests.sh
+    docker run -t -i -v $PWD:/python_moztelemetry moztelemetry_docker ./runtests.sh
     exit $?
 fi
 
