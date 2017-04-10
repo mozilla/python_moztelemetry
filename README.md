@@ -42,3 +42,10 @@ tests inside it:
 docker build -t moztelemetry_docker .
 ./runtests.sh # will run tests inside docker container
 ```
+
+You can also run a subset of the tests by passing arguments to `runtests.sh`:
+
+```bash
+./runtests.sh -ktest_unpack # runs only tests with key "test_unpack"
+./runtests.sh tests/heka # runs only tests in tests/heka
+```

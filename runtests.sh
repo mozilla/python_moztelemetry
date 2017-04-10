@@ -8,7 +8,7 @@ ARGS=$@
 # if we are not inside the docker container, run this command *inside* the
 # docker container
 if [ ! -f /.dockerenv ]; then
-    docker run -t -i -v $PWD:/python_moztelemetry moztelemetry_docker ./runtests.sh
+    docker run -t -i -v $PWD:/python_moztelemetry moztelemetry_docker ./runtests.sh "${ARGS}"
     exit $?
 fi
 
@@ -17,7 +17,7 @@ fi
 /hbase-$HBASE_VERSION/bin/hbase-daemon.sh start thrift
 
 # Run tests
-coverage run --source=moztelemetry setup.py test --addopts "-v --timeout=120"
+coverage run --source=moztelemetry setup.py test --addopts "${ARGS}"
 
 # Report coveralls output if using travis
 if [ $TRAVIS_BRANCH ]; then
