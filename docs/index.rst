@@ -3,15 +3,23 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to python_moztelemetry's documentation!
-===============================================
+python_moztelemetry
+===================
 
-Contents:
+A simple library to fetch and analyze data collected by the Mozilla Telemetry service.
+Objects collected by Telemetry are called ``pings``.
+A ping has a number of properties (aka ``dimensions``) and a payload.
+A session of Telemetry data analysis/manipulation typically starts with a query that filters the objects by one or more dimensions.
+This query can be expressed using either an orm-like api, :ref:`Dataset` or a simple
+function, :ref:`get_pings`.
 
+
+API
+---
 .. toctree::
    :maxdepth: 2
 
-   userguide
+   api
 
 
 
