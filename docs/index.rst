@@ -14,8 +14,6 @@ This query can be expressed using either an orm-like api, :ref:`Dataset` or a si
 function, :ref:`get_pings`.
 
 
-API
----
 .. toctree::
    :maxdepth: 2
 

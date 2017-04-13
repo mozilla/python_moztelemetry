@@ -1,3 +1,6 @@
+API
+===
+
 .. _dataset:
 
 Dataset
