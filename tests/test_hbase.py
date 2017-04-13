@@ -65,7 +65,8 @@ def test_get_reverse(spark_context, view):
 
 
 def test_get_range(spark_context, view):
-    histories = view.get_range(spark_context, [_client_id], date(2016, 12, 1), date(2016, 12, 3)).collect()
+    histories = view.get_range(spark_context, [_client_id], date(
+        2016, 12, 1), date(2016, 12, 3)).collect()
     assert len(histories) == 1
     assert histories[0][0] == _client_id
     assert len(histories[0][1]) == 3

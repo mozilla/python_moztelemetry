@@ -12,17 +12,18 @@ import moztelemetry.standards as moz_utils
 from datetime import date
 from mock import patch
 
+
 def test_snapping():
     # Use Friday, July 3rd, 2015 as the reference date.
     ref_date = date(2015, 7, 3)
 
     # No weekday_start argument provided, snap ref_date to the closest, previous Sunday.
-    expected_date = date(2015, 6, 28) # Sunday, 28th June, 2015
+    expected_date = date(2015, 6, 28)  # Sunday, 28th June, 2015
     snapped_date = moz_utils.snap_to_beginning_of_week(ref_date)
     assert expected_date == snapped_date
 
     # Does this still work correctly when snapping to the closest Monday instead?
-    expected_date = date(2015, 6, 29) # Monday, 29th June, 2015
+    expected_date = date(2015, 6, 29)  # Monday, 29th June, 2015
     snapped_date = moz_utils.snap_to_beginning_of_week(ref_date, "Monday")
     assert expected_date == snapped_date
 
@@ -42,6 +43,7 @@ def test_snapping():
     snapped_date = moz_utils.snap_to_beginning_of_month(ref_date)
     assert expected_date == snapped_date
 
+
 def test_last_week_range():
     def test_week(week, startday_num, endday_num):
         # Did we get a Sunday as the beginning of the week...
@@ -57,7 +59,7 @@ def test_last_week_range():
         # as "today". The previous full week, starting on Sunday, begins on the 21st
         # June 2015. If the first weekday is Monday, then on the 22nd of July.
         expected_dates = (date(2015, 6, 21), date(2015, 6, 27)) if\
-                         startday_num == 6 else (date(2015, 6, 22), date(2015, 6, 28))
+            startday_num == 6 else (date(2015, 6, 22), date(2015, 6, 28))
 
         assert week[0] == expected_dates[0]
         assert week[1] == expected_dates[1]
@@ -75,6 +77,7 @@ def test_last_week_range():
         # As before, with a week starting with Monday.
         prev_week = moz_utils.get_last_week_range("Monday")
         test_week(prev_week, 0, 6)
+
 
 def test_last_month_range():
     with patch('moztelemetry.standards.date') as mock_date:

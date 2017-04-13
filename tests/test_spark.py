@@ -32,8 +32,8 @@ def test_store(monkeypatch, data_dir):
 def upload_ping(store, value, **kwargs):
     """Upload value to a given store"""
     ping_key_template = Template('$submission_date/$source_name/'
-                         '$source_version/$doc_type/$app/$channel/'
-                         '$version/$build_id/$filename')
+                                 '$source_version/$doc_type/$app/$channel/'
+                                 '$version/$build_id/$filename')
     dimensions = {
         'submission_date': '20160805',
         'source_name': 'telemetry',
@@ -116,7 +116,7 @@ def test_get_pings_multiple_by_range(test_store, dummy_pool_executor,
 
 def test_get_pings_fraction(test_store, dummy_pool_executor,
                             mock_message_parser, spark_context):
-    for i in range(1, 10+1):
+    for i in range(1, 10 + 1):
         upload_ping(test_store, 'value', build_id=str(i))
 
     pings = get_pings(spark_context)

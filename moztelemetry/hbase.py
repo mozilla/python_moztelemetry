@@ -46,6 +46,7 @@ class HBaseMainSummaryView:
                 print ping
 
     """
+
     def __init__(self, hostname=None):
         self.tablename = 'main_summary'
         self.column_family = 'cf'

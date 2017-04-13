@@ -106,7 +106,7 @@ class InMemoryStore:
 
     def upload_file(self, file_obj, prefix, name):
         content = file_obj.read()
-        self.store[prefix+name] = content
+        self.store[prefix + name] = content
 
     def delete_key(self, key):
         if key in self.store:
