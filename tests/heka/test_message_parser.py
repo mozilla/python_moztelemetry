@@ -47,16 +47,13 @@ def test_unpack_strict(data_dir):
         count = 0
         filename = "{}/test_{}.heka".format(data_dir, t)
         threw = False
-        got_err = False
         with open(filename, "rb") as o:
             if "gzip" in t:
                 o = streaming_gzip_wrapper(o)
             try:
                 for r, b in message_parser.unpack(o, strict=True, try_snappy=False):
-                    if r.error is not None:
-                        got_err = True
                     count += 1
-            except Exception as e:
+            except Exception:
                 threw = True
         assert expected_exceptions[t] == threw
 
