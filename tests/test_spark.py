@@ -131,7 +131,7 @@ def test_get_pings_fraction(test_store, dummy_pool_executor,
 def test_get_pings_wrong_schema(test_store, dummy_pool_executor,
                                 mock_message_parser, spark_context):
     with pytest.raises(ValueError):
-        pings = get_pings(spark_context, schema=1)
+        get_pings(spark_context, schema=1)
 
 
 def test_get_pings_multiple_filters(test_store, dummy_pool_executor,

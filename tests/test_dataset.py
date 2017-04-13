@@ -21,7 +21,8 @@ def test_repr():
 def test_where():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
 
-    def clause(x): return True
+    def clause(x):
+        return True
     new_dataset = dataset.where(dim1=clause)
 
     assert new_dataset is not dataset
@@ -100,21 +101,23 @@ def test_where_exact_match():
 def test_where_wrong_dimension():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
 
-    def clause(x): return True
+    def clause(x):
+        return True
 
     with pytest.raises(Exception) as exc_info:
-        new_dataset = dataset.where(dim3=clause)
+        dataset.where(dim3=clause)
 
     assert str(exc_info.value) == 'The dimension dim3 doesn\'t exist'
 
 
 def test_where_dupe_dimension():
-    def clause(x): return True
+    def clause(x):
+        return True
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/',
                       clauses={'dim1': clause})
 
     with pytest.raises(Exception) as exc_info:
-        new_dataset = dataset.where(dim1=clause)
+        dataset.where(dim1=clause)
 
     assert str(exc_info.value) == 'There should be only one clause for dim1'
 
@@ -353,7 +356,7 @@ def test_dataset_from_source(my_mock_s3, monkeypatch):
         f.seek(0)
         expected_dimensions = json.loads(f.read())['dimensions']
 
-    dimensions = [f['field_name'] for f in expected_dimensions]
+    dimensions = [dim['field_name'] for dim in expected_dimensions]
 
     assert Dataset.from_source('telemetry').schema == dimensions
 

@@ -38,8 +38,8 @@ class HBaseMainSummaryView:
 
     Fast retrieval example::
 
-        for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10) \ 
-                                    .map(lambda kv: (kv[0], [p["subsession_start_date"] for p in kv[1]])) \ 
+        for client_id, pings in view.get(sc, ["00000000-0000-0000-0000-000000000000"], limit=10) \
+                                    .map(lambda kv: (kv[0], [p["subsession_start_date"] for p in kv[1]])) \
                                     .collect():
             print client_id
             for ping in pings:

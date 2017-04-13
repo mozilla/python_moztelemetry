@@ -28,7 +28,7 @@ def daynum_to_date(daynum, max_days=1000000):
         return None
     try:
         daycount = int(daynum)
-    except ValueError as e:
+    except ValueError:
         return None
 
     if daycount > max_days:

@@ -8,7 +8,7 @@ import random
 import types
 from copy import copy
 from inspect import isfunction
-from itertools import chain, islice
+from itertools import chain
 from multiprocessing import cpu_count
 
 import jmespath
