@@ -130,7 +130,7 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
                                                     with_processes,
                                                     histograms_url,
                                                     additional_histograms)) \
-                .filter(lambda p: p)
+        .filter(lambda p: p)
 
 
 def get_one_ping_per_client(pings):
@@ -277,10 +277,10 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
                                        additional_histograms)]
         children += [_get_ping_property(child, path, histograms_url, additional_histograms)
                      for child in cursor.get("childPayloads", {})]
-        children += [_get_ping_property(cursor.get("processes", {}) \
+        children += [_get_ping_property(cursor.get("processes", {})
                                               .get("gpu", {}),
-                                       path, histograms_url,
-                                       additional_histograms)]
+                                        path, histograms_url,
+                                        additional_histograms)]
         children = filter(lambda h: h is not None, children)
 
     # Merge parent and children

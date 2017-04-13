@@ -48,6 +48,7 @@ def _pickle_method(m):
     else:
         return getattr, (m.im_self, m.im_func.func_name)
 
+
 copy_reg.pickle(types.MethodType, _pickle_method)
 
 
@@ -87,7 +88,7 @@ class Dataset:
     """
 
     def __init__(self, bucket, schema, store=None,
-        prefix=None, clauses=None, selection=None):
+                 prefix=None, clauses=None, selection=None):
         """Initialize a Dataset provided bucket and schema
 
         :param bucket: bucket name

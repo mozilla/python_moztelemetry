@@ -54,7 +54,7 @@ def spark_context(request):
     logger.setLevel(logging.ERROR)
     sc = pyspark.SparkContext(master="local[1]")
 
-    finalizer = lambda: sc.stop()
+    def finalizer(): return sc.stop()
     request.addfinalizer(finalizer)
 
     return sc

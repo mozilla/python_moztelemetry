@@ -2,10 +2,13 @@ import pytest
 import pandas as pd
 from moztelemetry.histogram import Histogram, CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME
 
+
 def setup_module():
     global categorical_hist, series
     categorical_hist = Histogram("TELEMETRY_TEST_CATEGORICAL", [2, 1, 0, 0])
-    series = pd.Series([2, 1, 0, 0], index=['CommonLabel', 'Label2', 'Label3', CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME], dtype='int64')
+    series = pd.Series([2, 1, 0, 0], index=['CommonLabel', 'Label2', 'Label3',
+                                            CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME], dtype='int64')
+
 
 @pytest.mark.slow
 def test_histogram_with_computed_value():
@@ -79,10 +82,12 @@ def test_categorical_histogram_dict_value():
     cat2 = Histogram('TELEMETRY_TEST_CATEGORICAL', {'values': {u'0': 2, u'1': 1, u'2': 0, u'3': 0}})
     assert all(cat2.get_value() == series)
 
+
 def test_malformed_categorical():
     # See bug 1353196
     cat2 = Histogram('TELEMETRY_TEST_CATEGORICAL', {})
     assert all(cat2.get_value() == 0)
+
 
 def test_malformed_non_categorical():
     hist = Histogram('GC_REASON_2', {})

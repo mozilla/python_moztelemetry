@@ -81,7 +81,6 @@ def test_get_key(dummy_bucket, store_class):
     assert store.get_key(key).read() == value
 
 
-
 @pytest.mark.parametrize('store_class', [S3Store, InMemoryStore])
 def test_get_non_existing_key(dummy_bucket, store_class):
     store = store_class(dummy_bucket.name)

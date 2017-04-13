@@ -60,12 +60,15 @@ def test_unpack_strict(data_dir):
                 threw = True
         assert expected_exceptions[t] == threw
 
+
 top_keys = set(["application", "clientId", "creationDate", "environment", "id", "meta",
                 "payload", "type", "version"])
 payload_keys = set(["UIMeasurements", "addonDetails", "childPayloads", "chromeHangs",
                     "fileIOReports", "histograms", "info", "keyedHistograms", "lateWrites",
                     "log", "processes", "simpleMeasurements", "slowSQL", "threadHangStats",
                     "ver", "webrtc"])
+
+
 def test_telemetry(data_dir):
     filename = "{}/test_telemetry_gzip.heka".format(data_dir)
     with open(filename, "rb") as o:
