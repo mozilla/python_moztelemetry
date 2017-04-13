@@ -12,8 +12,10 @@ from datetime import datetime, timedelta, date
 
 epoch = datetime.utcfromtimestamp(0)
 
+
 def unix_time_nanos(dt):
     return (dt - epoch).total_seconds() * 1000000000.0
+
 
 def daynum_to_date(daynum, max_days=1000000):
     """ Convert a number of days to a date. If it's out of range, default to a
@@ -26,13 +28,14 @@ def daynum_to_date(daynum, max_days=1000000):
         return None
     try:
         daycount = int(daynum)
-    except ValueError as e:
+    except ValueError:
         return None
 
     if daycount > max_days:
         # Using default: some time in the 48th century, clearly bogus.
         daycount = max_days
     return date(1970, 1, 1) + timedelta(daycount)
+
 
 def filter_date_range(dataframe, activity_col, min_activity_incl,
                       max_activity_excl, submission_col,
@@ -42,8 +45,10 @@ def filter_date_range(dataframe, activity_col, min_activity_incl,
                     .filter(activity_col >= min_activity_incl) \
                     .filter(activity_col < max_activity_excl)
 
+
 def count_distinct_clientids(dataframe):
     return dataframe.select('clientId').distinct().count()
+
 
 def dau(dataframe, target_day, future_days=10, date_format="%Y%m%d"):
     """Compute Daily Active Users (DAU) from the Executive Summary dataset.
@@ -60,8 +65,9 @@ def dau(dataframe, target_day, future_days=10, date_format="%Y%m%d"):
     sub_col = dataframe.submission_date_s3
 
     filtered = filter_date_range(dataframe, act_col, min_activity, max_activity,
-        sub_col, min_submission, max_submission)
+                                 sub_col, min_submission, max_submission)
     return count_distinct_clientids(filtered)
+
 
 def mau(dataframe, target_day, past_days=28, future_days=10, date_format="%Y%m%d"):
     """Compute Monthly Active Users (MAU) from the Executive Summary dataset.
@@ -81,8 +87,9 @@ def mau(dataframe, target_day, past_days=28, future_days=10, date_format="%Y%m%d
     sub_col = dataframe.submission_date_s3
 
     filtered = filter_date_range(dataframe, act_col, min_activity, max_activity,
-        sub_col, min_submission, max_submission)
+                                 sub_col, min_submission, max_submission)
     return count_distinct_clientids(filtered)
+
 
 def snap_to_beginning_of_week(day, weekday_start="Sunday"):
     """ Get the first day of the current week.
@@ -94,6 +101,7 @@ def snap_to_beginning_of_week(day, weekday_start="Sunday"):
     delta_days = ((day.weekday() + 1) % 7) if weekday_start is "Sunday" else day.weekday()
     return day - timedelta(days=delta_days)
 
+
 def snap_to_beginning_of_month(day):
     """ Get the date for the first day of this month.
 
@@ -101,6 +109,7 @@ def snap_to_beginning_of_month(day):
     :returns: A date representing the first day of the current month.
     """
     return day.replace(day=1)
+
 
 def get_last_week_range(weekday_start="Sunday"):
     """ Gets the date for the first and the last day of the previous complete week.
@@ -114,6 +123,7 @@ def get_last_week_range(weekday_start="Sunday"):
     start_of_week = snap_to_beginning_of_week(today, weekday_start) - timedelta(weeks=1)
     end_of_week = start_of_week + timedelta(days=6)
     return (start_of_week, end_of_week)
+
 
 def get_last_month_range():
     """ Gets the date for the first and the last day of the previous complete month.

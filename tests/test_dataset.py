@@ -20,7 +20,9 @@ def test_repr():
 
 def test_where():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
-    clause = lambda x: True
+
+    def clause(x):
+        return True
     new_dataset = dataset.where(dim1=clause)
 
     assert new_dataset is not dataset
@@ -98,21 +100,24 @@ def test_where_exact_match():
 
 def test_where_wrong_dimension():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
-    clause = lambda x: True
+
+    def clause(x):
+        return True
 
     with pytest.raises(Exception) as exc_info:
-        new_dataset = dataset.where(dim3=clause)
+        dataset.where(dim3=clause)
 
     assert str(exc_info.value) == 'The dimension dim3 doesn\'t exist'
 
 
 def test_where_dupe_dimension():
-    clause = lambda x: True
+    def clause(x):
+        return True
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/',
                       clauses={'dim1': clause})
 
     with pytest.raises(Exception) as exc_info:
-        new_dataset = dataset.where(dim1=clause)
+        dataset.where(dim1=clause)
 
     assert str(exc_info.value) == 'There should be only one clause for dim1'
 
@@ -120,9 +125,9 @@ def test_where_dupe_dimension():
 def test_scan_no_dimensions():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
     with futures.ProcessPoolExecutor(1) as executor:
-        folders = dataset._scan([], ['prefix/',], {}, executor)
+        folders = dataset._scan([], ['prefix/', ], {}, executor)
 
-    assert folders == ['prefix/',]
+    assert folders == ['prefix/', ]
 
 
 def test_scan_no_clause():
@@ -253,8 +258,8 @@ def test_records_many_groups(spark_context, monkeypatch):
 def test_records_sample(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
-    for i in range(1, 100+1):
-        key = 'dir{}/subdir{}/key{}'.format(*[i]*3)
+    for i in range(1, 100 + 1):
+        key = 'dir{}/subdir{}/key{}'.format(*[i] * 3)
         value = 'value{}'.format(i)
         store.store[key] = value
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
@@ -292,8 +297,8 @@ def test_records_summaries(spark_context):
 def test_records_limit(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
-    for i in range(1, 100+1):
-        key = 'dir{}/subdir{}/key{}'.format(*[i]*3)
+    for i in range(1, 100 + 1):
+        key = 'dir{}/subdir{}/key{}'.format(*[i] * 3)
         value = 'value{}'.format(i)
         store.store[key] = value
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
@@ -305,8 +310,8 @@ def test_records_limit(spark_context):
 def test_records_limit_and_sample(spark_context):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
-    for i in range(1, 100+1):
-        key = 'dir{}/subdir{}/key{}'.format(*[i]*3)
+    for i in range(1, 100 + 1):
+        key = 'dir{}/subdir{}/key{}'.format(*[i] * 3)
         value = 'value{}'.format(i)
         store.store[key] = value
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
@@ -351,7 +356,7 @@ def test_dataset_from_source(my_mock_s3, monkeypatch):
         f.seek(0)
         expected_dimensions = json.loads(f.read())['dimensions']
 
-    dimensions = [f['field_name'] for f in expected_dimensions]
+    dimensions = [dim['field_name'] for dim in expected_dimensions]
 
     assert Dataset.from_source('telemetry').schema == dimensions
 

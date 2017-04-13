@@ -26,13 +26,16 @@ exponential_buckets = histogram_tools.exponential_buckets
 linear_buckets = histogram_tools.linear_buckets
 definition_cache = ExpiringDict(max_len=2**10, max_age_seconds=3600)
 
+
 @lru_cache(maxsize=2**14)
 def cached_exponential_buckets(*args, **kwargs):
     return exponential_buckets(*args, **kwargs)
 
+
 @lru_cache(maxsize=2**14)
 def cached_linear_buckets(*args, **kwargs):
     return linear_buckets(*args, **kwargs)
+
 
 histogram_tools.exponential_buckets = cached_exponential_buckets
 histogram_tools.linear_buckets = cached_linear_buckets
@@ -52,6 +55,7 @@ histogram_exceptions = json.loads("""
 }
 """)
 
+
 def _fetch_histograms_definition(url):
     cached = definition_cache.get(url, None)
     if cached is None:
@@ -69,9 +73,11 @@ def _fetch_histograms_definition(url):
     else:
         return cached
 
+
 @lru_cache(maxsize=2**20)  # A LFU cache would be more appropriate.
 def _get_cached_ranges(definition):
     return definition.ranges()
+
 
 class Histogram:
     """ A class representing a histogram. """
@@ -108,14 +114,16 @@ class Histogram:
 
         # TODO: implement centralized revision service which handles all the quirks...
         if name.startswith("USE_COUNTER_") or name.startswith("USE_COUNTER2_"):
-            self.definition = histogram_tools.Histogram(name, {"kind": "boolean", "description": "", "expires_in_version": "never"})
+            self.definition = histogram_tools.Histogram(
+                name, {"kind": "boolean", "description": "", "expires_in_version": "never"})
         else:
             proper_name = name
-            if "/" in name: # key in a keyed histogram, like BLOCKED_ON_PLUGIN_INSTANCE_INIT_MS/'Shockwave Flash14.0.0.145'
-                proper_name = name.split("/")[0] # just keep the name of the parent histogram
+            if "/" in name:  # key in a keyed histogram, like BLOCKED_ON_PLUGIN_INSTANCE_INIT_MS/'Shockwave Flash14.0.0.145'
+                proper_name = name.split("/")[0]  # just keep the name of the parent histogram
 
             try:
-                self.definition = histogram_tools.Histogram(name, histograms_definition[proper_name])
+                self.definition = histogram_tools.Histogram(
+                    name, histograms_definition[proper_name])
 
             except KeyError:
                 # Some histograms are collected twice: during startup and during normal execution.
@@ -123,7 +131,8 @@ class Histogram:
                 # the prefixed histogram name is not part of the histogram definition file.
                 # Other histograms, like STARTUP_CRASH_DETECTED, are instead collected only once
                 # and are defined the histogram definition file.
-                self.definition = histogram_tools.Histogram(name, histograms_definition[re.sub("^STARTUP_", "", proper_name)])
+                self.definition = histogram_tools.Histogram(
+                    name, histograms_definition[re.sub("^STARTUP_", "", proper_name)])
 
         self.kind = self.definition.kind()
         self.name = name
@@ -178,7 +187,7 @@ class Histogram:
         elif self.kind == "flag":
             return self.buckets[1] == 1
         else:
-            assert(False) # Unsupported histogram kind
+            assert(False)  # Unsupported histogram kind
 
     def get_definition(self):
         """ Returns the definition of the histogram. """
@@ -189,8 +198,8 @@ class Histogram:
         assert(percentile >= 0 and percentile <= 100)
         assert(self.kind in ["exponential", "linear", "enumerated", "boolean"])
 
-        fraction = percentile/100
-        to_count = fraction*self.buckets.sum()
+        fraction = percentile / 100
+        to_count = fraction * self.buckets.sum()
         percentile_bucket = 0
 
         for percentile_bucket in range(len(self.buckets)):
@@ -206,7 +215,7 @@ class Histogram:
             return percentile_lower_boundary
 
         width = self.buckets.index[percentile_bucket + 1] - self.buckets.index[percentile_bucket]
-        return percentile_lower_boundary + width*to_count/percentile_frequency
+        return percentile_lower_boundary + width * to_count / percentile_frequency
 
     def __add__(self, other):
         return Histogram(self.name, self.buckets + other.buckets, histograms_url=self.histograms_url)

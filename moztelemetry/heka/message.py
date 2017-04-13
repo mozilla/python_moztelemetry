@@ -8,7 +8,6 @@ from google.protobuf import descriptor_pb2
 # @@protoc_insertion_point(imports)
 
 
-
 DESCRIPTOR = descriptor.FileDescriptor(
     name='message.proto',
     package='message',
@@ -292,9 +291,9 @@ _MESSAGE = descriptor.Descriptor(
 )
 
 _HEADER.fields_by_name['hmac_hash_function'].enum_type = _HEADER_HMACHASHFUNCTION
-_HEADER_HMACHASHFUNCTION.containing_type = _HEADER;
+_HEADER_HMACHASHFUNCTION.containing_type = _HEADER
 _FIELD.fields_by_name['value_type'].enum_type = _FIELD_VALUETYPE
-_FIELD_VALUETYPE.containing_type = _FIELD;
+_FIELD_VALUETYPE.containing_type = _FIELD
 _MESSAGE.fields_by_name['fields'].message_type = _FIELD
 DESCRIPTOR.message_types_by_name['Header'] = _HEADER
 DESCRIPTOR.message_types_by_name['Field'] = _FIELD

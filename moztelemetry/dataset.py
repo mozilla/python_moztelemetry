@@ -8,7 +8,7 @@ import random
 import types
 from copy import copy
 from inspect import isfunction
-from itertools import chain, islice
+from itertools import chain
 from multiprocessing import cpu_count
 
 import jmespath
@@ -47,6 +47,7 @@ def _pickle_method(m):
         return getattr, (m.im_class, m.im_func.func_name)
     else:
         return getattr, (m.im_self, m.im_func.func_name)
+
 
 copy_reg.pickle(types.MethodType, _pickle_method)
 
@@ -87,7 +88,7 @@ class Dataset:
     """
 
     def __init__(self, bucket, schema, store=None,
-        prefix=None, clauses=None, selection=None):
+                 prefix=None, clauses=None, selection=None):
         """Initialize a Dataset provided bucket and schema
 
         :param bucket: bucket name
