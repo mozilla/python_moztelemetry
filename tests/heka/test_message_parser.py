@@ -50,19 +50,28 @@ def test_unpack(data_dir, heka_format, try_snappy, strict, expected_count,
     assert threw_exception == expected_exception
 
 
-top_keys = set(["application", "clientId", "creationDate", "environment", "id", "meta",
-               "payload", "type", "version"])
-payload_keys = set(["UIMeasurements", "addonDetails", "childPayloads", "chromeHangs",
-                    "fileIOReports", "histograms", "info", "keyedHistograms", "lateWrites",
-                    "log", "processes", "simpleMeasurements", "slowSQL", "threadHangStats",
-                    "ver", "webrtc"])
 @pytest.mark.parametrize("heka_format", ["snappy", "gzip"])
 def test_parse_heka_message(data_dir, heka_format):
     filename = "{}/test_telemetry_{}.heka".format(data_dir, heka_format)
-    with open(filename, "rb") as o:
-        for r in message_parser.parse_heka_message(streaming_gzip_wrapper(o)):
-            assert set(r.keys()) == top_keys
-            assert set(r["payload"].keys()) == payload_keys
+    reference_filename = filename + '.json'
+
+    # enable this to regenerate the expected json representation of the ping
+    if False:
+        with open(filename, "rb") as f:
+            if "gzip" in heka_format:
+                f = streaming_gzip_wrapper(f)
+            # deep copy the parsed message so lazy-parsed json gets vivified
+            msg = copy.deepcopy(message_parser.parse_heka_message(f).next())
+            open(reference_filename, 'w').write(json.dumps(msg, indent=4,
+                                                           sort_keys=True))
+
+    reference = json.load(open(reference_filename))
+    with open(filename, "rb") as f:
+        if "gzip" in heka_format:
+            f = streaming_gzip_wrapper(f)
+        # deep copy the parsed message so lazy-parsed json gets vivified
+        msg = copy.deepcopy(message_parser.parse_heka_message(f).next())
+        assert msg == reference
 
 
 def test_invalid_utf8(data_dir):
