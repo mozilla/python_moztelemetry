@@ -4,6 +4,7 @@
 import copy
 import json
 import pytest
+import ujson
 from google.protobuf.message import DecodeError
 from mock import MagicMock
 from moztelemetry.heka import message_parser
@@ -79,6 +80,21 @@ def test_invalid_utf8(data_dir):
     with open(filename, "rb") as o:
         for r in message_parser.parse_heka_message(o):
             assert(u'\ufffd' in r['info']['adapterDescription'])
+
+
+def test_json_fallback():
+    # ujson can't handle values which are too large
+    # validate that we fallback correctly to standard json for this
+    # case (https://github.com/esnme/ultrajson/issues/252)
+    TOO_BIG = 272757895493505930073807329622695606794392
+
+    # first assert that the exception still exists (so we can remove the
+    # fallback in the future)
+    with pytest.raises(ValueError):
+        ujson.loads(str(TOO_BIG))
+
+    # now assert that the fallback to standard json works
+    assert TOO_BIG == message_parser._parse_json(str(TOO_BIG))
 
 
 def test_lazy_parsing(data_dir, monkeypatch):
