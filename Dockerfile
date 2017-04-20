@@ -23,16 +23,21 @@ RUN tar -zxf spark-$SPARK_VERSION-bin-hadoop2.6.tgz
 RUN tar -zxf hbase-$HBASE_VERSION-bin.tar.gz
 ENV SPARK_HOME="/spark-${SPARK_VERSION}-bin-hadoop2.6"
 
-COPY . /python_moztelemetry
-
 # build + activate conda environment
+COPY ./environment.yml /python_moztelemetry/
 RUN conda env create -f /python_moztelemetry/environment.yml
-RUN bash -c 'source activate test-environment'
 
-# install moztelemetry specific deps into conda env
-RUN pip install /python_moztelemetry/ --process-dependency-links
+# this is roughly equivalent to activating the conda environment
+ENV PATH="/miniconda/envs/test-environment/bin:${PATH}"
+
+WORKDIR /python_moztelemetry
+
 # we need to explicitly install pytest and dependencies so spark
 # can pick them up
 RUN pip install 'pytest>=3' coverage coveralls
 
-WORKDIR /python_moztelemetry
+# This will invalidate the cache if something changes in python_moztelemetry.
+COPY . /python_moztelemetry
+
+# install moztelemetry specific deps into conda env
+RUN pip install /python_moztelemetry/ --process-dependency-links
