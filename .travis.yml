@@ -10,7 +10,8 @@ matrix:
       script:
         - flake8 --show-source
     # Job 2: Unit tests (requires docker)
-    - sudo: required
+    - env: python-tests
+      sudo: required
       services:
         - docker
       before_install:
@@ -19,7 +20,8 @@ matrix:
       script:
         - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh -v --timeout=120
     # Job 3: Build Documentation (requires docker)
-    - sudo: required
+    - env: docs-build
+      sudo: required
       services:
         - docker
       before_install:
