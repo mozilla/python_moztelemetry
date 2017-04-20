@@ -17,7 +17,11 @@ fi
 /hbase-$HBASE_VERSION/bin/hbase-daemon.sh start thrift
 
 # Run tests
-coverage run --source=moztelemetry setup.py test --addopts "${ARGS}"
+if [ $# -gt 1 ]; then
+    coverage run --source=moztelemetry setup.py test --addopts "${ARGS}"
+else
+    coverage run --source=moztelemetry setup.py test
+fi
 
 # Report coveralls output if using travis
 if [ $TRAVIS_BRANCH ]; then
