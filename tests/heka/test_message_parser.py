@@ -79,3 +79,24 @@ def test_invalid_utf8(data_dir):
     with open(filename, "rb") as o:
         for r in message_parser.parse_heka_message(o):
             assert(u'\ufffd' in r['info']['adapterDescription'])
+
+
+def test_lazy_parsing(data_dir, monkeypatch):
+    mock_parse_json = MagicMock(name='_parse_json',
+                                wraps=message_parser._parse_json)
+    monkeypatch.setattr(message_parser, '_parse_json', mock_parse_json)
+
+    # this heka message has 20 json fields, only one of which should be parsed
+    # on first load
+    filename = "{}/test_telemetry_gzip.heka".format(data_dir)
+    with open(filename, "rb") as o:
+        heka_message = message_parser.parse_heka_message(streaming_gzip_wrapper(o)).next()
+
+    # should only have parsed json *once* to get the payload field (other
+    # json/dictionary fields of the message should be parsed lazily)
+    assert mock_parse_json.call_count == 1
+
+    # deep copying the heka message should cause the lazily evaluated fields
+    # to be evaluated
+    copy.deepcopy(heka_message)
+    assert mock_parse_json.call_count == 20  # 19 lazily instantiated fields + original call
