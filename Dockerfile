@@ -17,8 +17,8 @@ RUN conda update -q conda
 RUN conda info -a # Useful for debugging any issues with conda
 
 # install spark/hbase
-ADD https://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.6.tgz /
-ADD https://archive.apache.org/dist/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz /
+RUN wget -nv https://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.6.tgz
+RUN wget -nv https://archive.apache.org/dist/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz
 RUN tar -zxf spark-$SPARK_VERSION-bin-hadoop2.6.tgz
 RUN tar -zxf hbase-$HBASE_VERSION-bin.tar.gz
 ENV SPARK_HOME="/spark-${SPARK_VERSION}-bin-hadoop2.6"
