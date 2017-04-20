@@ -10,22 +10,12 @@ matrix:
       script:
         - flake8 --show-source
     # Job 2: Unit tests (requires docker)
-    - env: python-tests
-      sudo: required
+    - sudo: required
       services:
         - docker
       before_install:
         - env | grep TRAVIS > .travis-env
         - docker build -t moztelemetry_docker .
       script:
+        - docker run --env-file .travis-env moztelemetry_docker sphinx-build -nW ./docs/ ./docs/_build
         - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh -v --timeout=120
-#    # Job 3: Build Documentation (requires docker)
-#    - env: docs-build
-#      sudo: required
-#      services:
-#        - docker
-#      before_install:
-#        - env | grep TRAVIS > .travis-env
-#        - docker build -t moztelemetry_docker .
-#      script:
-#        - docker run --env-file .travis-env moztelemetry_docker sphinx-build -nW ./docs/ ./docs/_build
