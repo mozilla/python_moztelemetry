@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import division, print_function
 import copy_reg
 import functools
 import json
@@ -244,6 +245,11 @@ class Dataset:
                                           int(len(summaries) * sample))
             finally:
                 random.setstate(seed_state)
+
+        # Obtain size in MB
+        total_size = reduce(lambda acc, item: acc + item['size'], summaries, 0)
+        total_size_mb = total_size / float(1 << 20)
+        print("fetching %.5fMB in %s files..." % (total_size_mb, len(summaries)))
 
         groups = _group_by_size_greedy(summaries, 10 * sc.defaultParallelism)
         rdd = sc.parallelize(groups, len(groups)).flatMap(lambda x: x)
