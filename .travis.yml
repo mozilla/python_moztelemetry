@@ -9,7 +9,7 @@ matrix:
         - pip install flake8==3.3.0
       script:
         - flake8 --show-source
-    # Job 2: Unit tests (requires docker)
+    # Job 2: Build docs and unit tests (requires docker)
     - sudo: required
       services:
         - docker
@@ -17,4 +17,5 @@ matrix:
         - env | grep TRAVIS > .travis-env
         - docker build -t moztelemetry_docker .
       script:
+        - docker run --env-file .travis-env moztelemetry_docker sphinx-build -nW ./docs/ ./docs/_build
         - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh -v --timeout=120
