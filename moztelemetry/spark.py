@@ -182,16 +182,20 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                                            .get("content", {}) \
                                            .get("keyedHistograms", None)
                         if content_kh is not None:
-                            kh_keys.update(content_kh[path[1]].keys())
+                            kh_keys.update(content_kh.get(path[1], {}).keys())
                         else:
                             for payload in cursor.get("childPayloads", []):
-                                kh_keys.update(payload["keyedHistograms"][path[1]].keys())
+                                kh_keys.update(
+                                        payload
+                                        .get("keyedHistograms", {})
+                                        .get(path[1], {})
+                                        .keys())
 
                         gpu_kh = cursor.get("processes", {}) \
                                        .get("gpu", {}) \
                                        .get("keyedHistograms", None)
                         if gpu_kh is not None:
-                            kh_keys.update(gpu_kh[path[1]].keys())
+                            kh_keys.update(gpu_kh.get(path[1], {}).keys())
                 except:
                     result[property_name] = None
                     continue
