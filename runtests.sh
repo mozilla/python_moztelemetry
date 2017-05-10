@@ -3,12 +3,10 @@
 # abort immediately on any failure
 set -e
 
-ARGS=$@
-
 # if we are not inside the docker container, run this command *inside* the
 # docker container
 if [ ! -f /.dockerenv ]; then
-    docker run -t -i -v $PWD:/python_moztelemetry moztelemetry_docker ./runtests.sh "${ARGS}"
+    docker run -t -i -v $PWD:/python_moztelemetry moztelemetry_docker ./runtests.sh "$@"
     exit $?
 fi
 
@@ -17,7 +15,8 @@ fi
 /hbase-$HBASE_VERSION/bin/hbase-daemon.sh start thrift
 
 # Run tests
-if [ $# -gt 1 ]; then
+if [ $# -gt 0 ]; then
+    ARGS="$@"
     coverage run --source=moztelemetry setup.py test --addopts "${ARGS}"
 else
     coverage run --source=moztelemetry setup.py test
