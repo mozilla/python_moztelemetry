@@ -27,7 +27,7 @@ def test_histogram_without_revision():
     # Histogram without revision
     Histogram("STARTUP_CRASH_DETECTED",
               [1, 0, 0, 0, -1, -1, 0, 0],
-              "http://hg.mozilla.org/mozilla-central/rev/da2f28836843")
+              "https://hg.mozilla.org/mozilla-central/rev/838652a84b76")
 
 
 @pytest.mark.slow
@@ -38,7 +38,7 @@ def test_histogram_with_revision():
                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                0, 0, 0, 0, 0, 0, 1, 0.693147182464599, 0.480453014373779, -1,
                -1],
-              "http://hg.mozilla.org/mozilla-central/rev/37ddc5e2eb72")
+              "https://hg.mozilla.org/mozilla-central/rev/838652a84b76")
 
 
 @pytest.mark.slow

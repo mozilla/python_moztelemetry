@@ -151,7 +151,9 @@ class Histogram:
             pd_index = ranges
 
         if isinstance(instance, list) or isinstance(instance, np.ndarray) or isinstance(instance, pd.Series):
-            if len(instance) == self.definition.n_buckets():
+            if self.kind == 'categorical':
+                values = instance[:len(labels) + 1]
+            elif len(instance) == self.definition.n_buckets():
                 values = instance
             else:
                 values = instance[:-5]
