@@ -10,7 +10,7 @@ import pytest
 
 from moztelemetry.store import InMemoryStore
 from moztelemetry.dataset import Dataset
-from moztelemetry.spark import get_pings, get_pings_properties, _get_ping_properties
+from moztelemetry.spark import get_pings, get_pings_properties, _get_ping_properties, PingCursor
 
 
 @pytest.fixture()
@@ -156,6 +156,28 @@ def test_get_pings_none_filter(test_store, dummy_pool_executor,
     pings = get_pings(spark_context, app='*')
 
     assert sorted(pings.collect()) == ['value1', 'value2']
+
+
+def test_ping_cursor():
+    cursor = PingCursor({'a': {}})
+
+    # the value exists
+    assert isinstance(cursor['a'], PingCursor)
+
+    # this should be a normal dictionary if you use .get()
+    assert type(cursor.get('a')) == dict
+
+    with pytest.raises(KeyError):
+        cursor.get('a')['b']
+
+    # chain __getitem__ calls can be chained when dictionary already exists
+    assert cursor['a']['b'] == {}
+
+    # this key doesn't exist, return a default
+    assert cursor['b'] == {}
+
+    # chain _getitem__ calls on default return values
+    assert cursor['b']['c'] == {}
 
 
 # Declare the histogram used in the next few tests

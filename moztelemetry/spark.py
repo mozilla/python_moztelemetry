@@ -29,6 +29,24 @@ except:
 _sources = None
 
 
+class PingCursor(dict):
+    """ A subclassed dictionary that defaults to a new instance of
+    itself when missing a key. See http://stackoverflow.com/a/19829714
+    for more details.
+    """
+
+    def __getitem__(self, key):
+        value = dict.__getitem__(self, key)
+        if isinstance(value, dict):
+            # cast all subdicts to PingCursor
+            value = type(self)(value)
+        return value
+
+    def __missing__(self, key):
+        value = self[key] = type(self)()
+        return value
+
+
 def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session',
               fraction=1.0, schema=None, source_name='telemetry', source_version='4',
               submission_date=None, version=None):
@@ -162,43 +180,36 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
     result = {}
 
     for property_name, path in paths:
-        cursor = ping
+        # Cursor will default to `PingCursor()` on missing keys
+        cursor = PingCursor(ping)
 
         if path[0] == "payload":
             path = path[1:]  # Translate v4 histogram queries to v2 ones
-            cursor = ping.get("payload", None)
+            cursor = cursor["payload"]
 
-            if cursor is None:
+            if not cursor:
                 return
 
         if path[0] == "histograms" or path[0] == "keyedHistograms":
             if path[0] == "keyedHistograms" and len(path) == 2:
                 # Include histograms for all available keys.
-                # These are returned as a subdict mapped from the property_name.
-                try:
-                    kh_keys = set(cursor["keyedHistograms"][path[1]].keys())
-                    if isinstance(cursor, dict):
-                        content_kh = cursor.get("processes", {}) \
-                                           .get("content", {}) \
-                                           .get("keyedHistograms", None)
-                        if content_kh is not None:
-                            kh_keys.update(content_kh.get(path[1], {}).keys())
-                        else:
-                            for payload in cursor.get("childPayloads", []):
-                                kh_keys.update(
-                                        payload
-                                        .get("keyedHistograms", {})
-                                        .get(path[1], {})
-                                        .keys())
+                # These are returned as a subdict mapped from the
+                # property_name.
+                kh_keys = cursor["keyedHistograms"][path[1]].viewkeys()
+                if isinstance(cursor, dict):
 
-                        gpu_kh = cursor.get("processes", {}) \
-                                       .get("gpu", {}) \
-                                       .get("keyedHistograms", None)
-                        if gpu_kh is not None:
-                            kh_keys.update(gpu_kh.get(path[1], {}).keys())
-                except:
-                    result[property_name] = None
-                    continue
+                    # Bug 1218576 aggregates child payloads into the
+                    # content process as of Firefox 51. Keyed histograms
+                    # will be found in one or the other.
+                    content_kh = cursor["processes"]["content"]["keyedHistograms"]
+                    kh_keys |= content_kh[path[1]].viewkeys()
+
+                    for payload in cursor.get("childPayloads", []):
+                        payload_kh = PingCursor(payload)["keyedHistograms"]
+                        kh_keys |= payload_kh[path[1]].viewkeys()
+
+                    gpu_kh = cursor["processes"]["gpu"]["keyedHistograms"]
+                    kh_keys |= gpu_kh[path[1]].viewkeys()
 
                 if kh_keys:
                     kh_histograms = {}
@@ -246,7 +257,7 @@ def _get_ping_property(cursor, path, histograms_url, additional_histograms):
     except:
         return None
 
-    if cursor is None:
+    if not cursor:
         return None
     if is_histogram:
         return Histogram(path[-1], cursor, histograms_url=histograms_url,
@@ -275,14 +286,12 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
     if not isinstance(cursor, dict):
         children = []
     else:
-        children = [_get_ping_property(cursor.get("processes", {})
-                                             .get("content", {}),
+        children = [_get_ping_property(cursor["processes"]["content"],
                                        path, histograms_url,
                                        additional_histograms)]
         children += [_get_ping_property(child, path, histograms_url, additional_histograms)
-                     for child in cursor.get("childPayloads", {})]
-        children += [_get_ping_property(cursor.get("processes", {})
-                                              .get("gpu", {}),
+                     for child in cursor.get("childPayloads", [])]
+        children += [_get_ping_property(cursor["processes"]["gpu"],
                                         path, histograms_url,
                                         additional_histograms)]
         children = filter(lambda h: h is not None, children)
