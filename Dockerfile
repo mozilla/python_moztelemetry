@@ -36,6 +36,9 @@ WORKDIR /python_moztelemetry
 # can pick them up
 RUN pip install 'pytest>=3' coverage coveralls
 
+COPY ./docs/requirements.txt /python_moztelemetry/docs/requirements.txt
+RUN pip install -r ./docs/requirements.txt
+
 # This will invalidate the cache if something changes in python_moztelemetry.
 COPY . /python_moztelemetry
 
