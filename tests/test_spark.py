@@ -10,7 +10,7 @@ import pytest
 
 from moztelemetry.store import InMemoryStore
 from moztelemetry.dataset import Dataset
-from moztelemetry.spark import get_pings
+from moztelemetry.spark import get_pings, get_pings_properties, _get_ping_properties, PingCursor
 
 
 @pytest.fixture()
@@ -156,3 +156,176 @@ def test_get_pings_none_filter(test_store, dummy_pool_executor,
     pings = get_pings(spark_context, app='*')
 
     assert sorted(pings.collect()) == ['value1', 'value2']
+
+
+def test_ping_cursor():
+    cursor = PingCursor({'a': {}})
+
+    # the value exists
+    assert isinstance(cursor['a'], PingCursor)
+
+    # this should be a normal dictionary if you use .get()
+    assert type(cursor.get('a')) == dict
+
+    with pytest.raises(KeyError):
+        cursor.get('a')['b']
+
+    # chain __getitem__ calls can be chained when dictionary already exists
+    assert cursor['a']['b'] == {}
+
+    # this key doesn't exist, return a default
+    assert cursor['b'] == {}
+
+    # chain _getitem__ calls on default return values
+    assert cursor['b']['c'] == {}
+
+
+# Declare the histogram used in the next few tests
+additional_histograms = {
+    "TEST": {
+        "record_in_processes": ["main", "content"],
+        "expires_in_version": "never",
+        "kind": "count",
+        "keyed": True,
+        "description": "Testing Keyed Histogram",
+    }
+}
+
+
+def test_get_ping_properties_keyedHistogram(test_store, dummy_pool_executor,
+                                            mock_message_parser, spark_context):
+    ping = {
+        "payload": {
+            "keyedHistograms": {
+                "TEST": {
+                    "key1": {"values": {"0": 1}},
+                    "key2": {"values": {"0": 2}},
+                },
+            }
+        }
+
+    }
+
+    field = 'payload/keyedHistograms/TEST'
+
+    props = _get_ping_properties(
+        ping,
+        [(field, field.split("/"))],
+        only_median=False,
+        with_processes=False,
+        histograms_url=None,
+        additional_histograms=additional_histograms
+    )
+
+    # assert the values
+    hist = props[field]
+    assert set(hist.keys()) == set(['key1', 'key2'])
+    assert hist['key1'] == 1
+    assert hist['key2'] == 2
+
+
+def test_get_pings_properties_keyedHistogram_exists_with_process(test_store, dummy_pool_executor,
+                                                                 mock_message_parser, spark_context):
+
+    # Before Firefox 51, histograms could be found in the child
+    # payloads. This should handle obtaining histograms to keep
+    # behavior consistent.
+    child_measures = {
+        "payload": {
+            "childPayloads": [
+                {"keyedHistograms": {}},  # empty keyedHistogram
+                {},                       # missing keyedHistogram
+            ],
+            "keyedHistograms": {
+                "TEST": {
+                    "key1": {"values": {"0": 1}},
+                },
+            }
+        }
+    }
+
+    # The histograms for all child processes are aggregated in the
+    # content process. Here, keyedHistograms do not exist in
+    # the content process.
+    content_measures = {
+        "payload": {
+            "processes": {
+                "content": {
+                    "keyedHistograms": {}
+                }
+            },
+            "keyedHistograms": {
+                "TEST": {
+                    "key1": {"values": {"0": 1}},
+                },
+            }
+        }
+    }
+
+    field = 'payload/keyedHistograms/TEST'
+
+    upload_ping(test_store, json.dumps(child_measures))
+    upload_ping(test_store, json.dumps(content_measures))
+
+    pings = get_pings(spark_context)
+    filtered_pings = get_pings_properties(
+        pings,
+        [field],
+        additional_histograms=additional_histograms
+    )
+
+    res = (
+        filtered_pings
+        .map(lambda d: d.get(field))
+        .filter(lambda p: p is not None and len(p.keys()) > 0)
+    )
+
+    # assert existence
+    assert res.count() == 2
+
+
+def test_get_pings_propertiess_keyedHistogram_with_processes(test_store, dummy_pool_executor,
+                                                             mock_message_parser, spark_context):
+
+    measures = {
+        "payload": {
+            "processes": {
+                "content": {
+                    "keyedHistograms": {
+                        "TEST": {
+                            "key1": {"values": {"0": 2}},
+                        }
+                    }
+                }
+            },
+            "keyedHistograms": {
+                "TEST": {
+                    "key1": {"values": {"0": 1}},
+                },
+            }
+        }
+    }
+
+    field = 'payload/keyedHistograms/TEST'
+
+    upload_ping(test_store, json.dumps(measures))
+
+    pings = get_pings(spark_context)
+    filtered_pings = get_pings_properties(
+        pings,
+        [field],
+        with_processes=True,
+        additional_histograms=additional_histograms
+    )
+
+    res = (
+        filtered_pings
+        .map(lambda d: d.get(field))
+        .filter(lambda p: p is not None and len(p.keys()) > 0)
+    )
+    assert res.count() == 1
+
+    hist = res.first()
+    assert hist['key1_parent'] == 1
+    assert hist['key1_children'] == 2
+    assert hist['key1'] == 3
