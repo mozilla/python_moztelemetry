@@ -69,25 +69,28 @@ def exponential_buckets(dmin, dmax, n_buckets):
         ret_array[bucket_index] = current
     return ret_array
 
+
 always_allowed_keys = ['kind', 'description', 'cpp_guard', 'expires_in_version',
                        'alert_emails', 'keyed', 'releaseChannelCollection',
                        'bug_numbers', 'record_in_processes']
 
 whitelists = None
-try:
-    whitelist_path = os.path.join(os.path.abspath(os.path.realpath(os.path.dirname(__file__))),
-                                  'histogram-whitelists.json')
-    with open(whitelist_path, 'r') as f:
-        try:
-            whitelists = json.load(f)
-            for name, whitelist in whitelists.iteritems():
-                whitelists[name] = set(whitelist)
-        except ValueError, e:
-            raise ParserError('Error parsing whitelist: %s' % whitelist_path)
-except IOError:
-    whitelists = None
-    print('Unable to parse whitelist: %s.\nAssuming all histograms are acceptable.' %
-          whitelist_path)
+
+
+def load_whitelist():
+    try:
+        whitelist_path = os.path.join(os.path.abspath(os.path.realpath(os.path.dirname(__file__))),
+                                      'histogram-whitelists.json')
+        with open(whitelist_path, 'r') as f:
+            try:
+                whitelists = json.load(f)
+                for name, whitelist in whitelists.iteritems():
+                    whitelists[name] = set(whitelist)
+            except ValueError:
+                raise ParserError('Error parsing whitelist: %s' % whitelist_path)
+    except IOError:
+        whitelists = None
+        raise ParserError('Unable to parse whitelist: %s.' % whitelist_path)
 
 
 class Histogram:
@@ -118,6 +121,7 @@ symbol that should guard C/C++ definitions associated with the histogram."""
         self._keyed = definition.get('keyed', False)
         self._expiration = definition.get('expires_in_version')
         self._labels = definition.get('labels', [])
+        self._record_in_processes = definition.get('record_in_processes')
 
         self.compute_bucket_parameters(definition)
         self.set_nsITelemetry_kind()
@@ -177,11 +181,11 @@ associated with the histogram.  Returns None if no guarding is necessary."""
 
     def record_in_processes(self):
         """Returns a list of processes this histogram is permitted to record in."""
-        return self.definition['record_in_processes']
+        return self._record_in_processes
 
     def record_in_processes_enum(self):
         """Get the non-empty list of flags representing the processes to record data in"""
-        return [utils.process_name_to_enum(p) for p in self.record_in_processes]
+        return [utils.process_name_to_enum(p) for p in self.record_in_processes()]
 
     def ranges(self):
         """Return an array of lower bounds for each bucket in the histogram."""
@@ -439,6 +443,8 @@ associated with the histogram.  Returns None if no guarding is necessary."""
                                   ' {2}.'.format(key, name, nice_type_name(key_type)))
 
     def check_keys(self, name, definition, allowed_keys):
+        if not self._strict_type_checks:
+            return
         for key in definition.iterkeys():
             if key not in allowed_keys:
                 raise ParserError('Key "%s" is not allowed for histogram "%s".' % (key, name))
@@ -575,6 +581,7 @@ def from_nsDeprecatedOperationList(filename, strict_type_checks):
 
     return histograms
 
+
 FILENAME_PARSERS = {
     'Histograms.json': from_Histograms_json,
     'nsDeprecatedOperationList.h': from_nsDeprecatedOperationList,
@@ -594,6 +601,9 @@ def from_files(filenames, strict_type_checks=True):
     """Return an iterator that provides a sequence of Histograms for
 the histograms defined in filenames.
     """
+    if strict_type_checks:
+        load_whitelist()
+
     all_histograms = OrderedDict()
     for filename in filenames:
         parser = FILENAME_PARSERS[os.path.basename(filename)]
