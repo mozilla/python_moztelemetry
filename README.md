@@ -3,6 +3,12 @@
 
 Spark bindings for Mozilla Telemetry
 
+## Deploying a code change
+After having your PR reviewed and merged a few steps are required to deploy your changes:
+
+- Create a new release on [github](https://help.github.com/articles/creating-releases/)
+- From the latest master, follow the instructions to update the package on PyPI
+
 ## Installing from pypi
 - To install this package from pypi run:
 ```
