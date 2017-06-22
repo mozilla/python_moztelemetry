@@ -20,6 +20,7 @@ repository = https://pypi.python.org/pypi
 username:example_user
 password:example_pass
 ```
+- Create a [new tag/release](https://github.com/mozilla/python_moztelemetry/releases/new) on github
 - Fetch the latest code with `git pull`
 - Update PyPI with `python setup.py sdist upload`
 
