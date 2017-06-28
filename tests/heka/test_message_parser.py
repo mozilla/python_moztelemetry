@@ -6,7 +6,6 @@ import json
 import pytest
 import ujson
 from google.protobuf.message import DecodeError
-from mock import MagicMock
 from moztelemetry.heka import message_parser
 from moztelemetry.util.streaming_gzip import streaming_gzip_wrapper
 
@@ -98,14 +97,23 @@ def test_json_fallback():
 
 
 def test_json_keys():
-    record = lambda: None
-    record.message = lambda: None
+    class Message():
+        pass
+
+    class Field():
+        pass
+
+    class Record():
+        def __init__(self):
+            self.message = Message()
+
+    record = Record()
     record.message.timestamp = 1
     record.message.type = "t"
     record.message.hostname = "h"
     record.message.payload = '{"a": 1}'
 
-    f1 = lambda: None
+    f1 = Field()
     f1.name = "f1.test"
     f1.value_string = ['{"b": "bee"}']
     f1.value_type = 0
