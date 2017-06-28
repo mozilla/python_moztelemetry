@@ -91,11 +91,11 @@ def test_apply_selection():
 
 def test_where_exact_match():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
-    new_dataset = dataset.where(dim1='my-value')
+    new_dataset = dataset.where(dim1='myvalue')
     assert new_dataset is not dataset
     assert new_dataset.clauses.keys() == ['dim1']
     condition = new_dataset.clauses['dim1']
-    assert condition('my-value')
+    assert condition('myvalue')
 
 
 def test_where_wrong_dimension():
@@ -169,11 +169,11 @@ def test_scan_multiple_where_params(spark_context):
 
 def test_scan_multiple_params():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
-    new_dataset = dataset.where(dim1='my-value')
+    new_dataset = dataset.where(dim1='myvalue')
     assert new_dataset is not dataset
     assert new_dataset.clauses.keys() == ['dim1']
     condition = new_dataset.clauses['dim1']
-    assert condition('my-value')
+    assert condition('myvalue')
 
 
 def test_summaries(spark_context):
@@ -396,3 +396,17 @@ def test_prefix_slash(spark_context):
     summaries_filtered = dataset.where(dim1='dir1').summaries(spark_context)
     assert len(summaries_filtered) == 1
     assert summaries_filtered[0]['key'] == 'a/b/dir1/subdir1/key1'
+
+
+def test_sanitized_dimensions(spark_context):
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    store.store['dir_1/subdir1/key1'] = 'value1'
+    store.store['dir_1/subdir2/key2'] = 'value2'
+    store.store['dir_2/subdir3/key3'] = 'value3'
+    store.store['dir_3/subdir4/key4'] = 'value4'
+
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store).where(dim1="dir-1")
+
+    summaries = dataset.summaries(spark_context)
+    assert len(summaries) == 2

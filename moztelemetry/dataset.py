@@ -6,6 +6,7 @@ import copy_reg
 import functools
 import json
 import random
+import re
 import types
 from copy import copy
 from inspect import isfunction
@@ -19,6 +20,7 @@ from .heka import message_parser
 from .store import S3Store
 
 MAX_CONCURRENCY = int(cpu_count() * 1.5)
+SANITIZE_PATTERN = re.compile("[^a-zA-Z0-9_.]")
 
 
 def _group_by_size_greedy(obj_list, tot_groups):
@@ -154,12 +156,27 @@ class Dataset:
         return dict((name, path.search(json_obj))
                     for name, path in self.selection_compiled.items())
 
+    def _sanitize_dimension(self, v):
+        """Sanitize the given string by replacing illegal characters
+        with underscores.
+
+        For String conditions, we should pre-sanitize so that users of
+        the `where` function do not need to know about the nuances of how
+        S3 dimensions are sanitized during ingestion.
+
+        See https://github.com/mozilla-services/lua_sandbox_extensions/blob/master/moz_telemetry/io_modules/moz_telemetry/s3.lua#L167
+
+        :param v: a string value that should be sanitized.
+        """
+        return re.sub(SANITIZE_PATTERN, "_", v)
+
     def where(self, **kwargs):
         """Return a new Dataset refined using the given condition
 
         :param kwargs: a map of `dimension` => `condition` to filter the elements
             of the dataset. `condition` can either be an exact value or a
-            callable returning a boolean value.
+            callable returning a boolean value. If `condition` is a value, it is
+            converted to a string, then sanitized.
         """
         clauses = copy(self.clauses)
         for dimension, condition in kwargs.items():
@@ -170,7 +187,7 @@ class Dataset:
             if isfunction(condition) or isinstance(condition, functools.partial):
                 clauses[dimension] = condition
             else:
-                clauses[dimension] = functools.partial((lambda x, y: x == y), condition)
+                clauses[dimension] = functools.partial((lambda x, y: x == y), self._sanitize_dimension(str(condition)))
         return Dataset(self.bucket, self.schema, store=self.store,
                        prefix=self.prefix, clauses=clauses, selection=self.selection)
 
