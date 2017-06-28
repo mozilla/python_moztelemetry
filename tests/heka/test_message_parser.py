@@ -97,22 +97,31 @@ def test_json_fallback():
     assert TOO_BIG == message_parser._parse_json(str(TOO_BIG))
 
 
-def test_lazy_parsing(data_dir, monkeypatch):
-    mock_parse_json = MagicMock(name='_parse_json',
-                                wraps=message_parser._parse_json)
-    monkeypatch.setattr(message_parser, '_parse_json', mock_parse_json)
+def test_json_keys():
+    record = lambda: None
+    record.message = lambda: None
+    record.message.timestamp = 1
+    record.message.type = "t"
+    record.message.hostname = "h"
+    record.message.payload = '{"a": 1}'
 
-    # this heka message has 20 json fields, only one of which should be parsed
-    # on first load
-    filename = "{}/test_telemetry_gzip.heka".format(data_dir)
-    with open(filename, "rb") as o:
-        heka_message = message_parser.parse_heka_message(streaming_gzip_wrapper(o)).next()
+    f1 = lambda: None
+    f1.name = "f1.test"
+    f1.value_string = ['{"b": "bee"}']
+    f1.value_type = 0
 
-    # should only have parsed json *once* to get the payload field (other
-    # json/dictionary fields of the message should be parsed lazily)
-    assert mock_parse_json.call_count == 1
+    record.message.fields = [f1]
 
-    # deep copying the heka message should cause the lazily evaluated fields
-    # to be evaluated
-    copy.deepcopy(heka_message)
-    assert mock_parse_json.call_count == 20  # 19 lazily instantiated fields + original call
+    parsed = message_parser._parse_heka_record(record)
+
+    expected = {"a": 1, "f1": {"test": {"b": "bee"}}}
+    expected["meta"] = {
+        "Timestamp": 1,
+        "Type":      "t",
+        "Hostname":  "h",
+    }
+
+    serialized = json.dumps(parsed)
+    e_serialized = json.dumps(expected)
+
+    assert serialized == e_serialized
