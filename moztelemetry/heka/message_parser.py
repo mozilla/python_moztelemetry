@@ -82,7 +82,7 @@ def _parse_heka_record(record):
 def _add_field(container, keys, value):
     if len(keys) == 1:
         blob = value[0] if len(value) else ""
-        container[keys[0]] = _lazyjson(blob)
+        container[keys[0]] = _parse_json(blob)
         return
 
     key = keys.pop(0)
@@ -97,43 +97,6 @@ def _parse_json(string):
         # Fall back to the standard parser if ujson fails
         result = standard_json.loads(string)
     return result
-
-
-def _lazyjson(content):
-    if not isinstance(content, basestring):
-        raise ValueError("Argument must be a string.")
-
-    if content.startswith("{"):
-        default = {}
-    elif content.startswith("["):
-        default = []
-    else:
-        try:
-            return float(content) if '.' in content or 'e' in content.lower() else int(content)
-        except:
-            return content
-
-    class WrapperType(type(default)):
-        pass
-
-    def wrap(method_name):
-        def _wrap(*args, **kwargs):
-            if not hasattr(WrapperType, '__cache__'):
-                setattr(WrapperType, '__cache__', _parse_json(content))
-
-            cached = WrapperType.__cache__
-            method = getattr(cached, method_name)
-            return method(*args[1:], **kwargs)
-
-        return _wrap
-
-    wrapper = WrapperType(default)
-    for k, v in type(default).__dict__.iteritems():
-        if k == "__doc__":
-            continue
-        else:
-            setattr(WrapperType, k, wrap(k))
-    return wrapper
 
 
 _record_separator = 0x1e
