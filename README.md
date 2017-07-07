@@ -21,13 +21,12 @@ pip install python_moztelemetry
 [distutils]
 index-servers=pypi
 [pypi]
-repository = https://pypi.python.org/pypi
-[pypi]
 username:example_user
 password:example_pass
 ```
 - Fetch the latest code with `git pull`
 - Update PyPI with `python setup.py sdist upload`
+- If you encounter errors, make sure you are using a recent version of `setuptools`.
 
 
 ## Updating histogram_tools.py
