@@ -4,30 +4,14 @@
 Spark bindings for Mozilla Telemetry
 
 ## Deploying a code change
-After having your PR reviewed and merged a few steps are required to deploy your changes:
-
-- Create a new release on [github](https://help.github.com/articles/creating-releases/)
-- From the latest master, follow the instructions to update the package on PyPI
+After having your PR reviewed and merged create a new release on [github](https://help.github.com/articles/creating-releases/).
+A new pypi release will be automatically triggered by Travis.
 
 ## Installing from pypi
 - To install this package from pypi run:
 ```
 pip install python_moztelemetry
 ```
-
-## Updating the package on PyPI
-- Create / update your `~/.pypirc`
-```
-[distutils]
-index-servers=pypi
-[pypi]
-username:example_user
-password:example_pass
-```
-- Fetch the latest code with `git pull`
-- Update PyPI with `python setup.py sdist upload`
-- If you encounter errors, make sure you are using a recent version of `setuptools`.
-
 
 ## Updating histogram_tools.py
 moztelemetry/histogram_tools.py is a mirror of its counterpart from
