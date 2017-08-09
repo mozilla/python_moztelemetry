@@ -18,3 +18,12 @@ matrix:
         - docker build -t moztelemetry_docker .
       script:
         - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh -v --timeout=120
+deploy:
+  provider: pypi
+  user: mdoglio
+  distributions: sdist bdist_wheel
+  password:
+    secure: "YIOCsSandzImU6VssTKOyO0LAYOZ2Plcq2W0CQ/WG+tNYNGNHvz2bIg0O+3XY1HJEoXUVtP2WksZimS1HbRoOgFjdPS/w8YUnYtp/LT7OeGdZRazzmHAB0im6wl7t1lRE8vm1SN0dahst0M1GxLP3jTOIvfLZsm2aM1bk6ZN3awvA2cJsOAc1kLGwZVhdP6cx65NfBu+zLxNgZeTiwGAcNHUgt44qRBF1jDDg+DAuY539CFkHx8o+WZ8cyqdD3y4Z7LoIWOQFdj2l9QkJ3lbdMPWKW/bm/N1aTstV2vlqlNdh917KUTJRcjuz+UhgJRzelnznC7gOeFEUmgyzT2D10dxlGFpNvsE+WroKV1e+FHZ4dqgCggEIPcKMHRRiE0j6XP12WZPhBJ4MHDkTLG9x+tn66EYpJT9FCHce+Fkz8hqUd7e5OxX9Sm9bitLE6YAE/CjjyoxaOCgpnYpo62DV2g7+IDo4KVbQFdvJtDBApvNemecedYOonqkN0clvBy4ICQMcAxq/608SVufQ+zMHkibW4cBDv0dUXK6FwSwvOvQPPaTQQv2wB1L8T+ZwcVsfj6X3lZEd9GJffJC/aZT2Pk/i0ai52nbX6zQvm3a18XRX4CjtKRMzYdTq67GKv3WMXImoQU3G0lmsIuOiR2eW+9nr4wFj+CYV+C859aymIA="
+  on:
+    tags: true
+    repo: mozilla/python_moztelemetry
