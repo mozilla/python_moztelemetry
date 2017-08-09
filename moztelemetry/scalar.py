@@ -90,13 +90,14 @@ class Scalar(object):
 
     @staticmethod
     def _yaml_unnest(defs):
-        """The yaml definition file is nested - this functions unnests it.
+        """The yaml definition file is nested - this functions unnests it,
+           as well as lowercasing all keys.
         # example
         >>> test = {'browser.nav': {'clicks': {'description': 'desc', 'expires': 'never'}}}
         >>> yaml_unnest(test)
         # {'browser.nav.clicks': {'description': 'desc', 'expires': 'never'}}
         """
-        return {'{}.{}'.format(outer_key, inner_key): inner_val
+        return {'{}.{}'.format(outer_key, inner_key).lower(): inner_val
                 for outer_key, outer_val in defs.iteritems()
                 for inner_key, inner_val in outer_val.iteritems()}
 
@@ -109,4 +110,4 @@ class Scalar(object):
         else:
             definitions = Scalar._definition_cache[url]
 
-        return definitions.get(metric, {})
+        return definitions.get(metric.lower(), {})
