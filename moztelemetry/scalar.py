@@ -23,6 +23,10 @@ REVISIONS = {'nightly': 'https://hg.mozilla.org/mozilla-central/rev/tip',
              'release': 'https://hg.mozilla.org/releases/mozilla-release/rev/tip'}
 
 
+class MissingScalarError(KeyError):
+    pass
+
+
 class Scalar(object):
     """A class representing a scalar"""
 
@@ -109,5 +113,8 @@ class Scalar(object):
             Scalar._definition_cache[url] = definitions
         else:
             definitions = Scalar._definition_cache[url]
+
+        if metric.lower() not in definitions:
+            raise MissingScalarError("Definition not found for {}".format(metric))
 
         return definitions.get(metric.lower(), {})
