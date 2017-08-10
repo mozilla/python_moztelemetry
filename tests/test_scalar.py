@@ -1,7 +1,7 @@
 import pytest
 import responses
 
-from moztelemetry.scalar import Scalar
+from moztelemetry.scalar import Scalar, MissingScalarError
 
 
 scalar_file = '/toolkit/components/telemetry/Scalars.yaml'
@@ -124,3 +124,21 @@ def test_cache(add_response):
     assert scalar_2.get_value() == value
     assert scalar_2.get_name() == name
     assert Scalar.REQUIRED_FIELDS.issubset(scalar_2.get_definition().viewkeys())
+
+
+@responses.activate
+def test_any_case(add_response):
+    name, value = 'telemetry.test.UNSIGNED_int_kind', 8
+    Scalar(name, value)
+    scalar_2 = Scalar(name, value)
+
+    assert scalar_2.get_value() == value
+    assert scalar_2.get_name() == name
+    assert Scalar.REQUIRED_FIELDS.issubset(scalar_2.get_definition().viewkeys())
+
+
+@responses.activate
+def test_missing_scalar_error(add_response):
+    name, value = 'telemetry.test.missing_kind', 8
+    with pytest.raises(MissingScalarError):
+        Scalar(name, value)
