@@ -12,7 +12,7 @@ import json as standard_json
 from cStringIO import StringIO
 from google.protobuf.message import DecodeError
 
-from .message import Message, Header
+from .message_pb2 import Message, Header
 
 
 def parse_heka_message(message):
