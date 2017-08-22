@@ -142,10 +142,7 @@ class Histogram:
             pd_index = labels + [CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME]
             if isinstance(instance, dict):
                 # pandas clobbers values if instance is a dict with string labels
-                try:
-                    entries = {int(k): v for k, v in instance["values"].items()}
-                except KeyError:
-                    entries = {}
+                entries = Histogram.values_to_dict(instance, {})
                 instance = [entries.get(k, 0) for k in ranges]
         else:
             pd_index = ranges
@@ -159,11 +156,15 @@ class Histogram:
                 values = instance[:-5]
             self.buckets = pd.Series(values, index=pd_index, dtype='int64')
         else:
-            try:
-                entries = {int(k): v for k, v in instance["values"].items()}
-            except KeyError:
-                entries = [0 for _ in enumerate(pd_index)]
+            entries = Histogram.values_to_dict(instance, [0 for _ in enumerate(pd_index)])
             self.buckets = pd.Series(entries, index=pd_index, dtype='int64').fillna(0)
+
+    @staticmethod
+    def values_to_dict(instance, default):
+        try:
+            return {int(k): v for k, v in instance["values"].items()}
+        except (KeyError, ValueError):
+            return default
 
     def __str__(self):
         """ Returns a string representation of the histogram. """

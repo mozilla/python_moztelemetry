@@ -92,3 +92,13 @@ def test_malformed_categorical():
 def test_malformed_non_categorical():
     hist = Histogram('GC_REASON_2', {})
     assert all(hist.get_value() == 0)
+
+
+def test_large_values():
+    hist = Histogram('GC_REASON_2', {'values': {u'3.0683611344442837e+257': 1}})
+    assert all(hist.get_value() == 0)
+
+
+def test_large_categorical_values():
+    hist = Histogram('TELEMETRY_TEST_CATEGORICAL', {'values': {u'3.0683611344442837e+257': 1}})
+    assert all(hist.get_value() == 0)
