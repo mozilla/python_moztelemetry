@@ -19,7 +19,7 @@ MAX_LABEL_LENGTH = 20
 MAX_LABEL_COUNT = 100
 MIN_CATEGORICAL_BUCKET_COUNT = 50
 
-BASE_DOC_URL = ("https://gecko.readthedocs.io/en/latest/toolkit/components/"
+BASE_DOC_URL = ("https://firefox-source-docs.mozilla.org/toolkit/components/"
                 "telemetry/telemetry/")
 HISTOGRAMS_DOC_URL = (BASE_DOC_URL + "collection/histograms.html")
 SCALARS_DOC_URL = (BASE_DOC_URL + "collection/scalars.html")
