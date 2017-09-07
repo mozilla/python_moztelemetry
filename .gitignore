@@ -9,4 +9,7 @@
 *.o
 *~
 .DS_Store
+.coverage
+.eggs/
+python_moztelemetry.egg-info/
 docs/_build/
