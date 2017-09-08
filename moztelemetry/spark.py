@@ -257,7 +257,7 @@ def _get_ping_property(cursor, path, histograms_url, additional_histograms):
     except:
         return None
 
-    if not cursor:
+    if cursor is None or (isinstance(cursor, dict) and len(cursor) == 0):
         return None
     if is_histogram:
         return Histogram(path[-1], cursor, histograms_url=histograms_url,
