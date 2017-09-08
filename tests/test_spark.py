@@ -329,3 +329,40 @@ def test_get_pings_propertiess_keyedHistogram_with_processes(test_store, dummy_p
     assert hist['key1_parent'] == 1
     assert hist['key1_children'] == 2
     assert hist['key1'] == 3
+
+
+def test_get_ping_properties_scalar(test_store, dummy_pool_executor,
+                                    mock_message_parser, spark_context):
+    ping = {
+        "payload": {
+            "processes": {
+                "parent": {
+                    "scalars": {
+                        "bool_false": False,
+                        "bool_true": True
+                    },
+                },
+            }
+        }
+
+    }
+
+    scalars = 'payload/processes/parent/scalars'
+    bool_false = scalars + '/bool_false'
+    bool_true = scalars + '/bool_true'
+    bool_missing = scalars + '/bool_missing'
+
+    paths = [(path, path.split("/")) for path in [bool_false, bool_true, bool_missing]]
+    props = _get_ping_properties(
+        ping,
+        paths,
+        only_median=False,
+        with_processes=False,
+        histograms_url=None,
+        additional_histograms=additional_histograms
+    )
+
+    # assert the values
+    assert props[bool_false] is False
+    assert props[bool_true] is True
+    assert props[bool_missing] is None
