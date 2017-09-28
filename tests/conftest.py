@@ -10,10 +10,6 @@ from moto import mock_s3
 from concurrent import futures
 from pyspark.sql import SparkSession
 
-import findspark
-findspark.init()
-import pyspark  # noqa
-
 
 @pytest.fixture
 def my_mock_s3(request):
