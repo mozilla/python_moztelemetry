@@ -17,7 +17,7 @@ setup(
     package_dir={'moztelemetry': 'moztelemetry'},
     install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf',
                       'expiringdict', 'functools32', 'futures', 'py4j',
-                      'pandas>=0.14.1', 'numpy>=1.8.2', 'findspark',
+                      'pandas>=0.14.1', 'numpy>=1.8.2',
                       'happybase>=1.1.0', 'PyYAML', 'python-snappy'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
     # put pytest last to workaround this bug

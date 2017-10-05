@@ -8,20 +8,20 @@ ENV HBASE_VERSION=1.2.3
 RUN apt-get update && apt-get install -y g++ libpython-dev libsnappy-dev
 
 # setup conda environment
-RUN wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+
+# temporary workaround, pin miniconda version until it's fixed.
+RUN wget https://repo.continuum.io/miniconda/Miniconda2-4.3.21-Linux-x86_64.sh -O miniconda.sh
 RUN bash miniconda.sh -b -p /miniconda
 ENV PATH="/miniconda/bin:${PATH}"
 RUN hash -r
 RUN conda config --set always_yes yes --set changeps1 no
-RUN conda update -q conda
+# TODO: uncomment
+# RUN conda update -q conda
 RUN conda info -a # Useful for debugging any issues with conda
 
 # install spark/hbase
-RUN wget -nv https://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.6.tgz
 RUN wget -nv https://archive.apache.org/dist/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz
-RUN tar -zxf spark-$SPARK_VERSION-bin-hadoop2.6.tgz
 RUN tar -zxf hbase-$HBASE_VERSION-bin.tar.gz
-ENV SPARK_HOME="/spark-${SPARK_VERSION}-bin-hadoop2.6"
 
 # build + activate conda environment
 COPY ./environment.yml /python_moztelemetry/
