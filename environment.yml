@@ -5,3 +5,4 @@ dependencies:
 - pyspark
 - python-snappy
 - snappy
+- scipy
