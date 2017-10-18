@@ -60,6 +60,19 @@ def test_select():
     }
 
 
+def test_select_keep_state():
+    """Test that calling select only mutates the selection of a dataset"""
+    dataset_before = Dataset('test-bucket', ['dim1', 'dim2']).where(dim1=True)
+    dataset_after = dataset_before.select('field1', 'field2')
+
+    assert dataset_before.selection != dataset_after.selection
+    assert dataset_before.bucket == dataset_after.bucket
+    assert dataset_before.schema == dataset_after.schema
+    assert dataset_before.store == dataset_after.store
+    assert dataset_before.prefix == dataset_after.prefix
+    assert dataset_before.clauses == dataset_after.clauses
+
+
 def test_select_dupe_properties():
     dataset = Dataset('test-bucket', ['dim1', 'dim2']).select('field1')
 

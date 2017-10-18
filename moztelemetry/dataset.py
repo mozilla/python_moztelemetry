@@ -135,8 +135,8 @@ class Dataset:
 
         new_selection = dict(self.selection.items() + merged_properties.items())
 
-        return Dataset(self.bucket, self.schema, store=self.store,
-                       prefix=self.prefix, selection=new_selection)
+        return Dataset(self.bucket, self.schema, store=self.store, prefix=self.prefix,
+                       clauses=self.clauses, selection=new_selection)
 
     def _compile_selection(self):
         if not self.selection_compiled:
