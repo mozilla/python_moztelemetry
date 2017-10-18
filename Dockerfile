@@ -1,27 +1,32 @@
-FROM java:8
+FROM openjdk:8
 
 # Versions of spark + hbase to use for our testing environment
-ENV SPARK_VERSION=2.0.2
-ENV HBASE_VERSION=1.2.3
+ENV SPARK_VERSION=2.0.2 \
+    HBASE_VERSION=1.2.3
 
 # install gcc
-RUN apt-get update && apt-get install -y g++ libpython-dev libsnappy-dev
+RUN apt-get update --fix-missing && \
+    apt-get install -y \
+    g++ libpython-dev libsnappy-dev
 
 # setup conda environment
-RUN wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-RUN bash miniconda.sh -b -p /miniconda
-ENV PATH="/miniconda/bin:${PATH}"
-RUN hash -r
-RUN conda config --set always_yes yes --set changeps1 no
-RUN conda update -q conda
-RUN conda info -a # Useful for debugging any issues with conda
+# temporary workaround, pin miniconda version until it's fixed.
+RUN echo "export PATH=/miniconda/bin:${PATH}" > /etc/profile.d/conda.sh && \
+    wget --quiet https://repo.continuum.io/miniconda/Miniconda2-4.3.21-Linux-x86_64.sh -O miniconda.sh && \
+    /bin/bash miniconda.sh -b -p /miniconda && \
+    rm miniconda.sh
 
-# install spark/hbase
-RUN wget -nv https://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.6.tgz
-RUN wget -nv https://archive.apache.org/dist/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz
-RUN tar -zxf spark-$SPARK_VERSION-bin-hadoop2.6.tgz
-RUN tar -zxf hbase-$HBASE_VERSION-bin.tar.gz
-ENV SPARK_HOME="/spark-${SPARK_VERSION}-bin-hadoop2.6"
+ENV PATH /miniconda/bin:${PATH}
+
+RUN hash -r && \
+    conda config --set always_yes yes --set changeps1 no && \
+    # TODO: uncomment \
+    # RUN conda update -q conda && \
+    conda info -a # Useful for debugging any issues with conda
+
+# install hbase
+RUN wget -nv https://archive.apache.org/dist/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz && \
+    tar -zxf hbase-$HBASE_VERSION-bin.tar.gz
 
 # build + activate conda environment
 COPY ./environment.yml /python_moztelemetry/

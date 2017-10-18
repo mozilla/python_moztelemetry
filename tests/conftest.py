@@ -8,10 +8,7 @@ import boto3
 import pytest
 from moto import mock_s3
 from concurrent import futures
-
-import findspark
-findspark.init()
-import pyspark  # noqa
+from pyspark.sql import SparkSession
 
 
 @pytest.fixture
@@ -48,17 +45,26 @@ def dummy_bucket(my_mock_s3):
     return bucket
 
 
-@pytest.fixture(scope='session')
-def spark_context(request):
+@pytest.fixture(scope="session")
+def spark():
+    spark = (
+        SparkSession
+        .builder
+        .master("local")
+        .appName("python_moztelemetry_test")
+        .getOrCreate()
+    )
+
     logger = logging.getLogger("py4j")
     logger.setLevel(logging.ERROR)
-    sc = pyspark.SparkContext(master="local[1]")
 
-    def finalizer():
-        return sc.stop()
-    request.addfinalizer(finalizer)
+    yield spark
+    spark.stop()
 
-    return sc
+
+@pytest.fixture
+def spark_context(spark):
+    return spark.sparkContext
 
 
 @pytest.fixture(scope='session')
