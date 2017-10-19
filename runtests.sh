@@ -10,10 +10,6 @@ if [ ! -f /.dockerenv ]; then
     exit $?
 fi
 
-# Start hbase
-/hbase-$HBASE_VERSION/bin/start-hbase.sh
-/hbase-$HBASE_VERSION/bin/hbase-daemon.sh start thrift
-
 # Run tests
 if [ $# -gt 0 ]; then
     ARGS="$@"
