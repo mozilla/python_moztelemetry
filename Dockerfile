@@ -1,8 +1,6 @@
 FROM openjdk:8
 
-# Versions of spark + hbase to use for our testing environment
-ENV SPARK_VERSION=2.0.2 \
-    HBASE_VERSION=1.2.3
+ENV SPARK_VERSION=2.0.2
 
 # install gcc
 RUN apt-get update --fix-missing && \
@@ -23,10 +21,6 @@ RUN hash -r && \
     # TODO: uncomment \
     # RUN conda update -q conda && \
     conda info -a # Useful for debugging any issues with conda
-
-# install hbase
-RUN wget -nv https://archive.apache.org/dist/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz && \
-    tar -zxf hbase-$HBASE_VERSION-bin.tar.gz
 
 # build + activate conda environment
 COPY ./environment.yml /python_moztelemetry/
