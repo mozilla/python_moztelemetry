@@ -59,6 +59,7 @@ def test_rank():
 def test_tie_correct():
     assert stats._tie_correct({}) == 1.0
     assert stats._tie_correct({1: 1}) == 1.0
+    assert stats._tie_correct({1: 48}) == 0.0
 
 
 def test_ndtr():
@@ -81,10 +82,14 @@ def test_ndtr():
 
 
 def test_mann_whitney_u():
-    distribution_types = ('normalized', 'uniform', 'skewed')
+    # Test case of all values being the same, which results in a
+    # zero value tie correction.
+    with pytest.raises(ValueError):
+        stats.mann_whitney_u({0: 0, 1: 48}, {0: 0, 1: 40})
 
     # Test different distributions against each other, including
     # like distributions against themselves.
+    distribution_types = ('normalized', 'uniform', 'skewed')
     for sample1, sample2 in itertools.product(distribution_types, repeat=2):
 
         arr1, arr2 = samples[sample1][0], samples[sample2][1]
