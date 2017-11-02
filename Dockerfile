@@ -5,7 +5,8 @@ ENV SPARK_VERSION=2.0.2
 # install gcc
 RUN apt-get update --fix-missing && \
     apt-get install -y \
-    g++ libpython-dev libsnappy-dev
+    g++ libpython-dev libsnappy-dev \
+    build-essential libssl-dev libffi-dev
 
 # setup conda environment
 # temporary workaround, pin miniconda version until it's fixed.
