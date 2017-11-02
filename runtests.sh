@@ -17,8 +17,3 @@ if [ $# -gt 0 ]; then
 else
     coverage run --source=moztelemetry setup.py test
 fi
-
-# Report coveralls output if using travis
-if [ $TRAVIS_BRANCH ]; then
-  coveralls
-fi
