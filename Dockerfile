@@ -34,7 +34,7 @@ WORKDIR /python_moztelemetry
 
 # we need to explicitly install pytest and dependencies so spark
 # can pick them up
-RUN pip install 'pytest>=3' coverage
+RUN pip install 'pytest>=3'
 
 # This will invalidate the cache if something changes in python_moztelemetry.
 COPY . /python_moztelemetry

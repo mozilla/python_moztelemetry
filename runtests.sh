@@ -13,7 +13,7 @@ fi
 # Run tests
 if [ $# -gt 0 ]; then
     ARGS="$@"
-    coverage run --source=moztelemetry setup.py test --addopts "${ARGS}"
+    python setup.py test --addopts "${ARGS}"
 else
-    coverage run --source=moztelemetry setup.py test
+    python setup.py test
 fi
