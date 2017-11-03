@@ -5,7 +5,8 @@ ENV SPARK_VERSION=2.0.2
 # install gcc
 RUN apt-get update --fix-missing && \
     apt-get install -y \
-    g++ libpython-dev libsnappy-dev
+    g++ libpython-dev libsnappy-dev \
+    build-essential libssl-dev libffi-dev
 
 # setup conda environment
 # temporary workaround, pin miniconda version until it's fixed.
@@ -33,7 +34,7 @@ WORKDIR /python_moztelemetry
 
 # we need to explicitly install pytest and dependencies so spark
 # can pick them up
-RUN pip install 'pytest>=3' coverage coveralls
+RUN pip install 'pytest>=3'
 
 # This will invalidate the cache if something changes in python_moztelemetry.
 COPY . /python_moztelemetry
