@@ -108,6 +108,9 @@ def mann_whitney_u(sample1, sample2, use_continuity=True):
     u2 = n1 * n2 - u1
 
     tie_correction = _tie_correct(sample)
+    if tie_correction == 0:
+        raise ValueError('All provided sample values are identical.')
+
     sd_u = math.sqrt(tie_correction * n1 * n2 * (n1 + n2 + 1) / 12.0)
     mean_rank = n1 * n2 / 2.0 + 0.5 * use_continuity
     z = abs((max(u1, u2) - mean_rank) / sd_u)
