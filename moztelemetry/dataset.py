@@ -253,6 +253,12 @@ class Dataset:
         if summaries and limit is None and sample != 1:
             if sample < 0 or sample > 1:
                 raise ValueError('sample must be between 0 and 1')
+            print(
+                "WARNING: THIS IS NOT A REPRESENTATIVE SAMPLE.\n"
+                "This 'sampling' is based on s3 files and is highly\n"
+                "susceptible to skew. Use only for quicker performance\n"
+                "while prototyping."
+            )
             # We want this sample to be reproducible.
             # See https://bugzilla.mozilla.org/show_bug.cgi?id=1318681
             seed_state = random.getstate()
