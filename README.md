@@ -1,4 +1,4 @@
- 
+
 # python_moztelemetry [![Build Status](https://travis-ci.org/mozilla/python_moztelemetry.svg?branch=master)](https://travis-ci.org/mozilla/python_moztelemetry) [![Documentation Status](http://readthedocs.org/projects/python_moztelemetry/badge/?version=latest)](https://python_moztelemetry.readthedocs.io/?badge=latest) [![Updates](https://pyup.io/repos/github/mozilla/python_moztelemetry/shield.svg)](https://pyup.io/repos/github/mozilla/python_moztelemetry/)
 
 Spark bindings for Mozilla Telemetry
@@ -13,12 +13,12 @@ A new pypi release will be automatically triggered by Travis.
 pip install python_moztelemetry
 ```
 
-## Updating histogram_tools.py
-moztelemetry/histogram_tools.py is a mirror of its counterpart from
-[mozilla-central](https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/histogram_tools.py).
+## Updating parse_histograms.py
+moztelemetry/parse_histograms.py is a mirror of its counterpart from
+[mozilla-central](https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/parse_histograms.py).
 To update it to the latest version you can run
 ```bash
-bin/update_histogram_tools
+bin/update_parse_histograms
 ```
 
 ## Testing locally

@@ -8,7 +8,7 @@
 from __future__ import division
 
 import requests
-import histogram_tools
+import parse_histograms
 import re
 import pandas as pd
 import numpy as np
@@ -22,8 +22,8 @@ HISTOGRAMS_JSON_PATH = "/toolkit/components/telemetry/Histograms.json"
 CATEGORICAL_HISTOGRAM_SPILL_BUCKET_NAME = 'spill'
 
 # Ugly hack to speed-up aggregation.
-exponential_buckets = histogram_tools.exponential_buckets
-linear_buckets = histogram_tools.linear_buckets
+exponential_buckets = parse_histograms.exponential_buckets
+linear_buckets = parse_histograms.linear_buckets
 definition_cache = ExpiringDict(max_len=2**10, max_age_seconds=3600)
 
 
@@ -37,8 +37,8 @@ def cached_linear_buckets(*args, **kwargs):
     return linear_buckets(*args, **kwargs)
 
 
-histogram_tools.exponential_buckets = cached_exponential_buckets
-histogram_tools.linear_buckets = cached_linear_buckets
+parse_histograms.exponential_buckets = cached_exponential_buckets
+parse_histograms.linear_buckets = cached_linear_buckets
 
 histogram_exceptions = json.loads("""
 {
@@ -114,7 +114,7 @@ class Histogram:
 
         # TODO: implement centralized revision service which handles all the quirks...
         if name.startswith("USE_COUNTER_") or name.startswith("USE_COUNTER2_"):
-            self.definition = histogram_tools.Histogram(
+            self.definition = parse_histograms.Histogram(
                 name, {"kind": "boolean", "description": "", "expires_in_version": "never"})
         else:
             proper_name = name
@@ -122,7 +122,7 @@ class Histogram:
                 proper_name = name.split("/")[0]  # just keep the name of the parent histogram
 
             try:
-                self.definition = histogram_tools.Histogram(
+                self.definition = parse_histograms.Histogram(
                     name, histograms_definition[proper_name])
 
             except KeyError:
@@ -131,7 +131,7 @@ class Histogram:
                 # the prefixed histogram name is not part of the histogram definition file.
                 # Other histograms, like STARTUP_CRASH_DETECTED, are instead collected only once
                 # and are defined the histogram definition file.
-                self.definition = histogram_tools.Histogram(
+                self.definition = parse_histograms.Histogram(
                     name, histograms_definition[re.sub("^STARTUP_", "", proper_name)])
 
         self.kind = self.definition.kind()
