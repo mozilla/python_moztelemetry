@@ -20,6 +20,7 @@ To update it to the latest version you can run
 ```bash
 bin/update_parse_histograms
 ```
+Note that this file was formerly called histogram_tools.py and was renamed in Bug 1419761.
 
 ## Testing locally
 
