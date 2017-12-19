@@ -7,12 +7,12 @@ import os
 import requests
 
 
-"""Replace histogram_tools.py with the latest version from mozilla-central"""
+"""Replace parse_histograms.py with the latest version from mozilla-central"""
 
-print "Downloading latest histogram_tools.py..."
+print "Downloading latest parse_histograms.py..."
 
 url = ("https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/"
-       "components/telemetry/histogram_tools.py")
+       "components/telemetry/parse_histograms.py")
 project_root = os.path.dirname(
                   os.path.dirname(os.path.realpath(__file__)))
 target_dir = os.path.join(project_root, 'moztelemetry')
@@ -20,9 +20,9 @@ target_dir = os.path.join(project_root, 'moztelemetry')
 response = requests.get(url, timeout=10)
 response.raise_for_status()
 
-print "histogram_tools.py downloaded."
+print "parse_histograms.py downloaded."
 
-with open(os.path.join(target_dir, "histogram_tools.py"), "w") as fh:
+with open(os.path.join(target_dir, "parse_histograms.py"), "w") as fh:
     fh.write(response.content)
 
-print "histogram_tools.py successfully updated."
+print "parse_histograms.py successfully updated."
