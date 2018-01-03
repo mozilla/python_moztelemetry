@@ -118,11 +118,21 @@ def test_json_keys():
     f1.value_string = ['{"b": "bee"}']
     f1.value_type = 0
 
-    record.message.fields = [f1]
+    # nested field
+    f2 = Field()
+    f2.name = "f2.nested.test"
+    f2.value_string = ['{"c": "cat"}']
+    f2.value_type = 0
+
+    record.message.fields = [f1, f2]
 
     parsed = message_parser._parse_heka_record(record)
 
-    expected = {"a": 1, "f1": {"test": {"b": "bee"}}}
+    expected = {
+        "a": 1,
+        "f1": {"test": {"b": "bee"}},
+        "f2": {"nested": {"test": {"c": "cat"}}},
+    }
     expected["meta"] = {
         "Timestamp": 1,
         "Type":      "t",
