@@ -1,23 +1,12 @@
-matrix:
-  include:
-    # Job 1: Linters
-    - env: python-linters
-      sudo: false
-      language: python
-      python: "2.7.13"
-      install:
-        - pip install flake8==3.3.0
-      script:
-        - flake8 --show-source
-    # Job 2: Unit tests (requires docker)
-    - sudo: required
-      services:
-        - docker
-      before_install:
-        - env | grep TRAVIS > .travis-env
-        - docker build -t moztelemetry_docker .
-      script:
-        - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh -v --timeout=120
+sudo: required
+language: python
+services:
+  - docker
+before_install:
+  - env | grep TRAVIS > .travis-env
+  - docker build -t moztelemetry_docker .
+script:
+  - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh -v --timeout=120
 deploy:
   provider: pypi
   user: mdoglio
