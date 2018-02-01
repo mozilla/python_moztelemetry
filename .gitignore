@@ -11,5 +11,6 @@
 .DS_Store
 .coverage
 .eggs/
+.pytest_cache/
 python_moztelemetry.egg-info/
 docs/_build/

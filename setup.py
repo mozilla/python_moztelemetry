@@ -22,5 +22,5 @@ setup(
     setup_requires=['pytest-runner', 'setuptools_scm'],
     # put pytest last to workaround this bug
     # https://bitbucket.org/pypa/setuptools/issues/196/tests_require-pytest-pytest-cov-breaks
-    tests_require=['mock', 'pytest-timeout', 'moto<=1.1.22', 'responses', 'scipy', 'pytest'],
+    tests_require=['mock', 'pytest-timeout', 'moto<=1.1.22', 'responses', 'scipy', 'pytest-flake8', 'pytest'],
 )
