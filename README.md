@@ -18,7 +18,7 @@ moztelemetry/parse_histograms.py is a mirror of its counterpart from
 [mozilla-central](https://hg.mozilla.org/mozilla-central/raw-file/tip/toolkit/components/telemetry/parse_histograms.py).
 To update it to the latest version you can run
 ```bash
-bin/update_parse_histograms
+bin/update_parser_scripts
 ```
 Note that this file was formerly called histogram_tools.py and was renamed in Bug 1419761.
 
