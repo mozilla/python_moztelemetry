@@ -86,7 +86,7 @@ class Dataset:
 
     For convenience Dataset objects can be created using the factory method
     `from_source`, that takes a source name (e.g. 'telemetry') and returns a
-    new Dataset instance. The instance created will we aware of the list of
+    new Dataset instance. The instance created will be aware of the list of
     dimensions, available on its `schema` attribute for inspection.
     """
 
