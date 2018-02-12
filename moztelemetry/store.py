@@ -43,7 +43,7 @@ class S3Store:
                 return streaming_gzip_wrapper(s3object['Body'])
             else:
                 return s3object['Body']
-        except:
+        except:  # noqa
             raise Exception('Error retrieving key "{}" from S3'.format(key))
 
     def upload_file(self, file_obj, prefix, name):
