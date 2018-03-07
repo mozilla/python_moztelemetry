@@ -19,7 +19,6 @@ from parse_scalars import ScalarType
 SCALARS_YAML_PATH = '/toolkit/components/telemetry/Scalars.yaml'
 
 REVISIONS = {'nightly': 'https://hg.mozilla.org/mozilla-central/rev/tip',
-             'aurora': 'https://hg.mozilla.org/releases/mozilla-aurora/rev/tip',
              'beta': 'https://hg.mozilla.org/releases/mozilla-beta/rev/tip',
              'release': 'https://hg.mozilla.org/releases/mozilla-release/rev/tip'}
 
