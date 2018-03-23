@@ -9,6 +9,7 @@ import boto
 import snappy
 import ujson as json
 import json as standard_json
+import zlib
 from cStringIO import StringIO
 from google.protobuf.message import DecodeError
 
@@ -37,6 +38,32 @@ def _parse_heka_record(record):
             if field.name == 'submission':
                 payload = _parse_json(field.value_bytes[0].decode('utf-8', 'replace'))
                 break
+            # Further special case: the content field (bytes) in landfill
+            # messages is an unprocessed form of the data, usually the original
+            # gzipped payload from the client.
+            # (a) In this case we pass the byte string along as-is.
+            elif field.name == 'content':
+                payload = {"content": field.value_bytes[0]}
+                break
+            # (b) In this case we attempt to decompress it, and if that fails,
+            # attempt to decode it as a UTF-8 string.
+            elif field.name == 'content':
+                try:
+                    string = zlib.decompress(field.value_bytes[0], 16+zlib.MAX_WBITS)
+                except:  # noqa
+                    string = field.value_bytes[0].decode('utf-8')
+                payload = {"content": string}
+                break
+            # (c) In this case we attempt to decompress it, and if that fails,
+            # attempt to decode it as a UTF-8 string, and if either of those
+            # succeeds, parse it as the payload.
+            elif field.name == 'content':
+                try:
+                    string = zlib.decompress(field.value_bytes[0], 16+zlib.MAX_WBITS)
+                except:  # noqa
+                    string = field.value_bytes[0].decode('utf-8')
+                payload = _parse_json(string)
+                break
 
     if payload is None:
         payload = {}
@@ -51,7 +78,7 @@ def _parse_heka_record(record):
 
     for field in record.message.fields:
         # Already handled above. Skip it.
-        if field.name == 'submission':
+        if field.name == 'submission' or field.name == 'content':
             continue
 
         name = field.name.split('.')
