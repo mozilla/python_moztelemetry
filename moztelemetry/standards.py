@@ -8,7 +8,9 @@
 """ This module implements some standard functionality based on Telemetry data.
 """
 
+from binascii import crc32
 from datetime import datetime, timedelta, date
+from pyspark.sql.functions import udf
 
 epoch = datetime.utcfromtimestamp(0)
 
@@ -198,3 +200,28 @@ def read_main_summary(spark,
 
     # Neither partition is filtered.
     return reader.parquet(base_path)
+
+
+def sampler(dataframe, modulo, column="client_id", sample_id=42):
+    """ Collect a sample of clients given an input column
+
+    Filter dataframe based on the modulus of the CRC32 of a given string
+    column matching a given sample_id. if dataframe has already been filtered
+    by sample_id, then modulo should be a multiple of 100, column should be
+    "client_id", and the given sample_id should match the value previously
+    used, optionally plus multiples of 100.
+
+    Args:
+        dataframe: A Dataframe to be sampled
+        modulo (int): selects a 1/modulo sampling of dataframe
+        column (str): name of a string column to sample on
+        sample_id (int): modulus result to select for sampling
+
+    Returns:
+        A DataFrame sampled on the given inputs.
+    """
+    return dataframe \
+        .withColumn(
+            "sampler",
+            udf(lambda key: (crc32(key or "") & 0xffffffff) % modulo)(column),
+        ).where("sampler = %s" % sample_id).drop("sampler")
