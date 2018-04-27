@@ -23,8 +23,7 @@ def test_int_scalar(add_response):
 
     assert scalar.get_value() == value
     assert scalar.get_name() == name
-    assert scalar.get_definition().get('kind') == 'uint'
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar.get_definition().viewkeys())
+    assert scalar.get_kind() == 'uint'
 
 
 @responses.activate
@@ -34,8 +33,7 @@ def test_string_scalar(add_response):
 
     assert scalar.get_value() == value
     assert scalar.get_name() == name
-    assert scalar.get_definition().get('kind') == 'string'
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar.get_definition().viewkeys())
+    assert scalar.get_kind() == 'string'
 
 
 @responses.activate
@@ -45,8 +43,7 @@ def test_boolean_scalar(add_response):
 
     assert scalar.get_value() == value
     assert scalar.get_name() == name
-    assert scalar.get_definition().get('kind') == 'boolean'
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar.get_definition().viewkeys())
+    assert scalar.get_kind() == 'boolean'
 
 
 @responses.activate
@@ -56,7 +53,6 @@ def test_int_addition(add_response):
 
     assert scalar.get_value() == value * 2
     assert scalar.get_name() == name
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar.get_definition().viewkeys())
 
 
 @responses.activate
@@ -82,7 +78,6 @@ def test_release_channel(add_response):
 
     assert scalar.get_value() == value
     assert scalar.get_name() == name
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar.get_definition().viewkeys())
 
 
 @responses.activate
@@ -93,7 +88,6 @@ def test_release_revision(add_response):
 
     assert scalar.get_value() == value
     assert scalar.get_name() == name
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar.get_definition().viewkeys())
 
 
 @responses.activate
@@ -104,7 +98,6 @@ def test_release_url(add_response):
 
     assert scalar.get_value() == value
     assert scalar.get_name() == name
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar.get_definition().viewkeys())
 
 
 @responses.activate
@@ -123,7 +116,6 @@ def test_cache(add_response):
 
     assert scalar_2.get_value() == value
     assert scalar_2.get_name() == name
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar_2.get_definition().viewkeys())
 
 
 @responses.activate
@@ -134,7 +126,6 @@ def test_any_case(add_response):
 
     assert scalar_2.get_value() == value
     assert scalar_2.get_name() == name
-    assert Scalar.REQUIRED_FIELDS.issubset(scalar_2.get_definition().viewkeys())
 
 
 @responses.activate

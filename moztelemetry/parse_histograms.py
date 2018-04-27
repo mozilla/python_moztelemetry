@@ -415,7 +415,7 @@ associated with the histogram.  Returns None if no guarding is necessary."""
                     return EXPRESSIONS[v]
                 try:
                     return eval(v, {})
-                except:
+                except:  # noqa
                     return v
             for key in [k for k in coerce_fields if k in definition]:
                 definition[key] = try_to_coerce_to_number(definition[key])

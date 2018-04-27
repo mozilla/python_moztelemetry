@@ -13,12 +13,12 @@ import requests
 import yaml
 
 from expiringdict import ExpiringDict
+from parse_scalars import ScalarType
 
 
 SCALARS_YAML_PATH = '/toolkit/components/telemetry/Scalars.yaml'
 
 REVISIONS = {'nightly': 'https://hg.mozilla.org/mozilla-central/rev/tip',
-             'aurora': 'https://hg.mozilla.org/releases/mozilla-aurora/rev/tip',
              'beta': 'https://hg.mozilla.org/releases/mozilla-beta/rev/tip',
              'release': 'https://hg.mozilla.org/releases/mozilla-release/rev/tip'}
 
@@ -29,11 +29,6 @@ class MissingScalarError(KeyError):
 
 class Scalar(object):
     """A class representing a scalar"""
-
-    REQUIRED_FIELDS = {'bug_numbers', 'description', 'expires', 'kind',
-                       'notification_emails'}
-
-    OPTIONAL_FIELDS = {'cpp_guard', 'release_channel_collection', 'keyed'}
 
     _definition_cache = ExpiringDict(max_len=2**10, max_age_seconds=3600)
 
@@ -61,15 +56,9 @@ class Scalar(object):
         if revision:
             scalars_url = revision.replace('rev', 'raw-file') + SCALARS_YAML_PATH
 
-        definition = Scalar._get_scalar_definition(scalars_url, name)
-
-        missing_fields = Scalar.REQUIRED_FIELDS - definition.viewkeys()
-        assert not missing_fields, \
-            "Definition is missing required fields {}".format(','.join(missing_fields))
-
+        self.definition = Scalar._get_scalar_definition(scalars_url, name)
         self.name = name
         self.value = value
-        self.definition = definition
         self.scalars_url = scalars_url
 
     def get_name(self):
@@ -80,39 +69,49 @@ class Scalar(object):
         """Get the value of the scalar"""
         return self.value
 
-    def get_definition(self):
-        """Get the scalar definition as a dict"""
-        return self.definition
+    def get_kind(self):
+        """Get the kind of the scalar"""
+        return self.definition.kind
 
     def __str__(self):
         return str(self.get_value())
 
     def __add__(self, other):
-        if self.definition['kind'] != 'uint':
+        if self.definition.kind != 'uint':
             raise AttributeError('Addition not specified for non-integer scalars')
-        return Scalar(self.name, self.value + other.value, scalars_url=self.scalars_url)
+        return Scalar(self.get_name(), self.value + other.value, scalars_url=self.scalars_url)
 
     @staticmethod
-    def _yaml_unnest(defs):
-        """The yaml definition file is nested - this functions unnests it,
-           as well as lowercasing all keys.
-        # example
-        >>> test = {'browser.nav': {'clicks': {'description': 'desc', 'expires': 'never'}}}
-        >>> yaml_unnest(test)
-        # {'browser.nav.clicks': {'description': 'desc', 'expires': 'never'}}
+    def _parse_scalars(scalars):
+        """Parse the scalars from the YAML file content to a dictionary of ScalarType(s).
+        :return: A dictionary { 'full.scalar.label': ScalarType }
         """
-        return {'{}.{}'.format(outer_key, inner_key).lower(): inner_val
-                for outer_key, outer_val in defs.iteritems()
-                for inner_key, inner_val in outer_val.iteritems()}
+        scalar_dict = {}
+
+        # Scalars are defined in a fixed two-level hierarchy within the definition file.
+        # The first level contains the category name, while the second level contains the
+        # probe name (e.g. "category.name: probe: ...").
+        for category_name in scalars:
+            category = scalars[category_name]
+
+            for probe_name in category:
+                # We found a scalar type. Go ahead and parse it.
+                scalar_definition = category[probe_name]
+                # We pass |strict_type_checks=False| as we don't want to do any check
+                # server side. This includes skipping the checks for the required keys.
+                scalar_info = ScalarType(category_name, probe_name, scalar_definition,
+                                         strict_type_checks=False)
+                scalar_dict[scalar_info.label] = scalar_info
+
+        return scalar_dict
 
     @staticmethod
     def _get_scalar_definition(url, metric):
         if url not in Scalar._definition_cache:
             content = requests.get(url).content
-            definitions = Scalar._yaml_unnest(yaml.load(content))
-            Scalar._definition_cache[url] = definitions
-        else:
-            definitions = Scalar._definition_cache[url]
+            Scalar._definition_cache[url] = Scalar._parse_scalars(yaml.load(content))
+
+        definitions = Scalar._definition_cache[url]
 
         if metric.lower() not in definitions:
             raise MissingScalarError("Definition not found for {}".format(metric))

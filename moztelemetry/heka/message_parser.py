@@ -93,7 +93,7 @@ def _add_field(container, keys, value):
 def _parse_json(string):
     try:
         result = json.loads(string)
-    except:
+    except:  # noqa
         # Fall back to the standard parser if ujson fails
         result = standard_json.loads(string)
     return result
@@ -227,7 +227,7 @@ def read_one_record(input_stream, raw=False, verbose=False, strict=False, try_sn
             try:
                 message.ParseFromString(snappy.decompress(message_raw))
                 parsed_ok = True
-            except:
+            except:  # noqa
                 # Wasn't snappy-compressed
                 pass
         if not parsed_ok:

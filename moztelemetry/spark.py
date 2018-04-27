@@ -23,7 +23,7 @@ try:
 
     _bucket = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-data", validate=False)
     _bucket_meta = _conn.get_bucket("net-mozaws-prod-us-west-2-pipeline-metadata", validate=False)
-except:
+except:  # noqa
     pass  # Handy for testing purposes...
 
 _sources = None
@@ -254,7 +254,7 @@ def _get_ping_property(cursor, path, histograms_url, additional_histograms):
     try:
         for field in path:
             cursor = cursor[field]
-    except:
+    except:  # noqa
         return None
 
     if cursor is None or (isinstance(cursor, dict) and len(cursor) == 0):
