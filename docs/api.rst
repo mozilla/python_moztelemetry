@@ -27,5 +27,4 @@ Experimental APIs
 
 .. autofunction:: moztelemetry.zeppelin.show
 
-.. automodule:: moztelemetry.hbase
     :members:
