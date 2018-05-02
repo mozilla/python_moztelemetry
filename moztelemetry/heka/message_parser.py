@@ -41,28 +41,16 @@ def _parse_heka_record(record):
             # Further special case: the content field (bytes) in landfill
             # messages is an unprocessed form of the data, usually the original
             # gzipped payload from the client.
-            # (a) In this case we pass the byte string along as-is.
-            elif field.name == 'content':
-                payload = {"content": field.value_bytes[0]}
-                break
-            # (b) In this case we attempt to decompress it, and if that fails,
+            #
+            # We attempt to decompress it, and if that fails,
             # attempt to decode it as a UTF-8 string.
             elif field.name == 'content':
                 try:
                     string = zlib.decompress(field.value_bytes[0], 16+zlib.MAX_WBITS)
-                except:  # noqa
+                except Exception as e:  # noqa
+                    raise e
                     string = field.value_bytes[0].decode('utf-8')
                 payload = {"content": string}
-                break
-            # (c) In this case we attempt to decompress it, and if that fails,
-            # attempt to decode it as a UTF-8 string, and if either of those
-            # succeeds, parse it as the payload.
-            elif field.name == 'content':
-                try:
-                    string = zlib.decompress(field.value_bytes[0], 16+zlib.MAX_WBITS)
-                except:  # noqa
-                    string = field.value_bytes[0].decode('utf-8')
-                payload = _parse_json(string)
                 break
 
     if payload is None:
