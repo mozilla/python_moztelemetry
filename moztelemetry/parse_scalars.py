@@ -4,9 +4,10 @@
 
 import re
 import yaml
-import shared_telemetry_utils as utils
 
-from shared_telemetry_utils import ParserError
+from . import shared_telemetry_utils as utils
+from .shared_telemetry_utils import ParserError
+from six import string_types
 
 # The map of containing the allowed scalar types and their mapping to
 # nsITelemetry::SCALAR_TYPE_* type constants.
@@ -91,24 +92,24 @@ class ScalarType:
         # The required and optional fields in a scalar type definition.
         REQUIRED_FIELDS = {
             'bug_numbers': list,  # This contains ints. See LIST_FIELDS_CONTENT.
-            'description': basestring,
-            'expires': basestring,
-            'kind': basestring,
+            'description': string_types,
+            'expires': string_types,
+            'kind': string_types,
             'notification_emails': list,  # This contains strings. See LIST_FIELDS_CONTENT.
             'record_in_processes': list,
         }
 
         OPTIONAL_FIELDS = {
-            'cpp_guard': basestring,
-            'release_channel_collection': basestring,
+            'cpp_guard': string_types,
+            'release_channel_collection': string_types,
             'keyed': bool,
         }
 
         # The types for the data within the fields that hold lists.
         LIST_FIELDS_CONTENT = {
             'bug_numbers': int,
-            'notification_emails': basestring,
-            'record_in_processes': basestring,
+            'notification_emails': string_types,
+            'record_in_processes': string_types,
         }
 
         # Concatenate the required and optional field definitions.
@@ -129,7 +130,7 @@ class ScalarType:
                               '.\nSee: {}#required-fields'.format(BASE_DOC_URL))
 
         # Checks the type for all the fields.
-        wrong_type_names = ['{} must be {}'.format(f, ALL_FIELDS[f].__name__)
+        wrong_type_names = ['{} must be {}'.format(f, utils.nice_type_name(ALL_FIELDS[f]))
                             for f in definition.keys()
                             if not isinstance(definition[f], ALL_FIELDS[f])]
         if len(wrong_type_names) > 0:
@@ -151,7 +152,7 @@ class ScalarType:
             if any(broken_types):
                 raise ParserError(("Field '{}' for probe '{}' must only contain values of type {}"
                                    ".\nSee: {}#the-yaml-definition-file)")
-                                  .format(field, self._name, LIST_FIELDS_CONTENT[field].__name__,
+                                  .format(field, self._name, utils.nice_type_name(LIST_FIELDS_CONTENT[field]),
                                           BASE_DOC_URL))
 
     def validate_values(self, definition):
@@ -302,9 +303,9 @@ def load_scalars(filename, strict_type_checks=True):
     try:
         with open(filename, 'r') as f:
             scalars = yaml.safe_load(f)
-    except IOError, e:
+    except IOError as e:
         raise ParserError('Error opening ' + filename + ': ' + e.message)
-    except ValueError, e:
+    except ValueError as e:
         raise ParserError('Error parsing scalars in {}: {}'
                           '.\nSee: {}'.format(filename, e.message, BASE_DOC_URL))
 

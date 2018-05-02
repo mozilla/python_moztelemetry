@@ -3,6 +3,7 @@
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 
 from datetime import datetime as DT, date
+from six import iteritems
 import os
 import pytest
 import moztelemetry.standards as std
@@ -39,7 +40,7 @@ def test_snap_to_beginning_of_week():
         "20170109": "20170108",
         "20170110": "20170108",
     }
-    for arg, expected in tests.iteritems():
+    for arg, expected in iteritems(tests):
         d = parse(arg)
         e = parse(expected)
         assert e == std.snap_to_beginning_of_week(d)
@@ -57,7 +58,7 @@ def test_snap_to_beginning_of_week():
         "20170109": "20170109",
         "20170110": "20170109",
     }
-    for arg, expected in tests.iteritems():
+    for arg, expected in iteritems(tests):
         d = parse(arg)
         e = parse(expected)
         assert e == std.snap_to_beginning_of_week(d, weekday_start="Monday")
@@ -71,7 +72,7 @@ def test_snap_to_beginning_of_month():
         "20000101": "20000101",
         "20161231": "20161201",
     }
-    for arg, expected in tests.iteritems():
+    for arg, expected in iteritems(tests):
         d = parse(arg)
         e = parse(expected)
         assert e == std.snap_to_beginning_of_month(d)

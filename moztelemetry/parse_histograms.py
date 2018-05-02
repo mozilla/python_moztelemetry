@@ -9,10 +9,13 @@ import math
 import os
 import re
 import sys
-import shared_telemetry_utils as utils
 
-from shared_telemetry_utils import ParserError
+from . import shared_telemetry_utils as utils
+from .shared_telemetry_utils import ParserError
 from collections import OrderedDict
+from six import iteritems
+from six import iterkeys
+from six import string_types
 
 # Constants.
 MAX_LABEL_LENGTH = 20
@@ -84,7 +87,7 @@ def load_whitelist():
         with open(whitelist_path, 'r') as f:
             try:
                 whitelists = json.load(f)
-                for name, whitelist in whitelists.iteritems():
+                for name, whitelist in iteritems(whitelists):
                     whitelists[name] = set(whitelist)
             except ValueError:
                 raise ParserError('Error parsing whitelist: %s' % whitelist_path)
@@ -298,7 +301,7 @@ associated with the histogram.  Returns None if no guarding is necessary."""
         if not labels:
             return
 
-        invalid = filter(lambda l: len(l) > MAX_LABEL_LENGTH, labels)
+        invalid = list(filter(lambda l: len(l) > MAX_LABEL_LENGTH, labels))
         if len(invalid) > 0:
             raise ParserError('Label values for "%s" exceed length limit of %d: %s' %
                               (name, MAX_LABEL_LENGTH, ', '.join(invalid)))
@@ -310,7 +313,7 @@ associated with the histogram.  Returns None if no guarding is necessary."""
         # To make it easier to generate C++ identifiers from this etc., we restrict
         # the label values to a strict pattern.
         pattern = '^[a-z][a-z0-9_]+[a-z0-9]$'
-        invalid = filter(lambda l: not re.match(pattern, l, re.IGNORECASE), labels)
+        invalid = list(filter(lambda l: not re.match(pattern, l, re.IGNORECASE), labels))
         if len(invalid) > 0:
             raise ParserError('Label values for %s are not matching pattern "%s": %s' %
                               (name, pattern, ', '.join(invalid)))
@@ -384,19 +387,19 @@ associated with the histogram.  Returns None if no guarding is necessary."""
             "low": int,
             "high": int,
             "keyed": bool,
-            "expires_in_version": basestring,
-            "kind": basestring,
-            "description": basestring,
-            "cpp_guard": basestring,
-            "releaseChannelCollection": basestring,
+            "expires_in_version": string_types,
+            "kind": string_types,
+            "description": string_types,
+            "cpp_guard": string_types,
+            "releaseChannelCollection": string_types,
         }
 
         # For list fields we check the items types.
         type_checked_list_fields = {
             "bug_numbers": int,
-            "alert_emails": basestring,
-            "labels": basestring,
-            "record_in_processes": basestring,
+            "alert_emails": string_types,
+            "labels": string_types,
+            "record_in_processes": string_types,
         }
 
         # For the server-side, where _strict_type_checks==False, we want to
@@ -423,29 +426,24 @@ associated with the histogram.  Returns None if no guarding is necessary."""
             if definition.get("keyed", None) == "true":
                 definition["keyed"] = True
 
-        def nice_type_name(t):
-            if t is basestring:
-                return "string"
-            return t.__name__
-
-        for key, key_type in type_checked_fields.iteritems():
+        for key, key_type in iteritems(type_checked_fields):
             if key not in definition:
                 continue
             if not isinstance(definition[key], key_type):
                 raise ParserError('Value for key "{0}" in histogram "{1}" should be {2}.'
-                                  .format(key, name, nice_type_name(key_type)))
+                                  .format(key, name, utils.nice_type_name(key_type)))
 
-        for key, key_type in type_checked_list_fields.iteritems():
+        for key, key_type in iteritems(type_checked_list_fields):
             if key not in definition:
                 continue
             if not all(isinstance(x, key_type) for x in definition[key]):
                 raise ParserError('All values for list "{0}" in histogram "{1}" should be of type'
-                                  ' {2}.'.format(key, name, nice_type_name(key_type)))
+                                  ' {2}.'.format(key, name, utils.nice_type_name(key_type)))
 
     def check_keys(self, name, definition, allowed_keys):
         if not self._strict_type_checks:
             return
-        for key in definition.iterkeys():
+        for key in iterkeys(definition):
             if key not in allowed_keys:
                 raise ParserError('Key "%s" is not allowed for histogram "%s".' % (key, name))
 
@@ -548,7 +546,7 @@ def from_Histograms_json(filename, strict_type_checks):
             def hook(ps):
                 return load_histograms_into_dict(ps, strict_type_checks)
             histograms = json.load(f, object_pairs_hook=hook)
-        except ValueError, e:
+        except ValueError as e:
             raise ParserError("error parsing histograms in %s: %s" % (filename, e.message))
     return histograms
 
@@ -616,7 +614,7 @@ the histograms defined in filenames.
         if not isinstance(histograms, OrderedDict):
             raise ParserError("Histogram parser did not provide an OrderedDict.")
 
-        for (name, definition) in histograms.iteritems():
+        for name, definition in iteritems(histograms):
             if name in all_histograms:
                 raise ParserError('Duplicate histogram name "%s".' % name)
             all_histograms[name] = definition
@@ -624,7 +622,7 @@ the histograms defined in filenames.
     # We require that all USE_COUNTER2_* histograms be defined in a contiguous
     # block.
     use_counter_indices = filter(lambda x: x[1].startswith("USE_COUNTER2_"),
-                                 enumerate(all_histograms.iterkeys()))
+                                 enumerate(iterkeys(all_histograms)))
     if use_counter_indices:
         lower_bound = use_counter_indices[0][0]
         upper_bound = use_counter_indices[-1][0]
@@ -636,11 +634,11 @@ the histograms defined in filenames.
     # are also removed from the whitelists.
     if whitelists is not None:
         all_whitelist_entries = itertools.chain.from_iterable(whitelists.itervalues())
-        orphaned = set(all_whitelist_entries) - set(all_histograms.keys())
+        orphaned = set(all_whitelist_entries) - set(iterkeys(all_histograms))
         if len(orphaned) > 0:
             msg = 'The following entries are orphaned and should be removed from ' \
                   'histogram-whitelists.json:\n%s'
             raise ParserError(msg % (', '.join(sorted(orphaned))))
 
-    for (name, definition) in all_histograms.iteritems():
+    for name, definition in iteritems(all_histograms):
         yield Histogram(name, definition, strict_type_checks=strict_type_checks)

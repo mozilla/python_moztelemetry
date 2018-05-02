@@ -1,12 +1,8 @@
 FROM openjdk:8
 
-ENV SPARK_VERSION=2.0.2
-
 # install gcc
 RUN apt-get update --fix-missing && \
-    apt-get install -y \
-    g++ libpython-dev libsnappy-dev \
-    build-essential libssl-dev libffi-dev git
+    apt-get install -y g++
 
 # setup conda environment
 # temporary workaround, pin miniconda version until it's fixed.
@@ -25,7 +21,9 @@ RUN hash -r && \
 
 # build + activate conda environment
 COPY ./environment.yml /python_moztelemetry/
-RUN conda env create -f /python_moztelemetry/environment.yml
+ARG PYTHON_VERSION=2.7
+RUN echo "- python=$PYTHON_VERSION" >> /python_moztelemetry/environment.yml && \
+    conda env create -f /python_moztelemetry/environment.yml
 
 # this is roughly equivalent to activating the conda environment
 ENV PATH="/miniconda/envs/test-environment/bin:${PATH}"
@@ -40,4 +38,4 @@ RUN pip install 'pytest>=3'
 COPY . /python_moztelemetry
 
 # install moztelemetry specific deps into conda env
-RUN pip install /python_moztelemetry/ --process-dependency-links
+RUN pip install .[test]

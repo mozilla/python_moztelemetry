@@ -1,7 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
-import StringIO
+from io import BytesIO
+from six import binary_type
 
 import boto3
 
@@ -99,7 +100,9 @@ class InMemoryStore:
             value = self.store[key]
         except KeyError:
             raise Exception('Error retrieving key "{}" from S3'.format(key))
-        output = StringIO.StringIO()
+        output = BytesIO()
+        if not isinstance(value, binary_type):
+            value = value.encode('utf-8')
         output.write(value)
         output.seek(0)
         return output

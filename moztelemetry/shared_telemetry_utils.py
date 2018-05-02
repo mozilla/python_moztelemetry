@@ -10,6 +10,8 @@ from __future__ import print_function
 import re
 import yaml
 
+from six import string_types
+
 # This is a list of flags that determine which process a measurement is allowed
 # to record from.
 KNOWN_PROCESS_FLAGS = {
@@ -138,8 +140,14 @@ def load_yaml_file(filename):
     try:
         with open(filename, 'r') as f:
             return yaml.safe_load(f)
-    except IOError, e:
+    except IOError as e:
         raise ParserError('Error opening ' + filename + ': ' + e.message)
-    except ValueError, e:
+    except ValueError as e:
         raise ParserError('Error parsing processes in {}: {}'
                           .format(filename, e.message))
+
+
+def nice_type_name(t):
+    if t is string_types:
+        return "string"
+    return t.__name__

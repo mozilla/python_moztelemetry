@@ -1,5 +1,5 @@
 
-# python_moztelemetry [![Build Status](https://travis-ci.org/mozilla/python_moztelemetry.svg?branch=master)](https://travis-ci.org/mozilla/python_moztelemetry) [![Documentation Status](http://readthedocs.org/projects/python_moztelemetry/badge/?version=latest)](https://python_moztelemetry.readthedocs.io/?badge=latest) [![Updates](https://pyup.io/repos/github/mozilla/python_moztelemetry/shield.svg)](https://pyup.io/repos/github/mozilla/python_moztelemetry/)
+# python_moztelemetry [![Build Status](https://travis-ci.org/mozilla/python_moztelemetry.svg?branch=master)](https://travis-ci.org/mozilla/python_moztelemetry) [![Documentation Status](http://readthedocs.org/projects/python_moztelemetry/badge/?version=latest)](https://python_moztelemetry.readthedocs.io/?badge=latest) [![Updates](https://pyup.io/repos/github/mozilla/python_moztelemetry/shield.svg)](https://pyup.io/repos/github/mozilla/python_moztelemetry/) [![codecov.io](https://codecov.io/github/mozilla/python_moztelemetry/coverage.svg?branch=master)](https://codecov.io/github/mozilla/python_moztelemetry?branch=master)
 
 Spark bindings for Mozilla Telemetry
 

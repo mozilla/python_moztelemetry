@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import division, print_function
-import copy_reg
 import functools
 import json
 import random
@@ -12,6 +11,7 @@ from copy import copy
 from inspect import isfunction
 from itertools import chain
 from multiprocessing import cpu_count
+from six.moves import copyreg
 
 import jmespath
 from concurrent import futures
@@ -52,7 +52,7 @@ def _pickle_method(m):
         return getattr, (m.im_self, m.im_func.func_name)
 
 
-copy_reg.pickle(types.MethodType, _pickle_method)
+copyreg.pickle(types.MethodType, _pickle_method)
 
 
 class Dataset:
@@ -126,14 +126,15 @@ class Dataset:
         """
         if not (properties or aliased_properties):
             return self
-        properties_pairs = zip(properties, properties)
-        merged_properties = dict(properties_pairs + aliased_properties.items())
+        merged_properties = dict(zip(properties, properties))
+        merged_properties.update(aliased_properties)
 
         for prop_name in (merged_properties.keys()):
             if prop_name in self.selection:
                 raise Exception('The property {} has already been selected'.format(prop_name))
 
-        new_selection = dict(self.selection.items() + merged_properties.items())
+        new_selection = self.selection.copy()
+        new_selection.update(merged_properties)
 
         return Dataset(self.bucket, self.schema, store=self.store, prefix=self.prefix,
                        clauses=self.clauses, selection=new_selection)
@@ -270,7 +271,7 @@ class Dataset:
                 random.setstate(seed_state)
 
         # Obtain size in MB
-        total_size = reduce(lambda acc, item: acc + item['size'], summaries, 0)
+        total_size = functools.reduce(lambda acc, item: acc + item['size'], summaries, 0)
         total_size_mb = total_size / float(1 << 20)
         print("fetching %.5fMB in %s files..." % (total_size_mb, len(summaries)))
 
@@ -305,10 +306,10 @@ class Dataset:
         store = S3Store(meta_bucket)
 
         try:
-            source = json.loads(store.get_key('sources.json').read())[source_name]
+            source = json.loads(store.get_key('sources.json').read().decode('utf-8'))[source_name]
         except KeyError:
             raise Exception('Unknown source {}'.format(source_name))
 
-        schema = store.get_key('{}/schema.json'.format(source['metadata_prefix'])).read()
+        schema = store.get_key('{}/schema.json'.format(source['metadata_prefix'])).read().decode('utf-8')
         dimensions = [f['field_name'] for f in json.loads(schema)['dimensions']]
         return Dataset(source['bucket'], dimensions, prefix=source['prefix'])

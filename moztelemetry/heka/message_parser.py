@@ -5,12 +5,12 @@ import gzip
 import ssl
 import struct
 
-import boto
+import boto.s3.key
 import snappy
 import ujson as json
 import json as standard_json
 import zlib
-from cStringIO import StringIO
+from io import BytesIO
 from google.protobuf.message import DecodeError
 
 from .message_pb2 import Message, Header
@@ -42,17 +42,18 @@ def _parse_heka_record(record):
             # messages is an unprocessed form of the data, usually the original
             # gzipped payload from the client.
             #
-            # We attempt to decompress it, and if that fails,
-            # attempt to decode it as a UTF-8 string.
+            # We decompress it if we can, then try to decode it as a UTF-8 string.
             elif field.name == 'content':
                 try:
-                    string = zlib.decompress(field.value_bytes[0], 16+zlib.MAX_WBITS)
-                except zlib.error:
+                    string = field.value_bytes[0]
                     try:
-                        string = field.value_bytes[0].decode('utf-8')
-                    except UnicodeDecodeError:
-                        # There is no associated payload
-                        break
+                        string = zlib.decompress(string, 16+zlib.MAX_WBITS)
+                    except zlib.error:
+                        pass  # not compressed
+                    string = string.decode('utf-8')
+                except UnicodeDecodeError:
+                    # There is no associated payload
+                    break
                 payload = {"content": string}
                 break
 
@@ -123,7 +124,7 @@ _record_separator = 0x1e
 class BacktrackableFile:
     def __init__(self, stream):
         self._stream = stream
-        self._buffer = StringIO()
+        self._buffer = BytesIO()
 
     def read(self, size):
         buffer_data = self._buffer.read(size)
@@ -151,7 +152,7 @@ class BacktrackableFile:
         buf = self._buffer.getvalue()
         index = buf.find(chr(_record_separator), 1)
 
-        self._buffer = StringIO()
+        self._buffer = BytesIO()
         if index >= 0:
             self._buffer.write(buf[index:])
             self._buffer.seek(0)
@@ -170,7 +171,7 @@ def read_until_next(fin, separator=_record_separator):
     bytes_skipped = 0
     while True:
         c = fin.read(1)
-        if c == '':
+        if len(c) == 0:
             return bytes_skipped, True
         elif ord(c) != separator:
             bytes_skipped += 1
@@ -196,7 +197,7 @@ def read_one_record(input_stream, raw=False, verbose=False, strict=False, try_sn
         if strict:
             raise ValueError("Unexpected character(s) at the start of record")
         if verbose:
-            print "Skipped", skipped, "bytes to find a valid separator"
+            print("Skipped %s bytes to find a valid separator" % skipped)
 
     raw_record = struct.pack("<B", 0x1e)
 
@@ -223,9 +224,9 @@ def read_one_record(input_stream, raw=False, verbose=False, strict=False, try_sn
     header.ParseFromString(header_raw)
     unit_separator = input_stream.read(1)
     total_bytes += 1
-    if ord(unit_separator[0]) != 0x1f:
+    if ord(unit_separator) != 0x1f:
         error_msg = "Unexpected unit separator character at offset {}: {}".format(
-            total_bytes, ord(unit_separator[0])
+            total_bytes, ord(unit_separator)
         )
         if strict:
             raise ValueError(error_msg)
@@ -262,7 +263,7 @@ def unpack_file(filename, **kwargs):
 
 
 def unpack_string(string, **kwargs):
-    return unpack(StringIO(string), **kwargs)
+    return unpack(BytesIO(string), **kwargs)
 
 
 def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_snappy=True):
@@ -270,7 +271,7 @@ def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_sna
     total_bytes = 0
 
     while True:
-        r = None
+        r, size = None, 0
         try:
             r, size = read_one_record(fin, raw, verbose, strict, try_snappy)
         except Exception as e:
@@ -278,7 +279,7 @@ def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_sna
                 fin.close()
                 raise e
             elif verbose:
-                print e
+                print(e)
 
             if backtrack and type(e) == DecodeError:
                 fin.backtrack()
@@ -288,7 +289,7 @@ def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_sna
             break
 
         if verbose and r.error is not None:
-            print r.error
+            print(r.error)
 
         record_count += 1
         total_bytes += size
@@ -296,6 +297,6 @@ def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_sna
         yield r, total_bytes
 
     if verbose:
-        print "Processed", record_count, "records"
+        print("Processed %s records" % record_count)
 
     fin.close()
