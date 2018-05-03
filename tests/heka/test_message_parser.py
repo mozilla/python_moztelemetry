@@ -149,7 +149,7 @@ def test_json_keys():
     assert serialized == e_serialized
 
 
-def test_landfill_message():
+def test_landfill_gzipped_content():
     # Landfill messages are tagged with meta-information and the contents are
     # directly gzipped into a content field.
 
@@ -186,3 +186,55 @@ def test_landfill_message():
     parsed = message_parser._parse_heka_record(Record(message))
 
     assert json.dumps(parsed) == json.dumps(expected)
+
+
+def test_landfill_utf8_content():
+    message = Message(
+        timestamp=1,
+        type="t",
+        hostname="h",
+        payload=None,
+        fields=[
+            Field(
+                name="content",
+                value_string=None,
+                value_bytes=[str.encode('{"b": "bee"}')],
+                value_type=1
+            )
+        ]
+    )
+
+    expected = {
+        "meta": {
+            "Timestamp": 1,
+            "Type": "t",
+            "Hostname": "h",
+        },
+        "content": '{"b": "bee"}',
+    }
+
+    parsed = message_parser._parse_heka_record(Record(message))
+
+    assert json.dumps(parsed) == json.dumps(expected)
+
+
+def test_landfill_invalid_content_raises_exception():
+
+    with pytest.raises(UnicodeDecodeError):
+        message = Message(
+            timestamp=1,
+            type="t",
+            hostname="h",
+            payload=None,
+            fields=[
+                Field(
+                    name="content",
+                    value_string=None,
+                    # impossible unicode byte sequence
+                    # http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+                    value_bytes=['\xfe\xfe\xff\xff'],
+                    value_type=1
+                )
+            ]
+        )
+        message_parser._parse_heka_record(Record(message))
