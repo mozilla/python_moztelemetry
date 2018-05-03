@@ -48,7 +48,11 @@ def _parse_heka_record(record):
                 try:
                     string = zlib.decompress(field.value_bytes[0], 16+zlib.MAX_WBITS)
                 except zlib.error:
-                    string = field.value_bytes[0].decode('utf-8')
+                    try:
+                        string = field.value_bytes[0].decode('utf-8')
+                    except UnicodeDecodeError:
+                        # There is no associated payload
+                        break
                 payload = {"content": string}
                 break
 
