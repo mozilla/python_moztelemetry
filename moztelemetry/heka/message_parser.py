@@ -47,8 +47,7 @@ def _parse_heka_record(record):
             elif field.name == 'content':
                 try:
                     string = zlib.decompress(field.value_bytes[0], 16+zlib.MAX_WBITS)
-                except Exception as e:  # noqa
-                    raise e
+                except zlib.error:
                     string = field.value_bytes[0].decode('utf-8')
                 payload = {"content": string}
                 break
