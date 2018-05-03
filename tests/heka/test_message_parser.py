@@ -218,23 +218,32 @@ def test_landfill_utf8_content():
     assert json.dumps(parsed) == json.dumps(expected)
 
 
-def test_landfill_invalid_content_raises_exception():
+def test_landfill_invalid_content_is_empty():
+    message = Message(
+        timestamp=1,
+        type="t",
+        hostname="h",
+        payload=None,
+        fields=[
+            Field(
+                name="content",
+                value_string=None,
+                # impossible unicode byte sequence
+                # http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+                value_bytes=['\xfe\xfe\xff\xff'],
+                value_type=1
+            )
+        ]
+    )
 
-    with pytest.raises(UnicodeDecodeError):
-        message = Message(
-            timestamp=1,
-            type="t",
-            hostname="h",
-            payload=None,
-            fields=[
-                Field(
-                    name="content",
-                    value_string=None,
-                    # impossible unicode byte sequence
-                    # http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
-                    value_bytes=['\xfe\xfe\xff\xff'],
-                    value_type=1
-                )
-            ]
-        )
-        message_parser._parse_heka_record(Record(message))
+    expected = {
+        "meta": {
+            "Timestamp": 1,
+            "Type": "t",
+            "Hostname": "h",
+        }
+    }
+
+    parsed = message_parser._parse_heka_record(Record(message))
+
+    assert json.dumps(parsed) == json.dumps(expected)
