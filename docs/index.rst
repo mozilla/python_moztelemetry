@@ -9,18 +9,15 @@ python_moztelemetry
 A simple library to fetch and analyze data collected by the Mozilla Telemetry service.
 Objects collected by Telemetry are called ``pings``.
 A ping has a number of properties (aka ``dimensions``) and a payload.
-A session of Telemetry data analysis/manipulation typically starts with a query that filters the objects by one or more dimensions.
-This query can be expressed using either an orm-like api, :ref:`Dataset` or a simple
-function, :ref:`get_pings`.
 
+A session of Telemetry data analysis/manipulation typically starts
+with a :ref:`Dataset` query that filters the objects by one or more
+dimensions, and then extracts the items of interest from their payload.
 
 .. toctree::
    :maxdepth: 2
 
    api
-
-
-
 
 Indices and tables
 ==================
