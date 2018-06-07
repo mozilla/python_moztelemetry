@@ -171,6 +171,11 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
 def get_one_ping_per_client(pings):
     """
     Returns a single ping for each client in the RDD.
+
+    THIS METHOD IS NOT RECOMMENDED: The ping to be returned is essentially
+    selected at random. It is also expensive as it requires data to be
+    shuffled around. It should be run only after extracting a subset with
+    get_pings_properties.
     """
     if isinstance(pings.first(), str):
         pings = pings.map(lambda p: json.loads(p))
