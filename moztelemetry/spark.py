@@ -13,6 +13,20 @@ from .histogram import Histogram
 
 logger = logging.getLogger(__name__)
 
+
+def deprecated(func):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used."""
+    def newFunc(*args, **kwargs):
+        print("Call to deprecated function %s." % func.__name__)
+        return func(*args, **kwargs)
+    newFunc.__name__ = func.__name__
+    newFunc.__doc__ = func.__doc__
+    newFunc.__dict__.update(func.__dict__)
+    return newFunc
+
+
 if not boto.config.has_section('Boto'):
     boto.config.add_section('Boto')
 boto.config.set('Boto', 'http_socket_timeout', '10')  # https://github.com/boto/boto/issues/2830
@@ -47,6 +61,7 @@ class PingCursor(dict):
         return value
 
 
+@deprecated
 def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session',
               fraction=1.0, schema=None, source_name='telemetry', source_version='4',
               submission_date=None, version=None):
@@ -109,6 +124,7 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
     return dataset.records(sc, sample=fraction)
 
 
+@deprecated
 def get_pings_properties(pings, paths, only_median=False, with_processes=False,
                          histograms_url=None, additional_histograms=None):
     """
@@ -151,11 +167,15 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
         .filter(lambda p: p)
 
 
+@deprecated
 def get_one_ping_per_client(pings):
     """
-    Returns a single ping for each client in the RDD. This operation is expensive
-    as it requires data to be shuffled around. It should be run only after extracting
-    a subset with get_pings_properties.
+    Returns a single ping for each client in the RDD.
+
+    THIS METHOD IS NOT RECOMMENDED: The ping to be returned is essentially
+    selected at random. It is also expensive as it requires data to be
+    shuffled around. It should be run only after extracting a subset with
+    get_pings_properties.
     """
     if isinstance(pings.first(), str):
         pings = pings.map(lambda p: json.loads(p))

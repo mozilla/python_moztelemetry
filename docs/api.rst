@@ -9,12 +9,18 @@ Dataset
 .. automodule:: moztelemetry.dataset
     :members:
 
-.. _get_pings:
+Deprecated ping methods
+-----------------------
 
-get_pings() (deprecated)
-------------------------
+Before the Dataset API was available, a number of custom methods were
+written for selecting a set of telemetry pings and extracting data
+from them. These methods are somewhat convoluted and difficult to
+understand, and are not recommended for new code.
 
 .. autofunction:: moztelemetry.spark.get_pings
+.. autofunction:: moztelemetry.spark.get_pings_properties
+.. autofunction:: moztelemetry.spark.get_one_ping_per_client
+
 
 Using Spark RDDs
 ----------------
