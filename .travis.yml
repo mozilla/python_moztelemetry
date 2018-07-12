@@ -24,3 +24,4 @@ deploy:
   on:
     tags: true
     repo: mozilla/python_moztelemetry
+    condition: $PYTHON_VERSION = 3.6
