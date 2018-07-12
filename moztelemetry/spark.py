@@ -5,6 +5,11 @@ import json as json
 import logging
 from functools import partial
 from operator import add
+from six import binary_type
+from six import iteritems
+from six import string_types
+from six import viewkeys
+from six.moves import reduce
 
 import boto
 
@@ -82,8 +87,8 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
     :param fraction: the fraction of pings to return, set to 1.0 by default
     """
     if schema:
-        print ("The 'schema' parameter is deprecated. "
-               "Version 4 is now the only schema supported.")
+        print("The 'schema' parameter is deprecated. "
+              "Version 4 is now the only schema supported.")
         if schema != "v4":
             raise ValueError("Invalid schema version")
 
@@ -109,9 +114,9 @@ def get_pings(sc, app=None, build_id=None, channel=None, doc_type='saved_session
     def range_compare(min_val, max_val, val):
         return min_val <= val <= max_val
 
-    for key, value in special_cases.items():
+    for key, value in iteritems(special_cases):
         if value is not None and value != '*':
-            if isinstance(value, basestring):
+            if isinstance(value, string_types):
                 condition = value
             elif isinstance(value, (list, tuple)) and len(value) == 2:
                 start, end = value
@@ -148,15 +153,15 @@ def get_pings_properties(pings, paths, only_median=False, with_processes=False,
     keyed by the original paths (if 'paths' is a list) or the custom identifier keys
     (if 'paths' is a dict).
     """
-    if isinstance(pings.first(), str):
-        pings = pings.map(lambda p: json.loads(p))
+    if isinstance(pings.first(), binary_type):
+        pings = pings.map(lambda p: json.loads(p.decode('utf-8')))
 
     if isinstance(paths, str):
         paths = [paths]
 
     # Use '/' as dots can appear in keyed histograms
     if isinstance(paths, dict):
-        paths = [(prop_name, path.split("/")) for prop_name, path in paths.iteritems()]
+        paths = [(prop_name, path.split("/")) for prop_name, path in iteritems(paths)]
     else:
         paths = [(path, path.split("/")) for path in paths]
 
@@ -177,8 +182,8 @@ def get_one_ping_per_client(pings):
     shuffled around. It should be run only after extracting a subset with
     get_pings_properties.
     """
-    if isinstance(pings.first(), str):
-        pings = pings.map(lambda p: json.loads(p))
+    if isinstance(pings.first(), binary_type):
+        pings = pings.map(lambda p: json.loads(p.decode('utf-8')))
 
     filtered = pings.filter(lambda p: "clientID" in p or "clientId" in p)
 
@@ -215,21 +220,21 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                 # Include histograms for all available keys.
                 # These are returned as a subdict mapped from the
                 # property_name.
-                kh_keys = cursor["keyedHistograms"][path[1]].viewkeys()
+                kh_keys = viewkeys(cursor["keyedHistograms"][path[1]])
                 if isinstance(cursor, dict):
 
                     # Bug 1218576 aggregates child payloads into the
                     # content process as of Firefox 51. Keyed histograms
                     # will be found in one or the other.
                     content_kh = cursor["processes"]["content"]["keyedHistograms"]
-                    kh_keys |= content_kh[path[1]].viewkeys()
+                    kh_keys |= viewkeys(content_kh[path[1]])
 
                     for payload in cursor.get("childPayloads", []):
                         payload_kh = PingCursor(payload)["keyedHistograms"]
-                        kh_keys |= payload_kh[path[1]].viewkeys()
+                        kh_keys |= viewkeys(payload_kh[path[1]])
 
                     gpu_kh = cursor["processes"]["gpu"]["keyedHistograms"]
-                    kh_keys |= gpu_kh[path[1]].viewkeys()
+                    kh_keys |= viewkeys(gpu_kh[path[1]])
 
                 if kh_keys:
                     kh_histograms = {}
@@ -239,7 +244,7 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                                                        with_processes,
                                                        histograms_url,
                                                        additional_histograms)
-                        for k, v in props.iteritems():
+                        for k, v in iteritems(props):
                             kh_histograms[k] = v.get_value(only_median) if v else None
 
                     result[property_name] = kh_histograms
@@ -250,7 +255,7 @@ def _get_ping_properties(ping, paths, only_median, with_processes,
                 props = _get_merged_histograms(cursor, property_name, path,
                                                with_processes, histograms_url,
                                                additional_histograms)
-                for k, v in props.iteritems():
+                for k, v in iteritems(props):
                     result[k] = v.get_value(only_median) if v else None
         else:
             prop = _get_ping_property(cursor, path, histograms_url,
@@ -314,7 +319,7 @@ def _get_merged_histograms(cursor, property_name, path, with_processes,
         children += [_get_ping_property(cursor["processes"]["gpu"],
                                         path, histograms_url,
                                         additional_histograms)]
-        children = filter(lambda h: h is not None, children)
+        children = list(filter(lambda h: h is not None, children))
 
     # Merge parent and children
     merged = ([parent] if parent else []) + children

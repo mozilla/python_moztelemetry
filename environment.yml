@@ -1,8 +1,8 @@
 name: test-environment
 dependencies:
-- python=2.7
 - pandas
 - pyspark
 - python-snappy
 - snappy
 - scipy
+- gcc

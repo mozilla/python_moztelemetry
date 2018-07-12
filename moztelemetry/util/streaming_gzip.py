@@ -3,7 +3,7 @@
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 
 from gzip import GzipFile
-from StringIO import StringIO
+from io import BytesIO
 from os import SEEK_SET, SEEK_END
 
 # boto's s3.Key and botocore's StreamingBody do not support the seek()
@@ -35,7 +35,7 @@ class StreamingGzipFile(GzipFile):
         remainder = self.decompress.unused_data + self.fileobj.read()
         assert(len(remainder) == 8)
         self.fileobj.close()
-        self.fileobj = StringIO(remainder)
+        self.fileobj = BytesIO(remainder)
         super(StreamingGzipFile, self)._read_eof()
 
 

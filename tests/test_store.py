@@ -25,7 +25,7 @@ def test_empty_store(dummy_bucket, store_class):
 def test_upload_key(dummy_bucket, store_class):
     store = store_class(dummy_bucket.name)
     key = 'my-key'
-    value = 'my-value'
+    value = b'my-value'
 
     with tempfile.TemporaryFile() as f:
         f.write(value)
@@ -39,7 +39,7 @@ def test_upload_key(dummy_bucket, store_class):
 def test_list_keys(dummy_bucket, store_class):
     store = store_class(dummy_bucket.name)
     keys = ('dir1/key1', 'dir2/value2')
-    values = ('value1', 'value2')
+    values = (b'value1', b'value2')
 
     for index, key in enumerate(keys):
         with tempfile.TemporaryFile() as f:
@@ -55,7 +55,7 @@ def test_list_keys(dummy_bucket, store_class):
 def test_list_folders(dummy_bucket, store_class):
     store = store_class(dummy_bucket.name)
     keys = ('dir1/subdir1/key1', 'dir2/another-dir/key2')
-    values = ('value1', 'value2')
+    values = (b'value1', b'value2')
 
     for index, key in enumerate(keys):
         with tempfile.TemporaryFile() as f:
@@ -72,7 +72,7 @@ def test_list_folders(dummy_bucket, store_class):
 def test_get_key(dummy_bucket, store_class):
     store = store_class(dummy_bucket.name)
     key = 'key1'
-    value = 'value1'
+    value = b'value1'
 
     with tempfile.TemporaryFile() as f:
         f.write(value)
@@ -94,7 +94,7 @@ def test_get_non_existing_key(dummy_bucket, store_class):
 def test_delete_key(dummy_bucket, store_class):
     store = store_class(dummy_bucket.name)
     key = 'key1'
-    value = 'value1'
+    value = b'value1'
 
     with tempfile.TemporaryFile() as f:
         f.write(value)
@@ -116,7 +116,7 @@ def test_delete_non_existing_key(dummy_bucket, store_class):
 def test_is_prefix_empty(dummy_bucket, store_class):
     store = store_class(dummy_bucket.name)
     key = 'dir1/key1'
-    value = 'value1'
+    value = b'value1'
 
     with tempfile.TemporaryFile() as f:
         f.write(value)
