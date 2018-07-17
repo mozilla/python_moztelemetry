@@ -14,6 +14,7 @@ from itertools import chain
 from multiprocessing import cpu_count
 
 import jmespath
+import heapq
 from concurrent import futures
 from .heka import message_parser
 
@@ -40,6 +41,30 @@ def _group_by_size_greedy(obj_list, tot_groups):
         current_group.append(obj)
     return groups
 
+def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
+  sub_list = []
+  groups = [[]]
+  pq = []
+  tmp_object = none
+  
+  if tot_groups <= 1:
+    group_by_size_greedy(obj_list, tot_groups)
+  
+  pq = heapq.heapify(obj_list)
+  
+  while pq: 
+    if pq[0].size >= threshold:
+      tmp_object = heapq.heappop(pq)
+      groups.append(tmp_object)
+    else:
+      if sub_list.size >= threshold:
+        groups.append(sub_list)
+        sub_list = []
+      else:
+        tmp_object = heapq.heappop(pq)
+        sub_list.append(tmp_object)
+
+  return groups
 
 def _pickle_method(m):
     """Make instance methods pickable
