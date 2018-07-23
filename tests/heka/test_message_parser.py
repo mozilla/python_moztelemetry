@@ -81,7 +81,7 @@ def test_parse_heka_message(data_dir, heka_format):
         if "gzip" in heka_format:
             f = streaming_gzip_wrapper(f)
         # deep copy the parsed message so lazy-parsed json gets vivified
-        msg = copy.deepcopy(message_parser.parse_heka_message(f).next())
+        msg = copy.deepcopy(next(message_parser.parse_heka_message(f)))
         assert msg == reference
 
 
@@ -143,8 +143,8 @@ def test_json_keys():
 
     parsed = message_parser._parse_heka_record(Record(message))
 
-    serialized = json.dumps(parsed)
-    e_serialized = json.dumps(expected)
+    serialized = json.dumps(parsed, sort_keys=True)
+    e_serialized = json.dumps(expected, sort_keys=True)
 
     assert serialized == e_serialized
 
@@ -168,7 +168,7 @@ def test_landfill_gzipped_content():
             Field(
                 name="content",
                 value_string=None,
-                value_bytes=[compress('{"b": "bee"}')],
+                value_bytes=[compress(b'{"b": "bee"}')],
                 value_type=1
             )
         ]
@@ -185,7 +185,10 @@ def test_landfill_gzipped_content():
 
     parsed = message_parser._parse_heka_record(Record(message))
 
-    assert json.dumps(parsed) == json.dumps(expected)
+    serialized = json.dumps(parsed, sort_keys=True)
+    e_serialized = json.dumps(expected, sort_keys=True)
+
+    assert serialized == e_serialized
 
 
 def test_landfill_utf8_content():
@@ -215,7 +218,10 @@ def test_landfill_utf8_content():
 
     parsed = message_parser._parse_heka_record(Record(message))
 
-    assert json.dumps(parsed) == json.dumps(expected)
+    serialized = json.dumps(parsed, sort_keys=True)
+    e_serialized = json.dumps(expected, sort_keys=True)
+
+    assert serialized == e_serialized
 
 
 def test_landfill_invalid_content_is_empty():
@@ -230,7 +236,7 @@ def test_landfill_invalid_content_is_empty():
                 value_string=None,
                 # impossible unicode byte sequence
                 # http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
-                value_bytes=['\xfe\xfe\xff\xff'],
+                value_bytes=[b'\xfe\xfe\xff\xff'],
                 value_type=1
             )
         ]
@@ -246,4 +252,7 @@ def test_landfill_invalid_content_is_empty():
 
     parsed = message_parser._parse_heka_record(Record(message))
 
-    assert json.dumps(parsed) == json.dumps(expected)
+    serialized = json.dumps(parsed, sort_keys=True)
+    e_serialized = json.dumps(expected, sort_keys=True)
+
+    assert serialized == e_serialized

@@ -15,12 +15,14 @@ setup(
     url='https://github.com/mozilla/python_moztelemetry',
     packages=find_packages(),
     package_dir={'moztelemetry': 'moztelemetry'},
-    install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf',
-                      'expiringdict', 'functools32', 'futures', 'py4j',
+    install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf', 'six',
+                      'expiringdict', "functools32;python_version<'3'", 'py4j',
                       'pandas>=0.14.1', 'numpy>=1.8.2',
                       'PyYAML', 'python-snappy'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
-    # put pytest last to workaround this bug
-    # https://bitbucket.org/pypa/setuptools/issues/196/tests_require-pytest-pytest-cov-breaks
-    tests_require=['mock', 'pytest-timeout', 'moto<=1.1.22', 'responses', 'scipy', 'pytest-flake8', 'pytest'],
+    extras_require={
+        'test': ['mock', 'pytest-timeout', 'moto<=1.1.22', 'responses',
+                 'scipy', 'pytest-flake8', 'pytest', 'pytest-cov'],
+    },
+    tests_require=['python_moztelemetry[test]'],
 )

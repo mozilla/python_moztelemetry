@@ -13,7 +13,7 @@ import requests
 import yaml
 
 from expiringdict import ExpiringDict
-from parse_scalars import ScalarType
+from .parse_scalars import ScalarType
 
 
 SCALARS_YAML_PATH = '/toolkit/components/telemetry/Scalars.yaml'

@@ -1,12 +1,20 @@
+env:
+  - PYTHON_VERSION=2.7
+  - PYTHON_VERSION=3.5
+  - PYTHON_VERSION=3.6
 sudo: required
 language: python
 services:
   - docker
 before_install:
   - env | grep TRAVIS > .travis-env
-  - docker build -t moztelemetry_docker .
+  - docker build -t moztelemetry_docker:python-$PYTHON_VERSION --build-arg PYTHON_VERSION=$PYTHON_VERSION .
 script:
-  - docker run --env-file .travis-env moztelemetry_docker ./runtests.sh -v --timeout=120
+  # mount coverage.xml as a file into the container to retrieve coverage report
+  - touch coverage.xml
+  - docker run --env-file .travis-env -v $PWD/coverage.xml:/python_moztelemetry/coverage.xml moztelemetry_docker:python-$PYTHON_VERSION ./runtests.sh -v --timeout=120 tests
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -F python${PYTHON_VERSION//.}
 deploy:
   provider: pypi
   user: fbertsch
@@ -16,3 +24,4 @@ deploy:
   on:
     tags: true
     repo: mozilla/python_moztelemetry
+    condition: $PYTHON_VERSION = 3.6

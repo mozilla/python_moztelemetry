@@ -8,14 +8,19 @@
 from __future__ import division
 
 import requests
-import parse_histograms
 import re
 import pandas as pd
 import numpy as np
 import ujson as json
 
-from functools32 import lru_cache
+from . import parse_histograms
 from expiringdict import ExpiringDict
+
+# python 2 and 3 compatiblity
+try:
+    from functools32 import lru_cache
+except ImportError:
+    from functools import lru_cache
 
 HISTOGRAMS_JSON_REVISION = "https://hg.mozilla.org/mozilla-central/rev/tip"
 HISTOGRAMS_JSON_PATH = "/toolkit/components/telemetry/Histograms.json"
@@ -62,9 +67,9 @@ def _fetch_histograms_definition(url):
         definition = requests.get(url).content
 
         # see bug 920169
-        definition = definition.replace('"JS::gcreason::NUM_TELEMETRY_REASONS"', "101")
-        definition = definition.replace('"mozilla::StartupTimeline::MAX_EVENT_ID"', "12")
-        definition = definition.replace('"80 + 1"', "81")
+        definition = definition.replace(b'"JS::gcreason::NUM_TELEMETRY_REASONS"', b"101")
+        definition = definition.replace(b'"mozilla::StartupTimeline::MAX_EVENT_ID"', b"12")
+        definition = definition.replace(b'"80 + 1"', b"81")
 
         parsed = json.loads(definition)
         parsed.update(histogram_exceptions)
@@ -186,7 +191,7 @@ class Histogram:
         elif self.kind == "categorical" and not only_median:
             return self.buckets
         elif self.kind == "count":
-            return long(self.buckets[0])
+            return int(self.buckets[0])
         elif self.kind == "flag":
             return self.buckets[1] == 1
         else:

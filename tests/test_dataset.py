@@ -106,7 +106,7 @@ def test_where_exact_match():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
     new_dataset = dataset.where(dim1='myvalue')
     assert new_dataset is not dataset
-    assert new_dataset.clauses.keys() == ['dim1']
+    assert list(new_dataset.clauses.keys()) == ['dim1']
     condition = new_dataset.clauses['dim1']
     assert condition('myvalue')
 
@@ -184,7 +184,7 @@ def test_scan_multiple_params():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
     new_dataset = dataset.where(dim1='myvalue')
     assert new_dataset is not dataset
-    assert new_dataset.clauses.keys() == ['dim1']
+    assert list(new_dataset.clauses.keys()) == ['dim1']
     condition = new_dataset.clauses['dim1']
     assert condition('myvalue')
 
@@ -248,7 +248,7 @@ def test_records(spark_context):
     records = dataset.records(spark_context, decode=lambda x: x)
     records = records.collect()
 
-    assert records == ['value1', 'value2']
+    assert records == [b'value1', b'value2']
 
 
 @pytest.mark.slow
@@ -264,7 +264,7 @@ def test_records_many_groups(spark_context, monkeypatch):
     records = dataset.records(spark_context, decode=lambda x: x)
     records = records.collect()
 
-    assert records == ['value{}'.format(i) for i in range(1, spark_context.defaultParallelism + 2)]
+    assert records == ['value{}'.format(i).encode('utf-8') for i in range(1, spark_context.defaultParallelism + 2)]
 
 
 @pytest.mark.slow
@@ -303,7 +303,7 @@ def test_records_summaries(spark_context):
                               summaries=[{'key': 'dir1/subdir1/key1', 'size': len('value1')}])
     records = records.collect()
 
-    assert records == ['value1']
+    assert records == [b'value1']
 
 
 @pytest.mark.slow
@@ -333,7 +333,7 @@ def test_records_limit_and_sample(spark_context):
 
 
 def decode(obj):
-    value = obj.getvalue()
+    value = obj.getvalue().decode('utf-8')
     return [json.loads(value)]
 
 
@@ -376,12 +376,12 @@ def test_dataset_from_source(my_mock_s3, monkeypatch):
     store = S3Store(meta_bucket_name)
     data_dir = os.path.join(os.path.dirname(__file__), 'data')
 
-    with open(os.path.join(data_dir, 'sources.json')) as f:
+    with open(os.path.join(data_dir, 'sources.json'), 'rb') as f:
         store.upload_file(f, '', 'sources.json')
-    with open(os.path.join(data_dir, 'schema.json')) as f:
+    with open(os.path.join(data_dir, 'schema.json'), 'rb') as f:
         store.upload_file(f, 'telemetry-2/', 'schema.json')
         f.seek(0)
-        expected_dimensions = json.loads(f.read())['dimensions']
+        expected_dimensions = json.loads(f.read().decode('utf-8'))['dimensions']
 
     dimensions = [dim['field_name'] for dim in expected_dimensions]
 

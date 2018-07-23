@@ -75,7 +75,7 @@ def test_get_pings_by_exact_match(test_store, dummy_pool_executor,
     upload_ping(test_store, 'value2', **{filter_name: wrong})
     pings = get_pings(spark_context, **{filter_name: exact})
 
-    assert pings.collect() == ['value1']
+    assert pings.collect() == [b'value1']
 
 
 test_data_for_range_match = [
@@ -93,11 +93,11 @@ def test_get_pings_by_range(test_store, dummy_pool_executor,
     upload_ping(test_store, 'value2', **{filter_name: wrong})
     pings = get_pings(spark_context, **{filter_name: exact})
 
-    assert pings.collect() == ['value1']
+    assert pings.collect() == [b'value1']
 
     pings = get_pings(spark_context, **{filter_name: (start, end)})
 
-    assert pings.collect() == ['value1']
+    assert pings.collect() == [b'value1']
 
 
 @pytest.mark.slow
@@ -107,11 +107,11 @@ def test_get_pings_multiple_by_range(test_store, dummy_pool_executor,
     upload_ping(test_store, 'value2', **{f[0]: f[2] for f in test_data_for_range_match})
     pings = get_pings(spark_context, **{f[0]: f[1] for f in test_data_for_range_match})
 
-    assert pings.collect() == ['value1']
+    assert pings.collect() == [b'value1']
 
     pings = get_pings(spark_context, **{f[0]: (f[3], f[4]) for f in test_data_for_range_match})
 
-    assert pings.collect() == ['value1']
+    assert pings.collect() == [b'value1']
 
 
 def test_get_pings_fraction(test_store, dummy_pool_executor,
@@ -142,7 +142,7 @@ def test_get_pings_multiple_filters(test_store, dummy_pool_executor,
     upload_ping(test_store, 'value2', **filters)
     pings = get_pings(spark_context, **filters)
 
-    assert pings.collect() == ['value2']
+    assert pings.collect() == [b'value2']
 
 
 def test_get_pings_none_filter(test_store, dummy_pool_executor,
@@ -151,11 +151,11 @@ def test_get_pings_none_filter(test_store, dummy_pool_executor,
     upload_ping(test_store, 'value2', app='Thuderbird')
     pings = get_pings(spark_context, app=None)
 
-    assert sorted(pings.collect()) == ['value1', 'value2']
+    assert sorted(pings.collect()) == [b'value1', b'value2']
 
     pings = get_pings(spark_context, app='*')
 
-    assert sorted(pings.collect()) == ['value1', 'value2']
+    assert sorted(pings.collect()) == [b'value1', b'value2']
 
 
 def test_ping_cursor():

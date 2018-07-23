@@ -14,3 +14,4 @@
 .pytest_cache/
 python_moztelemetry.egg-info/
 docs/_build/
+coverage.xml
