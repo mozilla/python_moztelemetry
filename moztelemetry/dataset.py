@@ -43,6 +43,7 @@ def _group_by_size_greedy(obj_list, tot_groups):
 
 
 def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
+<<<<<<< HEAD
     """Partition a list of objects evenly and by file size
 
     Files are placed according to largest file in the smallest bucket. If the
@@ -55,6 +56,10 @@ def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
     """
     sorted_obj_list = sorted([(obj['size'], obj) for obj in obj_list], reverse=True)
     groups = [(random.random(), []) for _ in range(tot_groups)]
+=======
+    sorted_obj_list = sorted([(obj['size'], obj) for obj in obj_list], reverse=True)
+    groups = [(0, []) for _ in range(tot_groups)]
+>>>>>>> dfc73a9... improve style
 
     if tot_groups <= 1:
         groups = _group_by_size_greedy(obj_list, tot_groups)
