@@ -238,6 +238,30 @@ def test_group_by_size_greedy():
     ]
 
 
+def test_group_by_equal_size():
+    obj_list1 = [dict(size=i) for i in range(1, 5)]
+    obj_list2 = [{'size':70}, {'size':70}, {'size':70}, {'size':70}]
+    obj_list3 = [{'size':4}, {'size':1}, {'size':3}, {'size':2}]
+    
+    groups = _group_by_equal_size(obj_list1, 1)
+    assert groups == [
+        [{'size': 4}, {'size': 3}, 
+            {'size': 2}, {'size': 1}]
+    ]
+
+    groups = _group_by_equal_size(obj_list2, 2, 100)
+    assert groups == [ 
+        [(70, {'size': 70}), (70, {'size': 70})], 
+                [(70, {'size': 70}), (70, {'size': 70})]
+    ]
+    
+    groups = _group_by_equal_size(obj_list3, 3, 5)
+    assert groups == [
+        [(1, {'size': 1}), (2, {'size': 2}), (3, {'size': 3})], 
+        [(4, {'size': 4})]
+    ]
+
+
 @pytest.mark.slow
 def test_records(spark_context):
     bucket_name = 'test-bucket'
