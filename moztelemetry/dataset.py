@@ -3,6 +3,7 @@
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import division, print_function
 import functools
+import heapq
 import json
 import random
 import re
@@ -38,6 +39,39 @@ def _group_by_size_greedy(obj_list, tot_groups):
     for index, obj in enumerate(sorted_list):
         current_group = groups[index % len(groups)]
         current_group.append(obj)
+    return groups
+
+
+def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
+    sub_list = []
+    groups = []
+    priority = []
+    tmp_object = None
+    sub_list_size = 0
+
+    if tot_groups <= 1:
+        groups = _group_by_size_greedy(obj_list, tot_groups)
+        return groups
+
+    for obj in obj_list:
+        for key in obj:
+            priority.append((obj[key], obj))
+
+    heapq.heapify(priority)
+    while priority:
+        tmp_object = heapq.heappop(priority)
+
+        if tmp_object[0] >= threshold:
+            groups.append(tmp_object)
+
+        sub_list.append(tmp_object)
+        sub_list_size += tmp_object[0]
+        if sub_list_size >= threshold:
+            groups.append(sub_list)
+            sub_list = []
+            sub_list_size = 0
+    if sub_list:
+        groups.append(sub_list)
     return groups
 
 
