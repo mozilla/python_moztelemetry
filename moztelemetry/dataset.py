@@ -4,6 +4,7 @@
 from __future__ import division, print_function
 import copy_reg
 import functools
+import heapq
 import json
 import random
 import re
@@ -40,6 +41,7 @@ def _group_by_size_greedy(obj_list, tot_groups):
         current_group.append(obj)
     return groups
 
+
 def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
     sub_list = []
     groups = []
@@ -56,12 +58,12 @@ def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
             priority.append((obj[key], obj))
 
     heapq.heapify(priority)
-    while priority: 
+    while priority:
         tmp_object = heapq.heappop(priority)
-        
+
         if tmp_object[0] >= threshold:
             groups.append(tmp_object)
-        
+
         sub_list.append(tmp_object)
         sub_list_size += tmp_object[0]
         if sub_list_size >= threshold:
@@ -71,6 +73,7 @@ def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
     if sub_list:
         groups.append(sub_list)
     return groups
+
 
 def _pickle_method(m):
     """Make instance methods pickable
