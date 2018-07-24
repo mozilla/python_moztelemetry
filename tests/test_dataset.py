@@ -9,8 +9,8 @@ from concurrent import futures
 import pytest
 
 import moztelemetry
-from moztelemetry.dataset import Dataset, _group_by_size_greedy,
-                                _group_by_equal_size
+from moztelemetry.dataset import Dataset
+from moztelemetry.dataset import _group_by_size_greedy, _group_by_equal_size
 from moztelemetry.store import InMemoryStore, S3Store
 
 
