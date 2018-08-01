@@ -252,13 +252,14 @@ def test_group_by_equal_size():
     ]
     groups = _group_by_equal_size(obj_list2, 2, 100)
     assert groups == [
-        [(70, {'size': 70}), (70, {'size': 70})],
-        [(70, {'size': 70}), (70, {'size': 70})]
+        [{'size': 70}, {'size': 70}],
+        [{'size': 70}, {'size': 70}]
     ]
     groups = _group_by_equal_size(obj_list3, 3, 5)
     assert groups == [
-        [(1, {'size': 1}), (2, {'size': 2}), (3, {'size': 3})],
-        [(4, {'size': 4})]
+        ['size': 2}, {'size': 1}],
+        [{'size': 4}],
+        [{'size': 3}]
     ]
     groups = _group_by_equal_size(obj_list4, 3, 5)
     assert groups == [
