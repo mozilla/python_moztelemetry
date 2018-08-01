@@ -64,7 +64,6 @@ def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
             files.append(obj[1])
             best_partition = (size, files)
             heapq.heappush(groups, best_partition)
-    
     groups = [group[1] for group in groups]
     return groups
 
