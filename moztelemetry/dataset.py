@@ -43,35 +43,29 @@ def _group_by_size_greedy(obj_list, tot_groups):
 
 
 def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
-    sub_list = []
-    groups = []
-    priority = []
-    tmp_object = None
-    sub_list_size = 0
+    groups = [[]]
+    sorted_obj_list = []
+    best_partition = None
 
     if tot_groups <= 1:
         groups = _group_by_size_greedy(obj_list, tot_groups)
         return groups
-
-    for obj in obj_list:
-        for key in obj:
-            priority.append((obj[key], obj))
-
-    heapq.heapify(priority)
-    while priority:
-        tmp_object = heapq.heappop(priority)
-
-        if tmp_object[0] >= threshold:
-            groups.append(tmp_object)
-
-        sub_list.append(tmp_object)
-        sub_list_size += tmp_object[0]
-        if sub_list_size >= threshold:
-            groups.append(sub_list)
-            sub_list = []
-            sub_list_size = 0
-    if sub_list:
-        groups.append(sub_list)
+    sorted_obj_list = [(obj['size'], obj) for obj in obj_list]
+    sorted_obj_list.sort(reverse=True)
+    groups = [(0, []) for _ in range(tot_groups)]
+    heapq.heapify(groups)
+    for obj in sorted_obj_list:
+        if obj[0] > threshold:
+            heapq.heappush(groups, (obj[0], [obj[1]]))
+        else:
+            best_partition = heapq.heappop(groups)
+            (size, files) = best_partition
+            size += obj[0]
+            files.append(obj[1])
+            best_partition = (size, files)
+            heapq.heappush(groups, best_partition)
+    
+    groups = [group[1] for group in groups]
     return groups
 
 
