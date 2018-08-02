@@ -30,7 +30,7 @@ tests inside it:
 
 ```bash
 docker build -t moztelemetry_docker .
-./runtests.sh # will run tests inside docker container
+./runtests.sh tests  # will run tests inside docker container
 ```
 
 You can also run a subset of the tests by passing arguments to `runtests.sh`:
