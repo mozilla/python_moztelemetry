@@ -258,7 +258,8 @@ class Dataset:
         keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
         return keys.take(limit) if limit else keys.collect()
 
-    def records(self, sc, limit=None, sample=1, seed=42, decode=None, summaries=None):
+    def records(self, sc, limit=None, sample=1, seed=42, decode=None,
+            summaries=None, group_by='greedy', 'equal_size'):
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
@@ -301,7 +302,12 @@ class Dataset:
         total_size_mb = total_size / float(1 << 20)
         print("fetching %.5fMB in %s files..." % (total_size_mb, len(summaries)))
 
-        groups = _group_by_size_greedy(summaries, 10 * sc.defaultParallelism)
+        if group_by == 'equal_size':
+            groups = _group_by_equal_size(summaries, 10*sc.defaultParallelism)
+        elif group_by == 'greedy':
+            groups = _group_by_size_greedy(summaries, 10 * sc.defaultParallelism)
+        else:
+            groups = _grou_by_size_greedy(summaries, 10*sc.defaultParallelism)
         rdd = sc.parallelize(groups, len(groups)).flatMap(lambda x: x)
 
         if decode is None:
