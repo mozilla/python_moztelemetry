@@ -258,7 +258,7 @@ class Dataset:
         keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
         return keys.take(limit) if limit else keys.collect()
 
-    def records(self, sc, group_by, limit=None, sample=1, seed=42, decode=None, summaries=None):
+    def records(self, sc, group_by='greedy', limit=None, sample=1, seed=42, decode=None, summaries=None):
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
