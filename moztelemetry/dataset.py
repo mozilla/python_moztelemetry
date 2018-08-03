@@ -53,8 +53,9 @@ def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
     :threshold: the maximum size of each bucket
     :return: a list of lists, one for each partition
     """
+    
     sorted_obj_list = sorted([(obj['size'], obj) for obj in obj_list], reverse=True)
-    groups = [(0, []) for _ in range(tot_groups)]
+    groups = [(random.random(), []) for _ in range(tot_groups)]
 
     if tot_groups <= 1:
         groups = _group_by_size_greedy(obj_list, tot_groups)
