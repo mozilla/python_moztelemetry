@@ -267,6 +267,7 @@ class Dataset:
         """Retrieve the elements of a Dataset
 
         :param sc: a SparkContext object
+        :param group_by: specifies a partition strategy for the objects
         :param limit: maximum number of objects to retrieve
         :param decode: an optional transformation to apply to the objects retrieved
         :param sample: percentage of results to return. Useful to return a sample
