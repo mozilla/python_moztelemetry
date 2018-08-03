@@ -43,27 +43,21 @@ def _group_by_size_greedy(obj_list, tot_groups):
 
 
 def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
-    groups = [[]]
-    sorted_obj_list = []
-    best_partition = None
+    sorted_obj_list = sorted([(obj['size'], obj) for obj in obj_list], reverse=True)
+    groups = [(0, []) for _ in range(tot_groups)]
 
     if tot_groups <= 1:
         groups = _group_by_size_greedy(obj_list, tot_groups)
         return groups
-    sorted_obj_list = [(obj['size'], obj) for obj in obj_list]
-    sorted_obj_list.sort(reverse=True)
-    groups = [(0, []) for _ in range(tot_groups)]
     heapq.heapify(groups)
     for obj in sorted_obj_list:
         if obj[0] > threshold:
             heapq.heappush(groups, (obj[0], [obj[1]]))
         else:
-            best_partition = heapq.heappop(groups)
-            (size, files) = best_partition
+            size, files = heapq.heappop(groups)
             size += obj[0]
             files.append(obj[1])
-            best_partition = (size, files)
-            heapq.heappush(groups, best_partition)
+            heapq.heappush(groups, (size, files))
     groups = [group[1] for group in groups]
     return groups
 
