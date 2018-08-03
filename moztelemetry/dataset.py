@@ -43,6 +43,16 @@ def _group_by_size_greedy(obj_list, tot_groups):
 
 
 def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
+    """Partition a list of objects evenly and by file size
+
+    Files are placed according to largest file in the smallest bucket. If the
+    file is larger than the given threshold, then it is placed in a new bucket
+    by itself.
+    :param obj_list: a list of dict-like objects with a 'size' property
+    :param tot_groups: number of partitions to split the data
+    :threshold: the maximum size of each bucket
+    :return: a list of lists, one for each partition
+    """
     sorted_obj_list = sorted([(obj['size'], obj) for obj in obj_list], reverse=True)
     groups = [(0, []) for _ in range(tot_groups)]
 
