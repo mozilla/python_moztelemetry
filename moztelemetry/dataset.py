@@ -54,7 +54,11 @@ def _group_by_equal_size(obj_list, tot_groups, threshold=pow(2, 32)):
     :return: a list of lists, one for each partition
     """
     sorted_obj_list = sorted([(obj['size'], obj) for obj in obj_list], reverse=True)
+<<<<<<< HEAD
     groups = [(random.random(), []) for _ in range(tot_groups)]
+=======
+    groups = [(0, []) for _ in range(tot_groups)]
+>>>>>>> 0dd6f995c06286d93ec1b59303706da33352be3a
 
     if tot_groups <= 1:
         groups = _group_by_size_greedy(obj_list, tot_groups)
