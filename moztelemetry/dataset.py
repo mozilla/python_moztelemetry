@@ -310,9 +310,11 @@ class Dataset:
         if group_by == 'equal_size':
             groups = _group_by_equal_size(summaries, 10*sc.defaultParallelism)
         elif group_by == 'greedy':
-            groups = _group_by_size_greedy(summaries, 10 * sc.defaultParallelism)
+            groups = _group_by_size_greedy(summaries, 10*sc.defaultParallelism)
         else:
             groups = _group_by_size_greedy(summaries, 10*sc.defaultParallelism)
+            raise Exception("This group_by method is invalid. Defaulting to
+            greedy")
         rdd = sc.parallelize(groups, len(groups)).flatMap(lambda x: x)
 
         if decode is None:
