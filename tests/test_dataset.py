@@ -9,7 +9,8 @@ from concurrent import futures
 import pytest
 
 import moztelemetry
-from moztelemetry.dataset import Dataset, _group_by_size_greedy
+from moztelemetry.dataset import Dataset
+from moztelemetry.dataset import _group_by_size_greedy, _group_by_equal_size
 from moztelemetry.store import InMemoryStore, S3Store
 
 
@@ -235,6 +236,42 @@ def test_group_by_size_greedy():
         [{'size': 4}, {'size': 1}],
         [{'size': 3}],
         [{'size': 2}]
+    ]
+
+
+def test_group_by_equal_size():
+    obj_list1 = [dict(size=i) for i in range(1, 5)]
+    obj_list2 = [{'size': 70}, {'size': 70}, {'size': 70}, {'size': 70}]
+    obj_list3 = [{'size': 4}, {'size': 1}, {'size': 3}, {'size': 2}]
+    obj_list4 = [{'size': 2}, {'size': 2}, {'size': 2}]
+    obj_list5 = [{'size': 150}, {'size': 70}, {'size': 70}, {'size': 70}]
+
+    groups = _group_by_equal_size(obj_list1, 1)
+    assert groups == [
+        [{'size': 4}, {'size': 3}, {'size': 2}, {'size': 1}]
+    ]
+    groups = _group_by_equal_size(obj_list2, 2, 100)
+    assert groups == [
+        [{'size': 70}, {'size': 70}],
+        [{'size': 70}, {'size': 70}]
+    ]
+    groups = _group_by_equal_size(obj_list3, 3, 5)
+    assert groups == [
+        [{'size': 3}],
+        [{'size': 4}],
+        [{'size': 2}, {'size': 1}]
+    ]
+    groups = _group_by_equal_size(obj_list4, 3, 5)
+    assert groups == [
+        [{'size': 2}],
+        [{'size': 2}],
+        [{'size': 2}]
+    ]
+    groups = _group_by_equal_size(obj_list5, 2, 100)
+    assert groups == [
+        [{'size': 70}],
+        [{'size': 150}],
+        [{'size': 70}, {'size': 70}]
     ]
 
 
