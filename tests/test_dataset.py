@@ -14,6 +14,20 @@ from moztelemetry.dataset import _group_by_size_greedy, _group_by_equal_size
 from moztelemetry.store import InMemoryStore, S3Store
 
 
+def decode(obj):
+    """A helper function for parsing mocked json data.
+
+    The files in the store can be a concatenation of several records. In order
+    to process bundles of data, the file-like objects in `Dataset.records` are
+    processed via `flatMap`. To get around this behavior in testing, the decoded
+    json needs to be placed into a list.
+
+    See `test_records_object` for example usage.
+    """
+    value = obj.getvalue().decode('utf-8')
+    return [json.loads(value)]
+
+
 def test_repr():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
     assert "Dataset(bucket=test-bucket, schema=['dim1', 'dim2']," in repr(dataset)
@@ -289,6 +303,21 @@ def test_records(spark_context):
 
 
 @pytest.mark.slow
+def test_records_object(spark_context):
+    expect = {"uid": 1}
+
+    bucket_name = 'test-bucket'
+    store = InMemoryStore(bucket_name)
+    store.store['key'] = json.dumps(expect)
+
+    ds = Dataset(bucket_name, None, store=store)
+    row = ds.records(spark_context, decode=decode).first()
+
+    assert isinstance(row, dict)
+    assert row == expect
+
+
+@pytest.mark.slow
 def test_records_many_groups(spark_context, monkeypatch):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -367,11 +396,6 @@ def test_records_limit_and_sample(spark_context):
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     records = dataset.records(spark_context, decode=lambda x: x, limit=5, sample=0.9)
     assert records.count() == 5
-
-
-def decode(obj):
-    value = obj.getvalue().decode('utf-8')
-    return [json.loads(value)]
 
 
 @pytest.mark.slow

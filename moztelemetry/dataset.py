@@ -280,6 +280,7 @@ class Dataset:
         :return: a Spark rdd containing the elements retrieved
 
         """
+        decode = decode or message_parser.parse_heka_message
         summaries = summaries or self.summaries(sc, limit)
 
         # Calculate the sample if summaries is not empty and limit is not set
@@ -313,16 +314,20 @@ class Dataset:
             groups = _group_by_size_greedy(summaries, 10*sc.defaultParallelism)
         else:
             raise Exception("group_by specification is invalid")
-        rdd = sc.parallelize(groups, len(groups)).flatMap(lambda x: x)
-
-        if decode is None:
-            decode = message_parser.parse_heka_message
 
         self._compile_selection()
 
-        return rdd.map(lambda x: self.store.get_key(x['key'])) \
-                  .flatMap(lambda x: decode(x)) \
-                  .map(self._apply_selection)
+        keys = (
+            sc.parallelize(groups, len(groups))
+            .flatMap(lambda x: x)
+            .map(lambda x: x['key'])
+        )
+        file_handles = keys.map(self.store.get_key)
+
+        # decode(fp: file-object) -> list[dict]
+        data = file_handles.flatMap(decode)
+
+        return data.map(self._apply_selection)
 
     @staticmethod
     def from_source(source_name):
