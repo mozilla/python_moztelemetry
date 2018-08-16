@@ -1,5 +1,5 @@
 
-# python_moztelemetry [![Build Status](https://travis-ci.org/mozilla/python_moztelemetry.svg?branch=master)](https://travis-ci.org/mozilla/python_moztelemetry) [![Documentation Status](http://readthedocs.org/projects/python_moztelemetry/badge/?version=latest)](https://python_moztelemetry.readthedocs.io/?badge=latest) [![Updates](https://pyup.io/repos/github/mozilla/python_moztelemetry/shield.svg)](https://pyup.io/repos/github/mozilla/python_moztelemetry/) [![codecov.io](https://codecov.io/github/mozilla/python_moztelemetry/coverage.svg?branch=master)](https://codecov.io/github/mozilla/python_moztelemetry?branch=master)
+# python_moztelemetry [![CircleCI Build Status](https://circleci.com/gh/mozilla/python_moztelemetry/tree/master.svg?style=svg)](https://circleci.com/gh/mozilla/python_moztelemetry/tree/master) [![Documentation Status](http://readthedocs.org/projects/python_moztelemetry/badge/?version=latest)](https://python_moztelemetry.readthedocs.io/?badge=latest) [![Updates](https://pyup.io/repos/github/mozilla/python_moztelemetry/shield.svg)](https://pyup.io/repos/github/mozilla/python_moztelemetry/) [![codecov.io](https://codecov.io/github/mozilla/python_moztelemetry/coverage.svg?branch=master)](https://codecov.io/github/mozilla/python_moztelemetry?branch=master)
 
 Spark bindings for Mozilla Telemetry
 
@@ -24,18 +24,25 @@ Note that this file was formerly called histogram_tools.py and was renamed in Bu
 
 ## Testing locally
 
-To test/debug this package locally, the recommended procedure is to build a
-docker image with the appropriate dependencies, then execute the unit
-tests inside it:
+To test/debug this package locally, you can run exactly the job that
+CircleCI runs for continuous integration by
+[installing the CircleCI local CLI](https://circleci.com/docs/2.0/local-cli/#installing-the-circleci-local-cli-on-macos-and-linux-distros)
+and invoking:
 
 ```bash
-docker build -t moztelemetry_docker .
-./runtests.sh # will run tests inside docker container
+circleci build --job py36
 ```
 
-You can also run a subset of the tests by passing arguments to `runtests.sh`:
+See [.circleci/config.yml] for the other configured job names
+(for running tests on different python versions).
+
+The above process takes a few minutes to run every time, so there
+is also a `bin/test` script that builds a docker image and
+python environment (both of which are cached locally) and allows
+you to run a subset of tests. Here are some sample invocations:
 
 ```bash
-./runtests.sh -ktest_unpack # runs only tests with key "test_unpack"
-./runtests.sh tests/heka # runs only tests in tests/heka
+./bin/test tests/ -k test_unpack  # runs only tests with key "test_unpack"
+./bin/test tests/heka/            # runs only tests in tests/heka
+PYTHON_VERSION=2.7 ./bin/test     # specify a python version
 ```

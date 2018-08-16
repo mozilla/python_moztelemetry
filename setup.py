@@ -6,6 +6,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from setuptools import setup, find_packages
 
+tests_require = ['mock', 'pytest-timeout', 'moto', 'responses',
+                 'scipy', 'pyspark', 'pytest', 'pytest-cov']
+
 setup(
     name='python_moztelemetry',
     use_scm_version=True,
@@ -21,8 +24,7 @@ setup(
                       'PyYAML', 'python-snappy'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
     extras_require={
-        'test': ['mock', 'pytest-timeout', 'moto<=1.1.22', 'responses',
-                 'scipy', 'pytest-flake8', 'pytest', 'pytest-cov'],
+        'testing': tests_require,
     },
-    tests_require=['python_moztelemetry[test]'],
+    tests_require=tests_require,
 )

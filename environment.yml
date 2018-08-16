@@ -1,8 +1,0 @@
-name: test-environment
-dependencies:
-- pandas
-- pyspark
-- python-snappy
-- snappy
-- scipy
-- gcc
