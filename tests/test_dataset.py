@@ -30,7 +30,7 @@ def decode(obj):
 
 def test_repr():
     dataset = Dataset('test-bucket', ['dim1', 'dim2'], prefix='prefix/')
-    assert "Dataset(bucket=test-bucket, schema=['dim1', 'dim2']," in repr(dataset)
+    assert "Dataset(bucket='test-bucket', schema=['dim1', 'dim2']," in repr(dataset)
 
 
 def test_where():
@@ -189,7 +189,8 @@ def test_scan_multiple_where_params(spark_context):
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir1/another-dir/key2'] = 'value2'
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store).where(dim1='dir1', dim2='subdir1')
+    dataset = (Dataset(bucket_name, ['dim1', 'dim2'], store=store, max_concurrency=1)
+               .where(dim1='dir1', dim2='subdir1'))
     summaries = dataset.summaries(spark_context)
     expected_key = 'dir1/subdir1/key1'
     assert summaries == [{'key': expected_key, 'size': len(store.store[expected_key])}]
@@ -210,7 +211,7 @@ def test_summaries(spark_context):
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir2/subdir2/key2'] = 'value2'
 
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store, max_concurrency=1)
 
     summaries = dataset.summaries(spark_context)
     assert len(summaries) == 2
@@ -225,7 +226,7 @@ def test_summaries_with_limit(spark_context):
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir2/subdir2/key2'] = 'value2'
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store, max_concurrency=1)
     summaries = dataset.summaries(spark_context, 1)
 
     assert len(summaries) == 1
@@ -310,7 +311,7 @@ def test_records_object(spark_context):
     store = InMemoryStore(bucket_name)
     store.store['key'] = json.dumps(expect)
 
-    ds = Dataset(bucket_name, None, store=store)
+    ds = Dataset(bucket_name, None, store=store, max_concurrency=1)
     row = ds.records(spark_context, decode=decode).first()
 
     assert isinstance(row, dict)
@@ -364,7 +365,7 @@ def test_records_summaries(spark_context):
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = 'value1'
     store.store['dir2/subdir2/key2'] = 'value2'
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store, max_concurrency=1)
     records = dataset.records(spark_context, decode=lambda x: x,
                               summaries=[{'key': 'dir1/subdir1/key1', 'size': len('value1')}])
     records = records.collect()
@@ -458,7 +459,7 @@ def test_prefix_slash(spark_context):
     store.store['x/b/dir3/subdir3/key3'] = 'value3'
     store.store['a/c/dir4/subdir4/key4'] = 'value4'
 
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store, prefix='a/b')
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store, prefix='a/b', max_concurrency=1)
 
     summaries = dataset.summaries(spark_context)
     assert len(summaries) == 2
@@ -481,7 +482,8 @@ def test_sanitized_dimensions(spark_context):
     store.store['dir_2/subdir3/key3'] = 'value3'
     store.store['dir_3/subdir4/key4'] = 'value4'
 
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store).where(dim1="dir-1")
+    dataset = (Dataset(bucket_name, ['dim1', 'dim2'], store=store, max_concurrency=1)
+               .where(dim1="dir-1"))
 
     summaries = dataset.summaries(spark_context)
     assert len(summaries) == 2
