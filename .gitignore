@@ -15,3 +15,7 @@
 python_moztelemetry.egg-info/
 docs/_build/
 coverage.xml
+build/
+dist/
+.coverage*
+.*tox/

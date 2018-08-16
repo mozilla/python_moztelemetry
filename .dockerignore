@@ -1,0 +1,5 @@
+# Files/directories matching the patterns here will not be included
+# in the Docker context when you run `docker build`.
+
+# The tox caches can be large; we ignore them to speed up builds.
+.*tox/
