@@ -297,7 +297,7 @@ def test_records(spark_context):
     store.store['dir2/subdir2/key2'] = 'value2'
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     records = dataset.records(spark_context, decode=lambda x: x)
-    records = records.collect()
+    records = sorted(records.collect())
 
     assert records == [b'value1', b'value2']
 
@@ -328,7 +328,7 @@ def test_records_many_groups(spark_context, monkeypatch):
                         lambda x, _: [[y] for y in x])
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     records = dataset.records(spark_context, decode=lambda x: x)
-    records = records.collect()
+    records = sorted(records.collect())
 
     assert records == ['value{}'.format(i).encode('utf-8') for i in range(1, spark_context.defaultParallelism + 2)]
 
@@ -349,13 +349,13 @@ def test_records_sample(spark_context):
     records_2 = dataset.records(spark_context, decode=lambda x: x, sample=0.1, seed=None).collect()
 
     # The sampling seed is different, so we have two different samples.
-    assert records_1 != records_2
+    assert sorted(records_1) != sorted(records_2)
 
     records_1 = dataset.records(spark_context, decode=lambda x: x, sample=0.1).collect()
     records_2 = dataset.records(spark_context, decode=lambda x: x, sample=0.1).collect()
 
     # Same seed, same sample.
-    assert records_1 == records_2
+    assert sorted(records_1) == sorted(records_2)
 
 
 @pytest.mark.slow
@@ -425,7 +425,8 @@ def test_records_print_output(spark_context, capsys):
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
     dataset.records(spark_context, decode=lambda x: x)
     out, err = capsys.readouterr()
-    assert out.rstrip() == "fetching 0.00066MB in 100 files..."
+    out = out.rstrip().split('\n')[-1]
+    assert out == "fetching 0.00066MB in 100 files..."
 
 
 def test_dataset_from_source(my_mock_s3, monkeypatch):
