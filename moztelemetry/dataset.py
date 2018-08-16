@@ -20,7 +20,7 @@ from .heka import message_parser
 
 from .store import S3Store
 
-MAX_CONCURRENCY = int(cpu_count() * 1.5)
+DEFAULT_MAX_CONCURRENCY = int(cpu_count() * 1.5)
 SANITIZE_PATTERN = re.compile("[^a-zA-Z0-9_.]")
 
 
@@ -121,8 +121,14 @@ class Dataset:
     dimensions, available on its `schema` attribute for inspection.
     """
 
-    def __init__(self, bucket, schema, store=None,
-                 prefix=None, clauses=None, selection=None):
+    def __init__(self,
+                 bucket,
+                 schema,
+                 store=None,
+                 prefix=None,
+                 clauses=None,
+                 selection=None,
+                 max_concurrency=None):
         """Initialize a Dataset provided bucket and schema
 
         :param bucket: bucket name
@@ -131,6 +137,8 @@ class Dataset:
         datasets
         :param prefix: a prefix to the
         :param clauses: mapping of fields -> callables to refine the dataset
+        :param max_concurrency: number of processes to spawn when collecting S3 summaries,
+        defaults to 1.5 * cpu_count
         """
         self.bucket = bucket
         self.schema = schema
@@ -139,10 +147,29 @@ class Dataset:
         self.store = store or S3Store(self.bucket)
         self.selection = selection or {}
         self.selection_compiled = {}
+        self.max_concurrency = max_concurrency or DEFAULT_MAX_CONCURRENCY
 
     def __repr__(self):
-        return ('Dataset(bucket=%s, schema=%s, store=%s, prefix=%s, clauses=%s)'
-                ) % (self.bucket, self.schema, self.store, self.prefix, self.clauses)
+        params = ['bucket', 'schema', 'store', 'prefix', 'clauses', 'selection', 'max_concurrency']
+        stmts = ['{}={!r}'.format(param, getattr(self, param)) for param in params]
+        return 'Dataset({})'.format(', '.join(stmts))
+
+    def _copy(self,
+              bucket=None,
+              schema=None,
+              store=None,
+              prefix=None,
+              clauses=None,
+              selection=None,
+              max_concurrency=None):
+        return Dataset(
+            bucket=bucket or self.bucket,
+            schema=schema or self.schema,
+            store=store or self.store,
+            prefix=prefix or self.prefix,
+            clauses=clauses or self.clauses,
+            selection=selection or self.selection,
+            max_concurrency=max_concurrency or self.max_concurrency)
 
     def select(self, *properties, **aliased_properties):
         """Specify which properties of the dataset must be returned
@@ -167,8 +194,7 @@ class Dataset:
         new_selection = self.selection.copy()
         new_selection.update(merged_properties)
 
-        return Dataset(self.bucket, self.schema, store=self.store, prefix=self.prefix,
-                       clauses=self.clauses, selection=new_selection)
+        return self._copy(selection=new_selection)
 
     def _compile_selection(self):
         if not self.selection_compiled:
@@ -220,8 +246,7 @@ class Dataset:
                 clauses[dimension] = condition
             else:
                 clauses[dimension] = functools.partial((lambda x, y: x == y), self._sanitize_dimension(str(condition)))
-        return Dataset(self.bucket, self.schema, store=self.store,
-                       prefix=self.prefix, clauses=clauses, selection=self.selection)
+        return self._copy(clauses=clauses)
 
     def _scan(self, dimensions, prefixes, clauses, executor):
         if not dimensions or not clauses:
@@ -258,7 +283,7 @@ class Dataset:
             # on the prefix directory)
             clauses['prefix'] = lambda x: True
 
-        with futures.ProcessPoolExecutor(MAX_CONCURRENCY) as executor:
+        with futures.ProcessPoolExecutor(self.max_concurrency) as executor:
             scanned = self._scan(schema, [self.prefix], clauses, executor)
         keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
         return keys.take(limit) if limit else keys.collect()

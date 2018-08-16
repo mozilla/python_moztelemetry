@@ -18,7 +18,8 @@ def test_store(monkeypatch, data_dir):
     with open(os.path.join(data_dir, 'schema.json')) as s:
         schema = json.loads(s.read())
     dimensions = [f['field_name'] for f in schema['dimensions']]
-    dataset = Dataset('test-bucket', dimensions, InMemoryStore('test-bucket'))
+    dataset = Dataset('test-bucket', dimensions, InMemoryStore('test-bucket'),
+                      max_concurrency=1)
 
     @staticmethod
     def from_source(source_name):
