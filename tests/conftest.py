@@ -62,12 +62,12 @@ def spark():
     spark.stop()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def spark_context(spark):
     return spark.sparkContext
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def data_dir():
     here = os.path.dirname(__file__)
     return os.path.join(here, 'data')
