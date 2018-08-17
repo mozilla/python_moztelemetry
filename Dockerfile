@@ -7,3 +7,9 @@ FROM python:$PYTHON_VERSION
 
 RUN apt-get update && apt-get install -y libsnappy-dev openjdk-8-jre-headless
 RUN pip install tox
+
+WORKDIR /python_moztelemetry
+
+# Copy the current directory as is to the workdir;
+# Relies on the .dockerignore file to prune out large files we don't want to include.
+COPY . .
