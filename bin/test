@@ -8,7 +8,7 @@ cd $(git rev-parse --show-toplevel)
 
 # Set default variables if not already present in the environment.
 : ${PYTHON_VERSION:=3.6}
-: ${WORKDIR:=.dockertox}  # Prevents the circleci cli from picking up the env
+: ${TOXDIR:=.dockertox}  # Prevents the circleci cli from picking up the env
 : ${TOXENV:="py${PYTHON_VERSION/./}"}
 
 # Set some derived variables.
@@ -22,7 +22,8 @@ docker build -t moztelemetry:"$TOXENV" --build-arg PYTHON_VERSION="$PYTHON_VERSI
 
 # We mount the current directory to the container and run tox inside it.
 docker run -it --rm \
-       --volume "$(pwd)":/python_moztelemetry \
+       --volume "$(pwd)/$TOXDIR":/python_moztelemetry/"$TOXDIR" \
+       --volume "$(pwd)"/.git:/python_moztelemetry/.git \
        --workdir /python_moztelemetry \
        moztelemetry:"$TOXENV" \
-       tox --workdir $WORKDIR -e "$TOXENV" -- $@
+       tox --workdir "$TOXDIR" -e "$TOXENV" -- $@
