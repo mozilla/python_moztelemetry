@@ -46,3 +46,15 @@ you to run a subset of tests. Here are some sample invocations:
 ./bin/test tests/heka/            # runs only tests in tests/heka
 PYTHON_VERSION=2.7 ./bin/test     # specify a python version
 ```
+
+It's also possible to run the tests locally outside of docker
+by invoking `tox` directly, but the details of doing so depend
+on your local development environment and are outside the scope
+of these docs. Be aware that you will need to have a working
+installation of Java and libsnappy, likely via your OS's package
+manager (i.e. `brew install snappy` on MacOS).
+
+If you're receiving mysterious errors, try removing cached files:
+
+    find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
+    rm -r .*tox/
