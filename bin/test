@@ -15,7 +15,7 @@ cd $(git rev-parse --show-toplevel)
 TOXENV="py${PYTHON_VERSION/./}"
 
 # Clean all python cache files, since they may confuse the docker environment.
-find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
+find moztelemetry/ tests/ | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 # If nothing has changed, this build step will hit cache and run quickly.
 docker build -t moztelemetry:"$TOXENV" --build-arg PYTHON_VERSION="$PYTHON_VERSION" .
