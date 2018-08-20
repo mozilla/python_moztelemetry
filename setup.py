@@ -20,7 +20,7 @@ setup(
     package_dir={'moztelemetry': 'moztelemetry'},
     install_requires=['boto', 'boto3', 'ujson', 'requests', 'protobuf', 'six',
                       'expiringdict', "functools32;python_version<'3'", 'py4j',
-                      'pandas>=0.14.1', 'numpy>=1.8.2',
+                      'pandas>=0.19.2', 'numpy>=1.8.2',
                       'PyYAML', 'python-snappy'],
     setup_requires=['pytest-runner', 'setuptools_scm'],
     extras_require={
