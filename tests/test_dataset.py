@@ -502,7 +502,7 @@ def test_dataframe_no_schema(spark):
     df = dataset.dataframe(spark, decode=decode)
 
     assert type(df) == DataFrame
-    assert df.collect() == [Row(foo=1), Row(foo=2)]
+    assert df.orderBy(["foo"]).collect() == [Row(foo=1), Row(foo=2)]
 
 def test_dataframe_with_table(spark):
     bucket_name = 'test-bucket'
@@ -526,7 +526,7 @@ def test_dataframe_with_schema(spark):
 
     assert type(df) == DataFrame
     assert df.columns == ['foo']
-    assert df.collect() == [Row(foo=1), Row(foo=2)]
+    assert df.orderBy(["foo"]).collect()  == [Row(foo=1), Row(foo=2)]
 
 def test_dataframe_bad_schema(spark):
     bucket_name = 'test-bucket'
