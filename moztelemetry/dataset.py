@@ -357,7 +357,7 @@ class Dataset:
     def dataframe(self, spark, group_by='greedy', limit=None, sample=1, seed=42, decode=None, summaries=None, schema=None, table_name=None):
         """Convert RDD returned from records function to a dataframe
 
-        :param sc: a SparkContext object
+        :param spark: a SparkSession object
         :param group_by: specifies a parition strategy for the objects
         :param limit: maximum number of objects to retrieve
         :param decode: an optonal transforamtion to apply to the objects retrieved
@@ -368,8 +368,8 @@ class Dataset:
             different samples.
         :param summaries: an iterable containing the summary for each item in the dataset. If None, it
             will compute calling the summaries dataset.
-        :param schema: overrides automatic conversion to a dataframe
-        :param table_name: allows resulting datagrame to easily be queried using SparkSQL
+        :param schema: a Spark schema that overrides automatic conversion to a dataframe
+        :param table_name: allows resulting dataframe to easily be queried using SparkSQL
         :return: a Spark DataFrame
 
         """
