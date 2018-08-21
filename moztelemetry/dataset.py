@@ -12,6 +12,7 @@ from copy import copy
 from inspect import isfunction
 from itertools import chain
 from multiprocessing import cpu_count
+from pyspark.sql import Row, SparkSession
 from six.moves import copyreg
 
 import jmespath
@@ -323,6 +324,33 @@ class Dataset:
         return rdd.map(lambda x: self.store.get_key(x['key'])) \
                   .flatMap(lambda x: decode(x)) \
                   .map(self._apply_selection)
+    def dataframe(self, spark, group_by='greedy', limit=None, sample=1, seed=42, decode=None, summaries=None, schema=None, table_name=None):
+        """Convert RDD returned from records function to a dataframe
+
+        :param sc: a SparkContext object
+        :param group_by: specifies a parition strategy for the objects
+        :param limit: maximum number of objects to retrieve
+        :param decode: an optonal transforamtion to apply to the objects retrieved
+        :param sample: percentage of results to return. Useful to return a sample
+            of the dataset. This parameter is ignored when 'limit' is set.
+        :param seed: initialize internal state of the random number generator (42 by default).
+            This is used to make the dataset sampleing reproducible. It an be set to None to obtain
+            different samples.
+        :param summaries: an iterable containing the summary for each item in the dataset. If None, it
+            will compute calling the summaries dataset.
+        :param schema: overrides automatic conversion to a dataframe
+        :param table_name: allows resulting datagrame to easily be queried using SparkSQL
+        :return: a Spark DataFrame
+
+        """
+        rdd = self.records(spark.sparkContext, group_by, limit, sample, seed, decode, summaries)
+        if not schema:
+            df = rdd.map(lambda d: Row(**d)).toDF()
+        else:
+            df = spark.createDataFrame(rdd, schema=schema)
+        if table_name:
+            df.createOrReplaceTempView(table_name)
+        return df
 
     @staticmethod
     def from_source(source_name):
