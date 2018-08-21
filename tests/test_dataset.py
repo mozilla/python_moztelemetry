@@ -3,13 +3,13 @@
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 import json
 import os
+
 from pyspark.sql import DataFrame, Row
-from pyspark.sql.types import *
+from pyspark.sql.types import StructField, StructType, IntegerType, StringType
 import boto3
 from concurrent import futures
 from pyspark.sql.utils import AnalysisException
 import pytest
-import yaml
 
 import moztelemetry
 from moztelemetry.dataset import Dataset

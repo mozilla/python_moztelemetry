@@ -12,9 +12,8 @@ from copy import copy
 from inspect import isfunction
 from itertools import chain
 from multiprocessing import cpu_count
-from pyspark.sql import Row, SparkSession
 from six.moves import copyreg
-
+from pyspark.sql import Row
 import jmespath
 from concurrent import futures
 from .heka import message_parser
