@@ -206,7 +206,7 @@ class Dataset:
             return json_obj
 
         # This is mainly for testing purposes.
-        # For perfomance reasons the selection should be compiled
+        # For performance reasons the selection should be compiled
         # outside of this function.
         if not self.selection_compiled:
             self._compile_selection()
@@ -358,13 +358,13 @@ class Dataset:
         """Convert RDD returned from records function to a dataframe
 
         :param spark: a SparkSession object
-        :param group_by: specifies a parition strategy for the objects
+        :param group_by: specifies a paritition strategy for the objects
         :param limit: maximum number of objects to retrieve
-        :param decode: an optonal transforamtion to apply to the objects retrieved
+        :param decode: an optional transformation to apply to the objects retrieved
         :param sample: percentage of results to return. Useful to return a sample
             of the dataset. This parameter is ignored when 'limit' is set.
         :param seed: initialize internal state of the random number generator (42 by default).
-            This is used to make the dataset sampleing reproducible. It an be set to None to obtain
+            This is used to make the dataset sampling reproducible. It an be set to None to obtain
             different samples.
         :param summaries: an iterable containing the summary for each item in the dataset. If None, it
             will compute calling the summaries dataset.
