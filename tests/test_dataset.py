@@ -492,79 +492,63 @@ def test_sanitized_dimensions(spark_context):
     assert len(summaries) == 2
 
 
-@pytest.mark.slow
-def test_dataframe_no_schema(spark):
-    bucket_name = 'test-bucket'
+@pytest.fixture
+def setupDF():
+    bucket_name = 'test_bucket'
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
     store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    df = dataset.dataframe(spark, decode=decode)
+    return dataset
+
+
+@pytest.mark.slow
+def test_dataframe_no_schema(setupDF, spark):
+    df = setupDF.dataframe(spark, decode=decode)
 
     assert type(df) == DataFrame
     assert df.orderBy(["foo"]).collect() == [Row(foo=1), Row(foo=2)]
 
 
-def test_dataframe_with_table(spark):
-    bucket_name = 'test-bucket'
-    store = InMemoryStore(bucket_name)
-    store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
-    store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    df = dataset.dataframe(spark, decode=decode, table_name='bar')
+def test_dataframe_with_table(setupDF, spark):
+    df = setupDF.dataframe(spark, decode=decode, table_name='bar')
 
     assert type(df) == DataFrame
     assert df.columns == ['foo']
     assert spark.sql("SELECT foo FROM bar").count() == 2
 
 
-def test_dataframe_with_schema(spark):
-    bucket_name = 'test-bucket'
-    store = InMemoryStore(bucket_name)
-    store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
-    store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
+def test_dataframe_with_schema(setupDF, spark):
     schema = StructType([StructField("foo", IntegerType(), True)])
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    df = dataset.dataframe(spark, decode=decode, schema=schema, table_name='bar')
+    df = setupDF.dataframe(spark, decode=decode, schema=schema, table_name='bar')
 
     assert type(df) == DataFrame
     assert df.columns == ['foo']
     assert df.orderBy(["foo"]).collect() == [Row(foo=1), Row(foo=2)]
 
 
-def test_dataframe_bad_schema(spark):
+def test_dataframe_bad_schema(setupDF, spark):
     spark.catalog.dropTempView('bar')
-    bucket_name = 'test-bucket'
-    store = InMemoryStore(bucket_name)
-    store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
-    store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
     schema = StructType([StructField("name", StringType(), True)])
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    df = dataset.dataframe(spark, decode=decode, schema=schema, table_name='bar')
+    df = setupDF.dataframe(spark, decode=decode, schema=schema, table_name='bar')
 
     assert type(df) == DataFrame
     with pytest.raises(AnalysisException):
         spark.sql("SELECT foo FROM bar")
 
 
-def test_dataframe_col_exists(spark):
-    bucket_name = 'test-bucket'
-    store = InMemoryStore(bucket_name)
-    store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
-    store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    df = dataset.dataframe(spark, decode=decode, table_name='bar')
+def test_dataframe_col_exists(setupDF, spark):
+    df = setupDF.dataframe(spark, decode=decode, table_name='bar')
     fooDF = spark.sql("SELECT foo FROM bar")
 
     assert df.columns == ['foo']
     assert fooDF.columns == df.columns
 
 
-def test_dataframe_no_col(spark):
-    bucket_name = 'test-bucket'
+def test_dataframe_no_col(setupDF, spark):
+    bucket_name = 'test_bucket'
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
     store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
-
     with pytest.raises(ValueError):
         Dataset(bucket_name, ['dim1', 'dim2'], store=store).select("mystery").dataframe(spark, decode=decode, table_name='bar')
