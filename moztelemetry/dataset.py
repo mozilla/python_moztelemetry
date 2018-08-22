@@ -13,7 +13,7 @@ from inspect import isfunction
 from itertools import chain
 from multiprocessing import cpu_count
 from six.moves import copyreg
-
+from pyspark.sql import Row
 import jmespath
 from concurrent import futures
 from .heka import message_parser
@@ -206,7 +206,7 @@ class Dataset:
             return json_obj
 
         # This is mainly for testing purposes.
-        # For perfomance reasons the selection should be compiled
+        # For performance reasons the selection should be compiled
         # outside of this function.
         if not self.selection_compiled:
             self._compile_selection()
@@ -353,6 +353,34 @@ class Dataset:
         data = file_handles.flatMap(decode)
 
         return data.map(self._apply_selection)
+
+    def dataframe(self, spark, group_by='greedy', limit=None, sample=1, seed=42, decode=None, summaries=None, schema=None, table_name=None):
+        """Convert RDD returned from records function to a dataframe
+
+        :param spark: a SparkSession object
+        :param group_by: specifies a paritition strategy for the objects
+        :param limit: maximum number of objects to retrieve
+        :param decode: an optional transformation to apply to the objects retrieved
+        :param sample: percentage of results to return. Useful to return a sample
+            of the dataset. This parameter is ignored when 'limit' is set.
+        :param seed: initialize internal state of the random number generator (42 by default).
+            This is used to make the dataset sampling reproducible. It an be set to None to obtain
+            different samples.
+        :param summaries: an iterable containing the summary for each item in the dataset. If None, it
+            will compute calling the summaries dataset.
+        :param schema: a Spark schema that overrides automatic conversion to a dataframe
+        :param table_name: allows resulting dataframe to easily be queried using SparkSQL
+        :return: a Spark DataFrame
+
+        """
+        rdd = self.records(spark.sparkContext, group_by, limit, sample, seed, decode, summaries)
+        if not schema:
+            df = rdd.map(lambda d: Row(**d)).toDF()
+        else:
+            df = spark.createDataFrame(rdd, schema=schema)
+        if table_name:
+            df.createOrReplaceTempView(table_name)
+        return df
 
     @staticmethod
     def from_source(source_name):
