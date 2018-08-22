@@ -9,6 +9,7 @@ from pyspark.sql.types import StructField, StructType, IntegerType, StringType
 import boto3
 from concurrent import futures
 import pytest
+from pyspark.sql.utils import AnalysisException
 
 import moztelemetry
 from moztelemetry.dataset import Dataset
@@ -514,6 +515,7 @@ def test_dataframe_with_table(spark):
 
     assert type(df) == DataFrame
     assert df.columns == ['foo']
+    assert spark.sql("SELECT foo FROM bar").count() == 2
 
 
 def test_dataframe_with_schema(spark):
@@ -527,21 +529,22 @@ def test_dataframe_with_schema(spark):
 
     assert type(df) == DataFrame
     assert df.columns == ['foo']
-    assert df.orderBy(["foo"]).collect()  == [Row(foo=1), Row(foo=2)]
+    assert df.orderBy(["foo"]).collect() == [Row(foo=1), Row(foo=2)]
 
 
 def test_dataframe_bad_schema(spark):
+    spark.catalog.dropTempView('bar')
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
     store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
     schema = StructType([StructField("name", StringType(), True)])
     dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    fooDF = spark.sql("SELECT foo FROM bar")
     df = dataset.dataframe(spark, decode=decode, schema=schema, table_name='bar')
 
     assert type(df) == DataFrame
-    assert df.count() == fooDF.count()
+    with pytest.raises(AnalysisException):
+        spark.sql("SELECT foo FROM bar")
 
 
 def test_dataframe_col_exists(spark):
