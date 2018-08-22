@@ -8,7 +8,6 @@ from pyspark.sql import DataFrame, Row
 from pyspark.sql.types import StructField, StructType, IntegerType, StringType
 import boto3
 from concurrent import futures
-from pyspark.sql.utils import AnalysisException
 import pytest
 
 import moztelemetry
