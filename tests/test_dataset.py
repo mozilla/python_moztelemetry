@@ -504,6 +504,7 @@ def test_dataframe_no_schema(spark):
     assert type(df) == DataFrame
     assert df.orderBy(["foo"]).collect() == [Row(foo=1), Row(foo=2)]
 
+
 def test_dataframe_with_table(spark):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -514,6 +515,7 @@ def test_dataframe_with_table(spark):
 
     assert type(df) == DataFrame
     assert df.columns == ['foo']
+
 
 def test_dataframe_with_schema(spark):
     bucket_name = 'test-bucket'
@@ -528,6 +530,7 @@ def test_dataframe_with_schema(spark):
     assert df.columns == ['foo']
     assert df.orderBy(["foo"]).collect()  == [Row(foo=1), Row(foo=2)]
 
+
 def test_dataframe_bad_schema(spark):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -541,6 +544,7 @@ def test_dataframe_bad_schema(spark):
     assert type(df) == DataFrame
     assert df.count() == fooDF.count()
 
+
 def test_dataframe_col_exists(spark):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
@@ -551,14 +555,14 @@ def test_dataframe_col_exists(spark):
     fooDF = spark.sql("SELECT foo FROM bar")
 
     assert df.columns == ['foo']
+    assert fooDF.columns == df.columns
+
 
 def test_dataframe_no_col(spark):
     bucket_name = 'test-bucket'
     store = InMemoryStore(bucket_name)
     store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
     store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
-    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
-    df = dataset.dataframe(spark, decode=decode, table_name='bar')
 
-    with pytest.raises(AnalysisException):
-        spark.sql("SELECT mystery FROM bar")
+    with pytest.raises(ValueError):
+        Dataset(bucket_name, ['dim1', 'dim2'], store=store).select("mystery").dataframe(spark, decode=decode, table_name='bar')
