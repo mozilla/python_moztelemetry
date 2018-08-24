@@ -4,6 +4,8 @@
 import json
 import os
 
+from pyspark.sql import DataFrame, Row
+from pyspark.sql.types import StructField, StructType, IntegerType, StringType
 import boto3
 from concurrent import futures
 import pytest
@@ -487,3 +489,57 @@ def test_sanitized_dimensions(spark_context):
 
     summaries = dataset.summaries(spark_context)
     assert len(summaries) == 2
+
+
+@pytest.fixture
+def dataset():
+    bucket_name = 'test_bucket'
+    store = InMemoryStore(bucket_name)
+    store.store['dir1/subdir1/key1'] = json.dumps({'foo': 1})
+    store.store['dir2/subdir2/key2'] = json.dumps({'foo': 2})
+    dataset = Dataset(bucket_name, ['dim1', 'dim2'], store=store)
+    return dataset
+
+
+def test_dataframe_no_schema(dataset, spark):
+    df = dataset.dataframe(spark, decode=decode)
+
+    assert type(df) == DataFrame
+    assert df.orderBy(["foo"]).collect() == [Row(foo=1), Row(foo=2)]
+
+
+def test_dataframe_with_table(dataset, spark):
+    df = dataset.dataframe(spark, decode=decode, table_name='bar')
+
+    assert type(df) == DataFrame
+    assert df.columns == ['foo']
+    assert spark.sql("SELECT foo FROM bar").count() == 2
+
+
+def test_dataframe_with_schema(dataset, spark):
+    schema = StructType([StructField("foo", IntegerType(), True)])
+    df = dataset.dataframe(spark, decode=decode, schema=schema, table_name='bar')
+
+    assert type(df) == DataFrame
+    assert df.columns == ['foo']
+    assert df.orderBy(["foo"]).collect() == [Row(foo=1), Row(foo=2)]
+
+
+def test_dataframe_bad_schema(dataset, spark):
+    spark.catalog.dropTempView('bar')
+    schema = StructType([StructField("name", StringType(), True)])
+    df = dataset.dataframe(spark, decode=decode, schema=schema, table_name='bar')
+
+    assert type(df) == DataFrame
+    assert df.collect() == [Row(name=None), Row(name=None)]
+
+
+def test_dataframe_col_exists(dataset, spark):
+    df = dataset.select("foo").dataframe(spark, decode=decode)
+    assert 'foo' in df.columns
+
+
+def test_dataframe_no_col(dataset, spark):
+    subset = dataset.select("mystery")
+    with pytest.raises(ValueError):
+        subset.dataframe(spark, decode=decode)
