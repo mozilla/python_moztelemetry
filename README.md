@@ -54,7 +54,6 @@ of these docs. Be aware that you will need to have a working
 installation of Java and libsnappy, likely via your OS's package
 manager (i.e. `brew install snappy` on MacOS).
 
-If you're receiving mysterious errors, try removing cached files:
+If you're receiving mysterious errors, try removing cached files via:
 
-    find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
-    rm -r .*tox/
+    ./bin/clean
