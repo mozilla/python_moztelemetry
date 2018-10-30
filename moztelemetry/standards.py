@@ -152,10 +152,10 @@ def read_main_summary(spark,
     time, particularly if `mergeSchema` is True.
 
     Args:
-        spark: Spark context
+        spark: Spark session
         submission_date_s3: Optional list of values to filter the
             `submission_date_s3` partition. Default is to read all
-            partitions.
+            partitions. Each value should be in the form `YYYYMMDD`.
         sample_id: Optional list of values to filter the `sample_id`
             partition. Default is to read all partitions.
         mergeSchema (bool): Determines whether or not to merge the
