@@ -22,6 +22,20 @@ bin/update_parser_scripts
 ```
 Note that this file was formerly called histogram_tools.py and was renamed in Bug 1419761.
 
+## Updating message_pb2.py
+
+`moztelemetry/heka/message_pb2.py` is generated from
+[mozilla-services/heka](https://github.com/mozilla-services/heka/blob/dev/message/message.proto).
+To regenerate it, you'll need to install a `protobuf` package for your system.
+To avoid installing go-specific extensions, remove the `gogo.proto` import
+and the `gogoproto` options and then run `protoc`:
+
+```
+git clone https://github.com/mozilla-services/heka
+mkdir pythonfiles/
+protoc -I heka/message --python_out pythonfiles/ heka/message/message.proto
+```
+
 ## Testing locally
 
 To test/debug this package locally, you can run exactly the job that
