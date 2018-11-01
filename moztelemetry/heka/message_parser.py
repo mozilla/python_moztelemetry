@@ -13,6 +13,7 @@ import zlib
 from io import BytesIO
 from google.protobuf.message import DecodeError
 
+# See instructions in the README for how to regenerate these classes.
 from .message_pb2 import Message, Header
 
 
