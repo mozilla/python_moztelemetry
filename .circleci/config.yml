@@ -20,15 +20,15 @@
 test_settings: &test_settings
   steps:
     - checkout
-    - run:
+    - run: &install_packages
         name: Install system packages
         command: |
           # python-snappy compression relies on C bindings to libsnappy-dev.
           # pyspark needs to run Java, so we install openjdk.
           apt-get update
           apt-get install -y libsnappy-dev openjdk-8-jre-headless
-    - run:
-        name: Run tests
+    - run: &run_tox_environment_matching_circleci_job_name
+        name: Run tox job
         command: |
           pip install tox
           tox -e $CIRCLE_JOB
@@ -74,6 +74,45 @@ jobs:
     docker:
       - image: python:3.7
 
+  docs: &docs_settings
+    docker:
+      - image: python:3.6
+    steps:
+      - checkout
+      - run:
+          <<: *install_packages
+      - run:
+          <<: *run_tox_environment_matching_circleci_job_name
+      - persist_to_workspace:
+          root: docs/_build
+          paths: html
+
+  docs-deploy:
+    docker:
+      - image: node:8.10.0
+    steps:
+      - checkout
+      - attach_workspace:
+          at: docs/_build
+      - run:
+          name: Disable jekyll builds
+          command: touch docs/_build/html/.nojekyll
+      # Needed for write access to the GitHub repository;
+      # see https://circleci.com/docs/2.0/gh-bb-integration/#deployment-keys-and-user-keys
+      - add_ssh_keys:
+          fingerprints:
+            - "bb:e1:fa:08:e2:ff:a4:ed:f9:b0:64:c0:e6:07:0d:08"
+      # The gh-pages npm package looks to be the most widely used utility for
+      # pushing a directory to a git branch;
+      # see https://www.npmjs.com/package/gh-pages
+      - run:
+          name: Deploy docs to gh-pages branch
+          command: |
+            git config user.email "fx-data-platform@mozilla.com"
+            git config user.name "CircleCI docs-deploy job"
+            npm install -g --silent gh-pages@2.0.1
+            gh-pages -d docs/_build/html
+
   lint:
     docker:
       - image: python:3.6
@@ -110,6 +149,7 @@ jobs:
             twine upload dist/*
 
 
+
 ####################
 # Workflows: see https://circleci.com/docs/2.0/workflows/
 ####################
@@ -121,7 +161,15 @@ workflows:
       - py27
       - py35
       - py36
+      - docs
       - lint
+      - docs-deploy:
+          requires:
+            - docs
+          filters:
+            branches:
+              only: master
+
   tagged-deploy:
     jobs:
       - deploy:
