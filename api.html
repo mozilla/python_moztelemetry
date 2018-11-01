@@ -1,0 +1,510 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>API &mdash; python_moztelemetry 0.3.9.13 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="python_moztelemetry" href="index.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> python_moztelemetry
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dataset">Dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#deprecated-ping-methods">Deprecated ping methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-spark-rdds">Using Spark RDDs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#experimental-apis">Experimental APIs</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">python_moztelemetry</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>API</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="api">
+<h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="dataset">
+<span id="id1"></span><h2>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-moztelemetry.dataset"></span><dl class="class">
+<dt id="moztelemetry.dataset.Dataset">
+<em class="property">class </em><code class="descclassname">moztelemetry.dataset.</code><code class="descname">Dataset</code><span class="sig-paren">(</span><em>bucket</em>, <em>schema</em>, <em>store=None</em>, <em>prefix=None</em>, <em>clauses=None</em>, <em>selection=None</em>, <em>max_concurrency=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/dataset.html#Dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.dataset.Dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a collection of objects on S3.</p>
+<p>A Dataset can have zero, one or many filters, which are refined using the
+<cite>where</cite> method. The result of refining a Dataset is a Dataset itself, so
+it’s possible to chain multiple <cite>where</cite> clauses together.</p>
+<p>The actual data retrieval is triggered by the <cite>records</cite> method, which returns
+a Spark RDD containing the list of records retrieved. To call <cite>records</cite>
+a SparkContext object must be provided.</p>
+<p>Usage example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bucket</span> <span class="o">=</span> <span class="s1">&#39;test-bucket&#39;</span>
+<span class="n">schema</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;submissionDate&#39;</span><span class="p">,</span> <span class="s1">&#39;docType&#39;</span><span class="p">,</span> <span class="s1">&#39;platform&#39;</span><span class="p">]</span>
+
+<span class="n">records</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span> \
+    <span class="o">.</span><span class="n">select</span><span class="p">(</span>
+        <span class="s1">&#39;clientId&#39;</span><span class="p">,</span>
+        <span class="n">os_name</span><span class="o">=</span><span class="s1">&#39;environment.system.os.name&#39;</span><span class="p">,</span>
+        <span class="n">first_paint</span><span class="o">=</span><span class="s1">&#39;payload.simpleMeasurements.firstPaint&#39;</span><span class="p">,</span>
+        <span class="o">//</span> <span class="n">Take</span> <span class="n">the</span> <span class="n">first</span> <span class="mi">2</span> <span class="n">stacks</span> <span class="k">for</span> <span class="n">each</span> <span class="n">thread</span> <span class="n">hang</span><span class="o">.</span>
+        <span class="n">stack_list</span><span class="o">=</span><span class="s1">&#39;payload.threadHangStats[].hangs[].stack[0:2]&#39;</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">docType</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span>
+        <span class="n">appUpdateChannel</span><span class="o">=</span><span class="s1">&#39;nightly&#39;</span><span class="p">,</span>
+        <span class="n">submissionDate</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;201607&#39;</span><span class="p">),</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">records</span><span class="p">(</span><span class="n">sc</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For convenience Dataset objects can be created using the factory method
+<cite>from_source</cite>, that takes a source name (e.g. ‘telemetry’) and returns a
+new Dataset instance. The instance created will be aware of the list of
+dimensions, available on its <cite>schema</cite> attribute for inspection.</p>
+<dl class="method">
+<dt id="moztelemetry.dataset.Dataset.dataframe">
+<code class="descname">dataframe</code><span class="sig-paren">(</span><em>spark</em>, <em>group_by='greedy'</em>, <em>limit=None</em>, <em>sample=1</em>, <em>seed=42</em>, <em>decode=None</em>, <em>summaries=None</em>, <em>schema=None</em>, <em>table_name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/dataset.html#Dataset.dataframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.dataset.Dataset.dataframe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert RDD returned from records function to a dataframe</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spark</strong> – a SparkSession object</li>
+<li><strong>group_by</strong> – specifies a paritition strategy for the objects</li>
+<li><strong>limit</strong> – maximum number of objects to retrieve</li>
+<li><strong>decode</strong> – an optional transformation to apply to the objects retrieved</li>
+<li><strong>sample</strong> – percentage of results to return. Useful to return a sample
+of the dataset. This parameter is ignored when ‘limit’ is set.</li>
+<li><strong>seed</strong> – initialize internal state of the random number generator (42 by default).
+This is used to make the dataset sampling reproducible. It an be set to None to obtain
+different samples.</li>
+<li><strong>summaries</strong> – an iterable containing the summary for each item in the dataset. If None, it
+will compute calling the summaries dataset.</li>
+<li><strong>schema</strong> – a Spark schema that overrides automatic conversion to a dataframe</li>
+<li><strong>table_name</strong> – allows resulting dataframe to easily be queried using SparkSQL</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a Spark DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="moztelemetry.dataset.Dataset.from_source">
+<em class="property">static </em><code class="descname">from_source</code><span class="sig-paren">(</span><em>source_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/dataset.html#Dataset.from_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.dataset.Dataset.from_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a Dataset configured for the given source_name</p>
+<p>This is particularly convenient when the user doesn’t know
+the list of dimensions or the bucket name, but only the source name.</p>
+<p>Usage example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">records</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_source</span><span class="p">(</span><span class="s1">&#39;telemetry&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+    <span class="n">docType</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span>
+    <span class="n">submissionDate</span><span class="o">=</span><span class="s1">&#39;20160701&#39;</span><span class="p">,</span>
+    <span class="n">appUpdateChannel</span><span class="o">=</span><span class="s1">&#39;nightly&#39;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="moztelemetry.dataset.Dataset.records">
+<code class="descname">records</code><span class="sig-paren">(</span><em>sc</em>, <em>group_by='greedy'</em>, <em>limit=None</em>, <em>sample=1</em>, <em>seed=42</em>, <em>decode=None</em>, <em>summaries=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/dataset.html#Dataset.records"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.dataset.Dataset.records" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the elements of a Dataset</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sc</strong> – a SparkContext object</li>
+<li><strong>group_by</strong> – specifies a partition strategy for the objects</li>
+<li><strong>limit</strong> – maximum number of objects to retrieve</li>
+<li><strong>decode</strong> – an optional transformation to apply to the objects retrieved</li>
+<li><strong>sample</strong> – percentage of results to return. Useful to return a sample
+of the dataset. This parameter is ignored when <cite>limit</cite> is set.</li>
+<li><strong>seed</strong> – initialize internal state of the random number generator (42 by default).
+This is used to make the dataset sampling reproducible. It can be set to None to obtain
+different samples.</li>
+<li><strong>summaries</strong> – an iterable containing a summary for each item in the dataset. If None,
+it will computed calling the summaries dataset.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a Spark rdd containing the elements retrieved</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="moztelemetry.dataset.Dataset.select">
+<code class="descname">select</code><span class="sig-paren">(</span><em>*properties</em>, <em>**aliased_properties</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/dataset.html#Dataset.select"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.dataset.Dataset.select" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify which properties of the dataset must be returned</p>
+<p>Property extraction is based on <a class="reference external" href="http://jmespath.org">JMESPath</a> expressions.
+This method returns a new Dataset narrowed down by the given selection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>properties</strong> – JMESPath to use for the property extraction.
+The JMESPath string will be used as a key in the output dictionary.</li>
+<li><strong>aliased_properties</strong> – Same as properties, but the output dictionary will contain
+the parameter name instead of the JMESPath string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="moztelemetry.dataset.Dataset.summaries">
+<code class="descname">summaries</code><span class="sig-paren">(</span><em>sc</em>, <em>limit=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/dataset.html#Dataset.summaries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.dataset.Dataset.summaries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summary of the files contained in the current dataset</p>
+<p>Every item in the summary is a dict containing a key name and the corresponding size of
+the key item in bytes, e.g.::
+{‘key’: ‘full/path/to/my/key’, ‘size’: 200}</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>limit</strong> – Max number of objects to retrieve</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">An iterable of summaries</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="moztelemetry.dataset.Dataset.where">
+<code class="descname">where</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/dataset.html#Dataset.where"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.dataset.Dataset.where" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new Dataset refined using the given condition</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – a map of <cite>dimension</cite> =&gt; <cite>condition</cite> to filter the elements
+of the dataset. <cite>condition</cite> can either be an exact value or a
+callable returning a boolean value. If <cite>condition</cite> is a value, it is
+converted to a string, then sanitized.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="deprecated-ping-methods">
+<h2>Deprecated ping methods<a class="headerlink" href="#deprecated-ping-methods" title="Permalink to this headline">¶</a></h2>
+<p>Before the Dataset API was available, a number of custom methods were
+written for selecting a set of telemetry pings and extracting data
+from them. These methods are somewhat convoluted and difficult to
+understand, and are not recommended for new code.</p>
+<dl class="function">
+<dt id="moztelemetry.spark.get_pings">
+<code class="descclassname">moztelemetry.spark.</code><code class="descname">get_pings</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/spark.html#get_pings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.spark.get_pings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a RDD of Telemetry submissions for a given filtering criteria.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>sc</strong> – an instance of SparkContext</li>
+<li><strong>app</strong> – an application name, e.g.: “Firefox”</li>
+<li><strong>channel</strong> – a channel name, e.g.: “nightly”</li>
+<li><strong>version</strong> – the application version, e.g.: “40.0a1”</li>
+<li><strong>build_id</strong> – a build_id or a range of build_ids, e.g.:
+“20150601000000” or (“20150601000000”, “20150610999999”)</li>
+<li><strong>submission_date</strong> – a submission date or a range of submission dates, e.g:
+“20150601” or (“20150601”, “20150610”)</li>
+<li><strong>source_name</strong> – source name, set to “telemetry” by default</li>
+<li><strong>source_version</strong> – source version, set to “4” by default</li>
+<li><strong>doc_type</strong> – ping type, set to “saved_session” by default</li>
+<li><strong>schema</strong> – (deprecated) version of the schema to use</li>
+<li><strong>fraction</strong> – the fraction of pings to return, set to 1.0 by default</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="moztelemetry.spark.get_pings_properties">
+<code class="descclassname">moztelemetry.spark.</code><code class="descname">get_pings_properties</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/spark.html#get_pings_properties"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.spark.get_pings_properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a RDD of a subset of properties of pings. Child histograms are
+automatically merged with the parent histogram.</p>
+<p>If one of the paths points to a keyedHistogram name without supplying the
+actual key, returns a dict of all available subhistograms for that property.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>with_processes</strong> – should separate parent and child histograms be
+included as well?</li>
+<li><strong>paths</strong> – paths to properties in the payload, with levels separated by “/”.
+These can be supplied either as a list, eg.
+[“application/channel”, “payload/info/subsessionStartDate”],
+or as the values of a dict keyed by custom identifiers, eg.
+{“channel”: “application/channel”, “ssd”: “payload/info/subsessionStartDate”}.</li>
+<li><strong>histograms_url</strong> – see histogram.Histogram constructor</li>
+<li><strong>additional_histograms</strong> – see histogram.Histogram constructor</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The returned RDD contains a dict for each ping with the required properties as values,
+keyed by the original paths (if ‘paths’ is a list) or the custom identifier keys
+(if ‘paths’ is a dict).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="moztelemetry.spark.get_one_ping_per_client">
+<code class="descclassname">moztelemetry.spark.</code><code class="descname">get_one_ping_per_client</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/spark.html#get_one_ping_per_client"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.spark.get_one_ping_per_client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a single ping for each client in the RDD.</p>
+<p>THIS METHOD IS NOT RECOMMENDED: The ping to be returned is essentially
+selected at random. It is also expensive as it requires data to be
+shuffled around. It should be run only after extracting a subset with
+get_pings_properties.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="using-spark-rdds">
+<h2>Using Spark RDDs<a class="headerlink" href="#using-spark-rdds" title="Permalink to this headline">¶</a></h2>
+<p>Both <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> and <code class="docutils literal notranslate"><span class="pre">get_pings</span></code> return the data as a <a class="reference external" href="http://spark.apache.org/docs/latest/programming-guide.html#resilient-distributed-datasets-rdds">Spark RDD</a>.
+Users can then use the <a class="reference external" href="http://spark.apache.org/docs/latest/programming-guide.html#rdd-operations">RDD api</a> to further shape or transform the dataset.</p>
+</div>
+<div class="section" id="experimental-apis">
+<h2>Experimental APIs<a class="headerlink" href="#experimental-apis" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="moztelemetry.zeppelin.show">
+<code class="descclassname">moztelemetry.zeppelin.</code><code class="descname">show</code><span class="sig-paren">(</span><em>fig</em>, <em>width=600</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moztelemetry/zeppelin.html#show"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moztelemetry.zeppelin.show" title="Permalink to this definition">¶</a></dt>
+<dd><p>Renders a Matplotlib figure in Zeppelin.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fig</strong> – a Matplotlib figure</li>
+<li><strong>width</strong> – the width in pixel of the rendered figure, defaults to 600</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Usage example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">moztelemetry.zeppelin</span> <span class="k">import</span> <span class="n">show</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">show</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Members:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="python_moztelemetry" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Mozilla Firefox Data Platform
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

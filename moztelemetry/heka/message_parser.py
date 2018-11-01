@@ -1,0 +1,303 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import gzip
+import ssl
+import struct
+
+import boto.s3.key
+import snappy
+import ujson as json
+import json as standard_json
+import zlib
+from io import BytesIO
+from google.protobuf.message import DecodeError
+
+# See instructions in the README for how to regenerate these classes.
+from .message_pb2 import Message, Header
+
+
+def parse_heka_message(message):
+    try:
+        for record, total_bytes in unpack(message):
+            yield _parse_heka_record(record)
+
+    except ssl.SSLError:
+        pass  # https://github.com/boto/boto/issues/2830
+
+
+def _parse_heka_record(record):
+    payload = None
+    if record.message.payload:
+        payload = _parse_json(record.message.payload)
+    else:
+        for field in record.message.fields:
+            # Special case: the submission field (bytes) replaces the top level
+            # Payload in the hindsight-based infra. Make sure to parse it first
+            # because it contains null values for JSON fields that have been
+            # split out.
+            if field.name == 'submission':
+                payload = _parse_json(field.value_bytes[0].decode('utf-8', 'replace'))
+                break
+            # Further special case: the content field (bytes) in landfill
+            # messages is an unprocessed form of the data, usually the original
+            # gzipped payload from the client.
+            #
+            # We decompress it if we can, then try to decode it as a UTF-8 string.
+            elif field.name == 'content':
+                try:
+                    string = field.value_bytes[0]
+                    try:
+                        string = zlib.decompress(string, 16+zlib.MAX_WBITS)
+                    except zlib.error:
+                        pass  # not compressed
+                    string = string.decode('utf-8')
+                except UnicodeDecodeError:
+                    # There is no associated payload
+                    break
+                payload = {"content": string}
+                break
+
+    if payload is None:
+        payload = {}
+
+    payload["meta"] = {
+        # If any other Heka Message fields are desired (uuid, logger, severity,
+        # env_version, pid), add them here.
+        "Timestamp": record.message.timestamp,
+        "Type":      record.message.type,
+        "Hostname":  record.message.hostname,
+    }
+
+    for field in record.message.fields:
+        # Already handled above. Skip it.
+        if field.name == 'submission' or field.name == 'content':
+            continue
+
+        name = field.name.split('.')
+        value = field.value_string
+        if field.value_type == 1:
+            # Non-UTF8 bytes fields are currently not supported
+            try:
+                string = field.value_bytes[0].decode('utf-8')
+            except UnicodeDecodeError:
+                continue
+            # handle bytes in a way that doesn't cause problems with JSON
+            value = [string]
+        elif field.value_type == 2:
+            value = field.value_integer
+        elif field.value_type == 3:
+            value = field.value_double
+        elif field.value_type == 4:
+            value = field.value_bool
+
+        if len(name) == 1:  # Treat top-level meta fields as strings
+            payload["meta"][name[0]] = value[0] if len(value) else ""
+        else:
+            _add_field(payload, name, value)
+
+    return payload
+
+
+def _add_field(container, keys, value):
+    if len(keys) == 1:
+        blob = value[0] if len(value) else ""
+        container[keys[0]] = _parse_json(blob)
+        return
+
+    key = keys.pop(0)
+    container[key] = container.get(key, {})
+    _add_field(container[key], keys, value)
+
+
+def _parse_json(string):
+    try:
+        result = json.loads(string)
+    except:  # noqa
+        # Fall back to the standard parser if ujson fails
+        result = standard_json.loads(string)
+    return result
+
+
+_record_separator = 0x1e
+
+
+class BacktrackableFile:
+    def __init__(self, stream):
+        self._stream = stream
+        self._buffer = BytesIO()
+
+    def read(self, size):
+        buffer_data = self._buffer.read(size)
+        to_read = size - len(buffer_data)
+
+        if to_read == 0:
+            return buffer_data
+
+        stream_data = self._stream.read(to_read)
+        self._buffer.write(stream_data)
+
+        return buffer_data + stream_data
+
+    def close(self):
+        self._buffer.close()
+        if type(self._stream) == boto.s3.key.Key:
+            if self._stream.resp:  # Hack! Connections are kept around otherwise!
+                self._stream.resp.close()
+
+            self._stream.close(True)
+        else:
+            self._stream.close()
+
+    def backtrack(self):
+        buf = self._buffer.getvalue()
+        index = buf.find(chr(_record_separator), 1)
+
+        self._buffer = BytesIO()
+        if index >= 0:
+            self._buffer.write(buf[index:])
+            self._buffer.seek(0)
+
+
+class UnpackedRecord():
+    def __init__(self, raw, header, message=None, error=None):
+        self.raw = raw
+        self.header = header
+        self.message = message
+        self.error = error
+
+
+# Returns (bytes_skipped=int, eof_reached=bool)
+def read_until_next(fin, separator=_record_separator):
+    bytes_skipped = 0
+    while True:
+        c = fin.read(1)
+        if len(c) == 0:
+            return bytes_skipped, True
+        elif ord(c) != separator:
+            bytes_skipped += 1
+        else:
+            break
+    return bytes_skipped, False
+
+
+# Stream Framing:
+#  https://hekad.readthedocs.org/en/latest/message/index.html
+def read_one_record(input_stream, raw=False, verbose=False, strict=False, try_snappy=True):
+    # Read 1 byte record separator (and keep reading until we get one)
+    total_bytes = 0
+    skipped, eof = read_until_next(input_stream, 0x1e)
+    total_bytes += skipped
+    if eof:
+        return None, total_bytes
+    else:
+        # we've read one separator (plus anything we skipped)
+        total_bytes += 1
+
+    if skipped > 0:
+        if strict:
+            raise ValueError("Unexpected character(s) at the start of record")
+        if verbose:
+            print("Skipped %s bytes to find a valid separator" % skipped)
+
+    raw_record = struct.pack("<B", 0x1e)
+
+    # Read the header length
+    header_length_raw = input_stream.read(1)
+    if header_length_raw == '':
+        return None, total_bytes
+
+    total_bytes += 1
+    raw_record += header_length_raw
+
+    # The "<" is to force it to read as Little-endian to match the way it's
+    # written. This is the "native" way in linux too, but might as well make
+    # sure we read it back the same way.
+    (header_length,) = struct.unpack('<B', header_length_raw)
+
+    header_raw = input_stream.read(header_length)
+    if header_raw == '':
+        return None, total_bytes
+    total_bytes += header_length
+    raw_record += header_raw
+
+    header = Header()
+    header.ParseFromString(header_raw)
+    unit_separator = input_stream.read(1)
+    total_bytes += 1
+    if ord(unit_separator) != 0x1f:
+        error_msg = "Unexpected unit separator character at offset {}: {}".format(
+            total_bytes, ord(unit_separator)
+        )
+        if strict:
+            raise ValueError(error_msg)
+        return UnpackedRecord(raw_record, header, error=error_msg), total_bytes
+    raw_record += unit_separator
+
+    message_raw = input_stream.read(header.message_length)
+
+    total_bytes += header.message_length
+    raw_record += message_raw
+
+    message = None
+    if not raw:
+        message = Message()
+        parsed_ok = False
+        if try_snappy:
+            try:
+                message.ParseFromString(snappy.decompress(message_raw))
+                parsed_ok = True
+            except:  # noqa
+                # Wasn't snappy-compressed
+                pass
+        if not parsed_ok:
+            # Either we didn't want to attempt snappy, or the
+            # data was not snappy-encoded (or it was just bad).
+            message.ParseFromString(message_raw)
+
+    return UnpackedRecord(raw_record, header, message), total_bytes
+
+
+def unpack_file(filename, **kwargs):
+    fin = gzip.open(filename, "rb") if filename.endswith(".gz") else open(filename, "rb")
+    return unpack(fin, **kwargs)
+
+
+def unpack_string(string, **kwargs):
+    return unpack(BytesIO(string), **kwargs)
+
+
+def unpack(fin, raw=False, verbose=False, strict=False, backtrack=False, try_snappy=True):
+    record_count = 0
+    total_bytes = 0
+
+    while True:
+        r, size = None, 0
+        try:
+            r, size = read_one_record(fin, raw, verbose, strict, try_snappy)
+        except Exception as e:
+            if strict:
+                fin.close()
+                raise e
+            elif verbose:
+                print(e)
+
+            if backtrack and type(e) == DecodeError:
+                fin.backtrack()
+                continue
+
+        if r is None:
+            break
+
+        if verbose and r.error is not None:
+            print(r.error)
+
+        record_count += 1
+        total_bytes += size
+
+        yield r, total_bytes
+
+    if verbose:
+        print("Processed %s records" % record_count)
+
+    fin.close()

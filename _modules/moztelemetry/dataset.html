@@ -1,0 +1,609 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>moztelemetry.dataset &mdash; python_moztelemetry 0.3.9.13 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> python_moztelemetry
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">python_moztelemetry</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>moztelemetry.dataset</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for moztelemetry.dataset</h1><div class="highlight"><pre>
+<span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
+<span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
+<span class="c1"># file, you can obtain one at http://mozilla.org/MPL/2.0/.</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">heapq</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">types</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="k">import</span> <span class="n">copy</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="k">import</span> <span class="n">isfunction</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">chain</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">cpu_count</span>
+<span class="kn">from</span> <span class="nn">six.moves</span> <span class="k">import</span> <span class="n">copyreg</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql</span> <span class="k">import</span> <span class="n">Row</span>
+<span class="kn">import</span> <span class="nn">jmespath</span>
+<span class="kn">from</span> <span class="nn">concurrent</span> <span class="k">import</span> <span class="n">futures</span>
+<span class="kn">from</span> <span class="nn">.heka</span> <span class="k">import</span> <span class="n">message_parser</span>
+
+<span class="kn">from</span> <span class="nn">.store</span> <span class="k">import</span> <span class="n">S3Store</span>
+
+<span class="n">DEFAULT_MAX_CONCURRENCY</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">)</span>
+<span class="n">SANITIZE_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;[^a-zA-Z0-9_.]&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_group_by_size_greedy</span><span class="p">(</span><span class="n">obj_list</span><span class="p">,</span> <span class="n">tot_groups</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Partition a list of objects in even buckets</span>
+
+<span class="sd">    The idea is to choose the bucket for an object in a round-robin fashion.</span>
+<span class="sd">    The list of objects is sorted to also try to keep the total size in bytes</span>
+<span class="sd">    as balanced as possible.</span>
+<span class="sd">    :param obj_list: a list of dict-like objects with a &#39;size&#39; property</span>
+<span class="sd">    :param tot_groups: number of partitions to split the data into.</span>
+<span class="sd">    :return: a list of lists, one for each partition.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sorted_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">obj_list</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tot_groups</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sorted_list</span><span class="p">):</span>
+        <span class="n">current_group</span> <span class="o">=</span> <span class="n">groups</span><span class="p">[</span><span class="n">index</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">)]</span>
+        <span class="n">current_group</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">groups</span>
+
+
+<span class="k">def</span> <span class="nf">_group_by_equal_size</span><span class="p">(</span><span class="n">obj_list</span><span class="p">,</span> <span class="n">tot_groups</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="nb">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">32</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot;Partition a list of objects evenly and by file size</span>
+
+<span class="sd">    Files are placed according to largest file in the smallest bucket. If the</span>
+<span class="sd">    file is larger than the given threshold, then it is placed in a new bucket</span>
+<span class="sd">    by itself.</span>
+<span class="sd">    :param obj_list: a list of dict-like objects with a &#39;size&#39; property</span>
+<span class="sd">    :param tot_groups: number of partitions to split the data</span>
+<span class="sd">    :param threshold: the maximum size of each bucket</span>
+<span class="sd">    :return: a list of lists, one for each partition</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sorted_obj_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([(</span><span class="n">obj</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span> <span class="n">obj</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">obj_list</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="p">[(</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(),</span> <span class="p">[])</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tot_groups</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">tot_groups</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">groups</span> <span class="o">=</span> <span class="n">_group_by_size_greedy</span><span class="p">(</span><span class="n">obj_list</span><span class="p">,</span> <span class="n">tot_groups</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">groups</span>
+    <span class="n">heapq</span><span class="o">.</span><span class="n">heapify</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">sorted_obj_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">obj</span><span class="p">[</span><span class="mi">1</span><span class="p">]]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">size</span><span class="p">,</span> <span class="n">files</span> <span class="o">=</span> <span class="n">heapq</span><span class="o">.</span><span class="n">heappop</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+            <span class="n">size</span> <span class="o">+=</span> <span class="n">obj</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">files</span><span class="p">))</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">groups</span>
+
+
+<span class="k">def</span> <span class="nf">_pickle_method</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Make instance methods pickable</span>
+
+<span class="sd">    See http://stackoverflow.com/questions/1816958/cant-pickle-type-instancemethod-when-using-pythons-multiprocessing-pool-ma/1816969#1816969</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">im_self</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">,</span> <span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">im_class</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">im_func</span><span class="o">.</span><span class="n">func_name</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">,</span> <span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">im_self</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">im_func</span><span class="o">.</span><span class="n">func_name</span><span class="p">)</span>
+
+
+<span class="n">copyreg</span><span class="o">.</span><span class="n">pickle</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">,</span> <span class="n">_pickle_method</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Dataset"><a class="viewcode-back" href="../../api.html#moztelemetry.dataset.Dataset">[docs]</a><span class="k">class</span> <span class="nc">Dataset</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Represents a collection of objects on S3.</span>
+
+<span class="sd">    A Dataset can have zero, one or many filters, which are refined using the</span>
+<span class="sd">    `where` method. The result of refining a Dataset is a Dataset itself, so</span>
+<span class="sd">    it&#39;s possible to chain multiple `where` clauses together.</span>
+
+<span class="sd">    The actual data retrieval is triggered by the `records` method, which returns</span>
+<span class="sd">    a Spark RDD containing the list of records retrieved. To call `records`</span>
+<span class="sd">    a SparkContext object must be provided.</span>
+
+<span class="sd">    Usage example::</span>
+
+<span class="sd">        bucket = &#39;test-bucket&#39;</span>
+<span class="sd">        schema = [&#39;submissionDate&#39;, &#39;docType&#39;, &#39;platform&#39;]</span>
+
+<span class="sd">        records = Dataset(bucket, schema) \\</span>
+<span class="sd">            .select(</span>
+<span class="sd">                &#39;clientId&#39;,</span>
+<span class="sd">                os_name=&#39;environment.system.os.name&#39;,</span>
+<span class="sd">                first_paint=&#39;payload.simpleMeasurements.firstPaint&#39;,</span>
+<span class="sd">                // Take the first 2 stacks for each thread hang.</span>
+<span class="sd">                stack_list=&#39;payload.threadHangStats[].hangs[].stack[0:2]&#39;</span>
+<span class="sd">            ).where(</span>
+<span class="sd">                docType=&#39;main&#39;,</span>
+<span class="sd">                appUpdateChannel=&#39;nightly&#39;,</span>
+<span class="sd">                submissionDate=lambda x: x.startswith(&#39;201607&#39;),</span>
+<span class="sd">            ).records(sc)</span>
+
+<span class="sd">    For convenience Dataset objects can be created using the factory method</span>
+<span class="sd">    `from_source`, that takes a source name (e.g. &#39;telemetry&#39;) and returns a</span>
+<span class="sd">    new Dataset instance. The instance created will be aware of the list of</span>
+<span class="sd">    dimensions, available on its `schema` attribute for inspection.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">bucket</span><span class="p">,</span>
+                 <span class="n">schema</span><span class="p">,</span>
+                 <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">clauses</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">selection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">max_concurrency</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize a Dataset provided bucket and schema</span>
+
+<span class="sd">        :param bucket: bucket name</span>
+<span class="sd">        :param schema: a list of fields describing the structure of the dataset</span>
+<span class="sd">        :param store: an instance of S3Store, potentially reused among several</span>
+<span class="sd">        datasets</span>
+<span class="sd">        :param prefix: a prefix to the</span>
+<span class="sd">        :param clauses: mapping of fields -&gt; callables to refine the dataset</span>
+<span class="sd">        :param max_concurrency: number of processes to spawn when collecting S3 summaries,</span>
+<span class="sd">        defaults to 1.5 * cpu_count</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bucket</span> <span class="o">=</span> <span class="n">bucket</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="n">schema</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span> <span class="ow">or</span> <span class="s1">&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clauses</span> <span class="o">=</span> <span class="n">clauses</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">store</span> <span class="o">=</span> <span class="n">store</span> <span class="ow">or</span> <span class="n">S3Store</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selection</span> <span class="o">=</span> <span class="n">selection</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selection_compiled</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_concurrency</span> <span class="o">=</span> <span class="n">max_concurrency</span> <span class="ow">or</span> <span class="n">DEFAULT_MAX_CONCURRENCY</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bucket&#39;</span><span class="p">,</span> <span class="s1">&#39;schema&#39;</span><span class="p">,</span> <span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="s1">&#39;prefix&#39;</span><span class="p">,</span> <span class="s1">&#39;clauses&#39;</span><span class="p">,</span> <span class="s1">&#39;selection&#39;</span><span class="p">,</span> <span class="s1">&#39;max_concurrency&#39;</span><span class="p">]</span>
+        <span class="n">stmts</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">=</span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">))</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s1">&#39;Dataset(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">stmts</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+              <span class="n">bucket</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">clauses</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">selection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">max_concurrency</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span>
+            <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span>
+            <span class="n">schema</span><span class="o">=</span><span class="n">schema</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span>
+            <span class="n">store</span><span class="o">=</span><span class="n">store</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="p">,</span>
+            <span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span>
+            <span class="n">clauses</span><span class="o">=</span><span class="n">clauses</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">clauses</span><span class="p">,</span>
+            <span class="n">selection</span><span class="o">=</span><span class="n">selection</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection</span><span class="p">,</span>
+            <span class="n">max_concurrency</span><span class="o">=</span><span class="n">max_concurrency</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_concurrency</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Dataset.select"><a class="viewcode-back" href="../../api.html#moztelemetry.dataset.Dataset.select">[docs]</a>    <span class="k">def</span> <span class="nf">select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">properties</span><span class="p">,</span> <span class="o">**</span><span class="n">aliased_properties</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Specify which properties of the dataset must be returned</span>
+
+<span class="sd">        Property extraction is based on `JMESPath &lt;http://jmespath.org&gt;`_ expressions.</span>
+<span class="sd">        This method returns a new Dataset narrowed down by the given selection.</span>
+
+<span class="sd">        :param properties: JMESPath to use for the property extraction.</span>
+<span class="sd">                           The JMESPath string will be used as a key in the output dictionary.</span>
+<span class="sd">        :param aliased_properties: Same as properties, but the output dictionary will contain</span>
+<span class="sd">                                   the parameter name instead of the JMESPath string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">properties</span> <span class="ow">or</span> <span class="n">aliased_properties</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="n">merged_properties</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="n">properties</span><span class="p">))</span>
+        <span class="n">merged_properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">aliased_properties</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">prop_name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">merged_properties</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">prop_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;The property </span><span class="si">{}</span><span class="s1"> has already been selected&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prop_name</span><span class="p">))</span>
+
+        <span class="n">new_selection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">new_selection</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">merged_properties</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="n">new_selection</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_compile_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_compiled</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selection_compiled</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">jmespath</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+                                           <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_apply_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">json_obj</span>
+
+        <span class="c1"># This is mainly for testing purposes.</span>
+        <span class="c1"># For performance reasons the selection should be compiled</span>
+        <span class="c1"># outside of this function.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_compiled</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compile_selection</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">json_obj</span><span class="p">))</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_compiled</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_sanitize_dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Sanitize the given string by replacing illegal characters</span>
+<span class="sd">        with underscores.</span>
+
+<span class="sd">        For String conditions, we should pre-sanitize so that users of</span>
+<span class="sd">        the `where` function do not need to know about the nuances of how</span>
+<span class="sd">        S3 dimensions are sanitized during ingestion.</span>
+
+<span class="sd">        See https://github.com/mozilla-services/lua_sandbox_extensions/blob/master/moz_telemetry/io_modules/moz_telemetry/s3.lua#L167</span>
+
+<span class="sd">        :param v: a string value that should be sanitized.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">SANITIZE_PATTERN</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Dataset.where"><a class="viewcode-back" href="../../api.html#moztelemetry.dataset.Dataset.where">[docs]</a>    <span class="k">def</span> <span class="nf">where</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a new Dataset refined using the given condition</span>
+
+<span class="sd">        :param kwargs: a map of `dimension` =&gt; `condition` to filter the elements</span>
+<span class="sd">            of the dataset. `condition` can either be an exact value or a</span>
+<span class="sd">            callable returning a boolean value. If `condition` is a value, it is</span>
+<span class="sd">            converted to a string, then sanitized.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">clauses</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clauses</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dimension</span><span class="p">,</span> <span class="n">condition</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">dimension</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clauses</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;There should be only one clause for </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dimension</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">dimension</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;The dimension </span><span class="si">{}</span><span class="s1"> doesn</span><span class="se">\&#39;</span><span class="s1">t exist&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dimension</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">isfunction</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">):</span>
+                <span class="n">clauses</span><span class="p">[</span><span class="n">dimension</span><span class="p">]</span> <span class="o">=</span> <span class="n">condition</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">clauses</span><span class="p">[</span><span class="n">dimension</span><span class="p">]</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">((</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sanitize_dimension</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">condition</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy</span><span class="p">(</span><span class="n">clauses</span><span class="o">=</span><span class="n">clauses</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">,</span> <span class="n">prefixes</span><span class="p">,</span> <span class="n">clauses</span><span class="p">,</span> <span class="n">executor</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dimensions</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">clauses</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">prefixes</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dimension</span> <span class="o">=</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">clause</span> <span class="o">=</span> <span class="n">clauses</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dimension</span><span class="p">)</span>
+            <span class="n">matched</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">list_folders</span><span class="p">,</span> <span class="n">prefixes</span><span class="p">)</span>
+            <span class="c1"># Using chain to flatten the results of map</span>
+            <span class="n">matched</span> <span class="o">=</span> <span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="n">matched</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">clause</span><span class="p">:</span>
+                <span class="n">matched</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">matched</span> <span class="k">if</span> <span class="n">clause</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])]</span>
+                <span class="k">del</span> <span class="n">clauses</span><span class="p">[</span><span class="n">dimension</span><span class="p">]</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scan</span><span class="p">(</span><span class="n">dimensions</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">matched</span><span class="p">,</span> <span class="n">clauses</span><span class="p">,</span> <span class="n">executor</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Dataset.summaries"><a class="viewcode-back" href="../../api.html#moztelemetry.dataset.Dataset.summaries">[docs]</a>    <span class="k">def</span> <span class="nf">summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sc</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Summary of the files contained in the current dataset</span>
+
+<span class="sd">        Every item in the summary is a dict containing a key name and the corresponding size of</span>
+<span class="sd">        the key item in bytes, e.g.::</span>
+<span class="sd">        {&#39;key&#39;: &#39;full/path/to/my/key&#39;, &#39;size&#39;: 200}</span>
+
+<span class="sd">        :param limit: Max number of objects to retrieve</span>
+<span class="sd">        :return: An iterable of summaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">clauses</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clauses</span><span class="p">)</span>
+        <span class="n">schema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">:</span>
+            <span class="n">schema</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;prefix&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">schema</span>
+            <span class="c1"># Add a clause for the prefix that always returns True, in case</span>
+            <span class="c1"># the output is not filtered at all (so that we do a scan/filter</span>
+            <span class="c1"># on the prefix directory)</span>
+            <span class="n">clauses</span><span class="p">[</span><span class="s1">&#39;prefix&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">True</span>
+
+        <span class="k">with</span> <span class="n">futures</span><span class="o">.</span><span class="n">ProcessPoolExecutor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_concurrency</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+            <span class="n">scanned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scan</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">],</span> <span class="n">clauses</span><span class="p">,</span> <span class="n">executor</span><span class="p">)</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">scanned</span><span class="p">)</span><span class="o">.</span><span class="n">flatMap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">list_keys</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">keys</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span> <span class="k">if</span> <span class="n">limit</span> <span class="k">else</span> <span class="n">keys</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Dataset.records"><a class="viewcode-back" href="../../api.html#moztelemetry.dataset.Dataset.records">[docs]</a>    <span class="k">def</span> <span class="nf">records</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sc</span><span class="p">,</span> <span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;greedy&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">decode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">summaries</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Retrieve the elements of a Dataset</span>
+
+<span class="sd">        :param sc: a SparkContext object</span>
+<span class="sd">        :param group_by: specifies a partition strategy for the objects</span>
+<span class="sd">        :param limit: maximum number of objects to retrieve</span>
+<span class="sd">        :param decode: an optional transformation to apply to the objects retrieved</span>
+<span class="sd">        :param sample: percentage of results to return. Useful to return a sample</span>
+<span class="sd">            of the dataset. This parameter is ignored when `limit` is set.</span>
+<span class="sd">        :param seed: initialize internal state of the random number generator (42 by default).</span>
+<span class="sd">            This is used to make the dataset sampling reproducible. It can be set to None to obtain</span>
+<span class="sd">            different samples.</span>
+<span class="sd">        :param summaries: an iterable containing a summary for each item in the dataset. If None,</span>
+<span class="sd">            it will computed calling the summaries dataset.</span>
+<span class="sd">        :return: a Spark rdd containing the elements retrieved</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">decode</span> <span class="o">=</span> <span class="n">decode</span> <span class="ow">or</span> <span class="n">message_parser</span><span class="o">.</span><span class="n">parse_heka_message</span>
+        <span class="n">summaries</span> <span class="o">=</span> <span class="n">summaries</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">summaries</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span>
+
+        <span class="c1"># Calculate the sample if summaries is not empty and limit is not set</span>
+        <span class="k">if</span> <span class="n">summaries</span> <span class="ow">and</span> <span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sample</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sample</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">sample</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;sample must be between 0 and 1&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;WARNING: THIS IS NOT A REPRESENTATIVE SAMPLE.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;This &#39;sampling&#39; is based on s3 files and is highly</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;susceptible to skew. Use only for quicker performance</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;while prototyping.&quot;</span>
+            <span class="p">)</span>
+            <span class="c1"># We want this sample to be reproducible.</span>
+            <span class="c1"># See https://bugzilla.mozilla.org/show_bug.cgi?id=1318681</span>
+            <span class="n">seed_state</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">getstate</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+                <span class="n">summaries</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span>
+                                          <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">summaries</span><span class="p">)</span> <span class="o">*</span> <span class="n">sample</span><span class="p">))</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">random</span><span class="o">.</span><span class="n">setstate</span><span class="p">(</span><span class="n">seed_state</span><span class="p">)</span>
+
+        <span class="c1"># Obtain size in MB</span>
+        <span class="n">total_size</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">acc</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">acc</span> <span class="o">+</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span> <span class="n">summaries</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">total_size_mb</span> <span class="o">=</span> <span class="n">total_size</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;fetching </span><span class="si">%.5f</span><span class="s2">MB in </span><span class="si">%s</span><span class="s2"> files...&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">total_size_mb</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">summaries</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">group_by</span> <span class="o">==</span> <span class="s1">&#39;equal_size&#39;</span><span class="p">:</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="n">_group_by_equal_size</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="mi">10</span><span class="o">*</span><span class="n">sc</span><span class="o">.</span><span class="n">defaultParallelism</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">group_by</span> <span class="o">==</span> <span class="s1">&#39;greedy&#39;</span><span class="p">:</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="n">_group_by_size_greedy</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="mi">10</span><span class="o">*</span><span class="n">sc</span><span class="o">.</span><span class="n">defaultParallelism</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;group_by specification is invalid&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compile_selection</span><span class="p">()</span>
+
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">))</span>
+            <span class="o">.</span><span class="n">flatMap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;key&#39;</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">file_handles</span> <span class="o">=</span> <span class="n">keys</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">get_key</span><span class="p">)</span>
+
+        <span class="c1"># decode(fp: file-object) -&gt; list[dict]</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">file_handles</span><span class="o">.</span><span class="n">flatMap</span><span class="p">(</span><span class="n">decode</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_apply_selection</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Dataset.dataframe"><a class="viewcode-back" href="../../api.html#moztelemetry.dataset.Dataset.dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spark</span><span class="p">,</span> <span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;greedy&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">decode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">summaries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convert RDD returned from records function to a dataframe</span>
+
+<span class="sd">        :param spark: a SparkSession object</span>
+<span class="sd">        :param group_by: specifies a paritition strategy for the objects</span>
+<span class="sd">        :param limit: maximum number of objects to retrieve</span>
+<span class="sd">        :param decode: an optional transformation to apply to the objects retrieved</span>
+<span class="sd">        :param sample: percentage of results to return. Useful to return a sample</span>
+<span class="sd">            of the dataset. This parameter is ignored when &#39;limit&#39; is set.</span>
+<span class="sd">        :param seed: initialize internal state of the random number generator (42 by default).</span>
+<span class="sd">            This is used to make the dataset sampling reproducible. It an be set to None to obtain</span>
+<span class="sd">            different samples.</span>
+<span class="sd">        :param summaries: an iterable containing the summary for each item in the dataset. If None, it</span>
+<span class="sd">            will compute calling the summaries dataset.</span>
+<span class="sd">        :param schema: a Spark schema that overrides automatic conversion to a dataframe</span>
+<span class="sd">        :param table_name: allows resulting dataframe to easily be queried using SparkSQL</span>
+<span class="sd">        :return: a Spark DataFrame</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rdd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="p">(</span><span class="n">spark</span><span class="o">.</span><span class="n">sparkContext</span><span class="p">,</span> <span class="n">group_by</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">decode</span><span class="p">,</span> <span class="n">summaries</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">schema</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">Row</span><span class="p">(</span><span class="o">**</span><span class="n">d</span><span class="p">))</span><span class="o">.</span><span class="n">toDF</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">(</span><span class="n">rdd</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">table_name</span><span class="p">:</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">createOrReplaceTempView</span><span class="p">(</span><span class="n">table_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="Dataset.from_source"><a class="viewcode-back" href="../../api.html#moztelemetry.dataset.Dataset.from_source">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_source</span><span class="p">(</span><span class="n">source_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a Dataset configured for the given source_name</span>
+
+<span class="sd">        This is particularly convenient when the user doesn&#39;t know</span>
+<span class="sd">        the list of dimensions or the bucket name, but only the source name.</span>
+
+<span class="sd">        Usage example::</span>
+
+<span class="sd">            records = Dataset.from_source(&#39;telemetry&#39;).where(</span>
+<span class="sd">                docType=&#39;main&#39;,</span>
+<span class="sd">                submissionDate=&#39;20160701&#39;,</span>
+<span class="sd">                appUpdateChannel=&#39;nightly&#39;</span>
+<span class="sd">            )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">meta_bucket</span> <span class="o">=</span> <span class="s1">&#39;net-mozaws-prod-us-west-2-pipeline-metadata&#39;</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">S3Store</span><span class="p">(</span><span class="n">meta_bucket</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">store</span><span class="o">.</span><span class="n">get_key</span><span class="p">(</span><span class="s1">&#39;sources.json&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))[</span><span class="n">source_name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Unknown source </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">source_name</span><span class="p">))</span>
+
+        <span class="n">schema</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_key</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/schema.json&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="s1">&#39;metadata_prefix&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="n">dimensions</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;field_name&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">schema</span><span class="p">)[</span><span class="s1">&#39;dimensions&#39;</span><span class="p">]]</span>
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="s1">&#39;bucket&#39;</span><span class="p">],</span> <span class="n">dimensions</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">source</span><span class="p">[</span><span class="s1">&#39;prefix&#39;</span><span class="p">])</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Mozilla Firefox Data Platform
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

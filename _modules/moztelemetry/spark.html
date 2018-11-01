@@ -1,0 +1,532 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>moztelemetry.spark &mdash; python_moztelemetry 0.3.9.13 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> python_moztelemetry
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">python_moztelemetry</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>moztelemetry.spark</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for moztelemetry.spark</h1><div class="highlight"><pre>
+<span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
+<span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
+<span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
+<span class="kn">import</span> <span class="nn">json</span> <span class="k">as</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="k">import</span> <span class="n">add</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">binary_type</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">iteritems</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">string_types</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">viewkeys</span>
+<span class="kn">from</span> <span class="nn">six.moves</span> <span class="k">import</span> <span class="n">reduce</span>
+
+<span class="kn">import</span> <span class="nn">boto</span>
+
+<span class="kn">from</span> <span class="nn">.dataset</span> <span class="k">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">.histogram</span> <span class="k">import</span> <span class="n">Histogram</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">deprecated</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This is a decorator which can be used to mark functions</span>
+<span class="sd">    as deprecated. It will result in a warning being emitted</span>
+<span class="sd">    when the function is used.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">newFunc</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Call to deprecated function </span><span class="si">%s</span><span class="s2">.&quot;</span> <span class="o">%</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">newFunc</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span>
+    <span class="n">newFunc</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__doc__</span>
+    <span class="n">newFunc</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">newFunc</span>
+
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">boto</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">has_section</span><span class="p">(</span><span class="s1">&#39;Boto&#39;</span><span class="p">):</span>
+    <span class="n">boto</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">add_section</span><span class="p">(</span><span class="s1">&#39;Boto&#39;</span><span class="p">)</span>
+<span class="n">boto</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;Boto&#39;</span><span class="p">,</span> <span class="s1">&#39;http_socket_timeout&#39;</span><span class="p">,</span> <span class="s1">&#39;10&#39;</span><span class="p">)</span>  <span class="c1"># https://github.com/boto/boto/issues/2830</span>
+
+<span class="n">_chunk_size</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="mi">20</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">_conn</span> <span class="o">=</span> <span class="n">boto</span><span class="o">.</span><span class="n">connect_s3</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;s3-us-west-2.amazonaws.com&quot;</span><span class="p">)</span>
+
+    <span class="n">_bucket</span> <span class="o">=</span> <span class="n">_conn</span><span class="o">.</span><span class="n">get_bucket</span><span class="p">(</span><span class="s2">&quot;net-mozaws-prod-us-west-2-pipeline-data&quot;</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">_bucket_meta</span> <span class="o">=</span> <span class="n">_conn</span><span class="o">.</span><span class="n">get_bucket</span><span class="p">(</span><span class="s2">&quot;net-mozaws-prod-us-west-2-pipeline-metadata&quot;</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span>  <span class="c1"># noqa</span>
+    <span class="k">pass</span>  <span class="c1"># Handy for testing purposes...</span>
+
+<span class="n">_sources</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span> <span class="nc">PingCursor</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A subclassed dictionary that defaults to a new instance of</span>
+<span class="sd">    itself when missing a key. See http://stackoverflow.com/a/19829714</span>
+<span class="sd">    for more details.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="c1"># cast all subdicts to PingCursor</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">__missing__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)()</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+
+<div class="viewcode-block" id="get_pings"><a class="viewcode-back" href="../../api.html#moztelemetry.spark.get_pings">[docs]</a><span class="nd">@deprecated</span>
+<span class="k">def</span> <span class="nf">get_pings</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">app</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">build_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">doc_type</span><span class="o">=</span><span class="s1">&#39;saved_session&#39;</span><span class="p">,</span>
+              <span class="n">fraction</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source_name</span><span class="o">=</span><span class="s1">&#39;telemetry&#39;</span><span class="p">,</span> <span class="n">source_version</span><span class="o">=</span><span class="s1">&#39;4&#39;</span><span class="p">,</span>
+              <span class="n">submission_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Returns a RDD of Telemetry submissions for a given filtering criteria.</span>
+
+<span class="sd">    :param sc: an instance of SparkContext</span>
+<span class="sd">    :param app: an application name, e.g.: &quot;Firefox&quot;</span>
+<span class="sd">    :param channel: a channel name, e.g.: &quot;nightly&quot;</span>
+<span class="sd">    :param version: the application version, e.g.: &quot;40.0a1&quot;</span>
+<span class="sd">    :param build_id: a build_id or a range of build_ids, e.g.:</span>
+<span class="sd">                     &quot;20150601000000&quot; or (&quot;20150601000000&quot;, &quot;20150610999999&quot;)</span>
+<span class="sd">    :param submission_date: a submission date or a range of submission dates, e.g:</span>
+<span class="sd">                            &quot;20150601&quot; or (&quot;20150601&quot;, &quot;20150610&quot;)</span>
+<span class="sd">    :param source_name: source name, set to &quot;telemetry&quot; by default</span>
+<span class="sd">    :param source_version: source version, set to &quot;4&quot; by default</span>
+<span class="sd">    :param doc_type: ping type, set to &quot;saved_session&quot; by default</span>
+<span class="sd">    :param schema: (deprecated) version of the schema to use</span>
+<span class="sd">    :param fraction: the fraction of pings to return, set to 1.0 by default</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">schema</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The &#39;schema&#39; parameter is deprecated. &quot;</span>
+              <span class="s2">&quot;Version 4 is now the only schema supported.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">schema</span> <span class="o">!=</span> <span class="s2">&quot;v4&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid schema version&quot;</span><span class="p">)</span>
+
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_source</span><span class="p">(</span><span class="s1">&#39;telemetry&#39;</span><span class="p">)</span>
+
+    <span class="n">filters</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="s1">&#39;docType&#39;</span><span class="p">,</span> <span class="n">doc_type</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;sourceName&#39;</span><span class="p">,</span> <span class="n">source_name</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;sourceVersion&#39;</span><span class="p">,</span> <span class="n">source_version</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;appName&#39;</span><span class="p">,</span> <span class="n">app</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;appUpdateChannel&#39;</span><span class="p">,</span> <span class="n">channel</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;appVersion&#39;</span><span class="p">,</span> <span class="n">version</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">condition</span> <span class="ow">in</span> <span class="n">filters</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">condition</span> <span class="ow">and</span> <span class="n">condition</span> <span class="o">!=</span> <span class="s1">&#39;*&#39;</span><span class="p">:</span>
+            <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">condition</span><span class="p">})</span>
+
+    <span class="c1"># build_id and submission_date can be either strings or tuples or lists,</span>
+    <span class="c1"># so they deserve a special treatment</span>
+    <span class="n">special_cases</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">appBuildId</span><span class="o">=</span><span class="n">build_id</span><span class="p">,</span> <span class="n">submissionDate</span><span class="o">=</span><span class="n">submission_date</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">range_compare</span><span class="p">(</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">min_val</span> <span class="o">&lt;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="n">max_val</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">special_cases</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">!=</span> <span class="s1">&#39;*&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+                <span class="n">condition</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">condition</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">range_compare</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">((</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> must be either a string or a 2 elements &#39;</span>
+                                  <span class="s1">&#39;list/tuple&#39;</span><span class="o">.</span> <span class="nb">format</span><span class="p">(</span><span class="n">key</span><span class="p">)))</span>
+            <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">condition</span><span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">records</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">fraction</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_pings_properties"><a class="viewcode-back" href="../../api.html#moztelemetry.spark.get_pings_properties">[docs]</a><span class="nd">@deprecated</span>
+<span class="k">def</span> <span class="nf">get_pings_properties</span><span class="p">(</span><span class="n">pings</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">only_median</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_processes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                         <span class="n">histograms_url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">additional_histograms</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a RDD of a subset of properties of pings. Child histograms are</span>
+<span class="sd">    automatically merged with the parent histogram.</span>
+
+<span class="sd">    If one of the paths points to a keyedHistogram name without supplying the</span>
+<span class="sd">    actual key, returns a dict of all available subhistograms for that property.</span>
+
+<span class="sd">    :param with_processes: should separate parent and child histograms be</span>
+<span class="sd">                           included as well?</span>
+<span class="sd">    :param paths: paths to properties in the payload, with levels separated by &quot;/&quot;.</span>
+<span class="sd">                  These can be supplied either as a list, eg.</span>
+<span class="sd">                  [&quot;application/channel&quot;, &quot;payload/info/subsessionStartDate&quot;],</span>
+<span class="sd">                  or as the values of a dict keyed by custom identifiers, eg.</span>
+<span class="sd">                  {&quot;channel&quot;: &quot;application/channel&quot;, &quot;ssd&quot;: &quot;payload/info/subsessionStartDate&quot;}.</span>
+<span class="sd">    :param histograms_url: see histogram.Histogram constructor</span>
+<span class="sd">    :param additional_histograms: see histogram.Histogram constructor</span>
+
+<span class="sd">    The returned RDD contains a dict for each ping with the required properties as values,</span>
+<span class="sd">    keyed by the original paths (if &#39;paths&#39; is a list) or the custom identifier keys</span>
+<span class="sd">    (if &#39;paths&#39; is a dict).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pings</span><span class="o">.</span><span class="n">first</span><span class="p">(),</span> <span class="n">binary_type</span><span class="p">):</span>
+        <span class="n">pings</span> <span class="o">=</span> <span class="n">pings</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span><span class="p">]</span>
+
+    <span class="c1"># Use &#39;/&#39; as dots can appear in keyed histograms</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="p">[(</span><span class="n">prop_name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">))</span> <span class="k">for</span> <span class="n">prop_name</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">paths</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="p">[(</span><span class="n">path</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">))</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">pings</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">_get_ping_properties</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">only_median</span><span class="p">,</span>
+                                                    <span class="n">with_processes</span><span class="p">,</span>
+                                                    <span class="n">histograms_url</span><span class="p">,</span>
+                                                    <span class="n">additional_histograms</span><span class="p">))</span> \
+        <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_one_ping_per_client"><a class="viewcode-back" href="../../api.html#moztelemetry.spark.get_one_ping_per_client">[docs]</a><span class="nd">@deprecated</span>
+<span class="k">def</span> <span class="nf">get_one_ping_per_client</span><span class="p">(</span><span class="n">pings</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a single ping for each client in the RDD.</span>
+
+<span class="sd">    THIS METHOD IS NOT RECOMMENDED: The ping to be returned is essentially</span>
+<span class="sd">    selected at random. It is also expensive as it requires data to be</span>
+<span class="sd">    shuffled around. It should be run only after extracting a subset with</span>
+<span class="sd">    get_pings_properties.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pings</span><span class="o">.</span><span class="n">first</span><span class="p">(),</span> <span class="n">binary_type</span><span class="p">):</span>
+        <span class="n">pings</span> <span class="o">=</span> <span class="n">pings</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)))</span>
+
+    <span class="n">filtered</span> <span class="o">=</span> <span class="n">pings</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="s2">&quot;clientID&quot;</span> <span class="ow">in</span> <span class="n">p</span> <span class="ow">or</span> <span class="s2">&quot;clientId&quot;</span> <span class="ow">in</span> <span class="n">p</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">filtered</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Missing clientID/clientId attribute.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;clientID&quot;</span> <span class="ow">in</span> <span class="n">filtered</span><span class="o">.</span><span class="n">first</span><span class="p">():</span>
+        <span class="n">client_id</span> <span class="o">=</span> <span class="s2">&quot;clientID&quot;</span>  <span class="c1"># v2</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">client_id</span> <span class="o">=</span> <span class="s2">&quot;clientId&quot;</span>  <span class="c1"># v4</span>
+
+    <span class="k">return</span> <span class="n">filtered</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">client_id</span><span class="p">],</span> <span class="n">p</span><span class="p">))</span> \
+                   <span class="o">.</span><span class="n">reduceByKey</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">:</span> <span class="n">p1</span><span class="p">)</span> \
+                   <span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_ping_properties</span><span class="p">(</span><span class="n">ping</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">only_median</span><span class="p">,</span> <span class="n">with_processes</span><span class="p">,</span>
+                         <span class="n">histograms_url</span><span class="p">,</span> <span class="n">additional_histograms</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">property_name</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+        <span class="c1"># Cursor will default to `PingCursor()` on missing keys</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">PingCursor</span><span class="p">(</span><span class="n">ping</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;payload&quot;</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>  <span class="c1"># Translate v4 histogram queries to v2 ones</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">cursor</span><span class="p">[</span><span class="s2">&quot;payload&quot;</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cursor</span><span class="p">:</span>
+                <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;histograms&quot;</span> <span class="ow">or</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;keyedHistograms&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;keyedHistograms&quot;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># Include histograms for all available keys.</span>
+                <span class="c1"># These are returned as a subdict mapped from the</span>
+                <span class="c1"># property_name.</span>
+                <span class="n">kh_keys</span> <span class="o">=</span> <span class="n">viewkeys</span><span class="p">(</span><span class="n">cursor</span><span class="p">[</span><span class="s2">&quot;keyedHistograms&quot;</span><span class="p">][</span><span class="n">path</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+
+                    <span class="c1"># Bug 1218576 aggregates child payloads into the</span>
+                    <span class="c1"># content process as of Firefox 51. Keyed histograms</span>
+                    <span class="c1"># will be found in one or the other.</span>
+                    <span class="n">content_kh</span> <span class="o">=</span> <span class="n">cursor</span><span class="p">[</span><span class="s2">&quot;processes&quot;</span><span class="p">][</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;keyedHistograms&quot;</span><span class="p">]</span>
+                    <span class="n">kh_keys</span> <span class="o">|=</span> <span class="n">viewkeys</span><span class="p">(</span><span class="n">content_kh</span><span class="p">[</span><span class="n">path</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+                    <span class="k">for</span> <span class="n">payload</span> <span class="ow">in</span> <span class="n">cursor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;childPayloads&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                        <span class="n">payload_kh</span> <span class="o">=</span> <span class="n">PingCursor</span><span class="p">(</span><span class="n">payload</span><span class="p">)[</span><span class="s2">&quot;keyedHistograms&quot;</span><span class="p">]</span>
+                        <span class="n">kh_keys</span> <span class="o">|=</span> <span class="n">viewkeys</span><span class="p">(</span><span class="n">payload_kh</span><span class="p">[</span><span class="n">path</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+                    <span class="n">gpu_kh</span> <span class="o">=</span> <span class="n">cursor</span><span class="p">[</span><span class="s2">&quot;processes&quot;</span><span class="p">][</span><span class="s2">&quot;gpu&quot;</span><span class="p">][</span><span class="s2">&quot;keyedHistograms&quot;</span><span class="p">]</span>
+                    <span class="n">kh_keys</span> <span class="o">|=</span> <span class="n">viewkeys</span><span class="p">(</span><span class="n">gpu_kh</span><span class="p">[</span><span class="n">path</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+                <span class="k">if</span> <span class="n">kh_keys</span><span class="p">:</span>
+                    <span class="n">kh_histograms</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="k">for</span> <span class="n">kh_key</span> <span class="ow">in</span> <span class="n">kh_keys</span><span class="p">:</span>
+                        <span class="n">props</span> <span class="o">=</span> <span class="n">_get_merged_histograms</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">kh_key</span><span class="p">,</span>
+                                                       <span class="n">path</span> <span class="o">+</span> <span class="p">[</span><span class="n">kh_key</span><span class="p">],</span>
+                                                       <span class="n">with_processes</span><span class="p">,</span>
+                                                       <span class="n">histograms_url</span><span class="p">,</span>
+                                                       <span class="n">additional_histograms</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">props</span><span class="p">):</span>
+                            <span class="n">kh_histograms</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">only_median</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="k">else</span> <span class="kc">None</span>
+
+                    <span class="n">result</span><span class="p">[</span><span class="n">property_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">kh_histograms</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># No available subhistograms.</span>
+                    <span class="n">result</span><span class="p">[</span><span class="n">property_name</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">props</span> <span class="o">=</span> <span class="n">_get_merged_histograms</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">property_name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span>
+                                               <span class="n">with_processes</span><span class="p">,</span> <span class="n">histograms_url</span><span class="p">,</span>
+                                               <span class="n">additional_histograms</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">props</span><span class="p">):</span>
+                    <span class="n">result</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">only_median</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">prop</span> <span class="o">=</span> <span class="n">_get_ping_property</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">histograms_url</span><span class="p">,</span>
+                                      <span class="n">additional_histograms</span><span class="p">)</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">property_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">prop</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span> <span class="nf">_get_ping_property</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">histograms_url</span><span class="p">,</span> <span class="n">additional_histograms</span><span class="p">):</span>
+    <span class="n">is_histogram</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_keyed_histogram</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;histograms&quot;</span><span class="p">:</span>
+        <span class="n">is_histogram</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;keyedHistograms&quot;</span><span class="p">:</span>
+        <span class="c1"># Deal with histogram names that contain a slash...</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">([</span><span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">[</span><span class="mi">2</span><span class="p">:])]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="p">[])</span>
+        <span class="n">is_keyed_histogram</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">cursor</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>  <span class="c1"># noqa</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">cursor</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">cursor</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">is_histogram</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Histogram</span><span class="p">(</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">histograms_url</span><span class="o">=</span><span class="n">histograms_url</span><span class="p">,</span>
+                         <span class="n">additional_histograms</span><span class="o">=</span><span class="n">additional_histograms</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">is_keyed_histogram</span><span class="p">:</span>
+        <span class="n">histogram</span> <span class="o">=</span> <span class="n">Histogram</span><span class="p">(</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">histograms_url</span><span class="o">=</span><span class="n">histograms_url</span><span class="p">,</span>
+                              <span class="n">additional_histograms</span><span class="o">=</span><span class="n">additional_histograms</span><span class="p">)</span>
+        <span class="n">histogram</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])</span>
+        <span class="k">return</span> <span class="n">histogram</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cursor</span>
+
+
+<span class="k">def</span> <span class="nf">_get_merged_histograms</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">property_name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">with_processes</span><span class="p">,</span>
+                           <span class="n">histograms_url</span><span class="p">,</span> <span class="n">additional_histograms</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;histograms&quot;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Histogram access requires a histogram name.&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;keyedHistograms&quot;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Keyed histogram access requires both a histogram name and a label.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Get parent property</span>
+    <span class="n">parent</span> <span class="o">=</span> <span class="n">_get_ping_property</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">histograms_url</span><span class="p">,</span>
+                                <span class="n">additional_histograms</span><span class="p">)</span>
+
+    <span class="c1"># Get children properties</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">children</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">children</span> <span class="o">=</span> <span class="p">[</span><span class="n">_get_ping_property</span><span class="p">(</span><span class="n">cursor</span><span class="p">[</span><span class="s2">&quot;processes&quot;</span><span class="p">][</span><span class="s2">&quot;content&quot;</span><span class="p">],</span>
+                                       <span class="n">path</span><span class="p">,</span> <span class="n">histograms_url</span><span class="p">,</span>
+                                       <span class="n">additional_histograms</span><span class="p">)]</span>
+        <span class="n">children</span> <span class="o">+=</span> <span class="p">[</span><span class="n">_get_ping_property</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">histograms_url</span><span class="p">,</span> <span class="n">additional_histograms</span><span class="p">)</span>
+                     <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">cursor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;childPayloads&quot;</span><span class="p">,</span> <span class="p">[])]</span>
+        <span class="n">children</span> <span class="o">+=</span> <span class="p">[</span><span class="n">_get_ping_property</span><span class="p">(</span><span class="n">cursor</span><span class="p">[</span><span class="s2">&quot;processes&quot;</span><span class="p">][</span><span class="s2">&quot;gpu&quot;</span><span class="p">],</span>
+                                        <span class="n">path</span><span class="p">,</span> <span class="n">histograms_url</span><span class="p">,</span>
+                                        <span class="n">additional_histograms</span><span class="p">)]</span>
+        <span class="n">children</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">h</span><span class="p">:</span> <span class="n">h</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">children</span><span class="p">))</span>
+
+    <span class="c1"># Merge parent and children</span>
+    <span class="n">merged</span> <span class="o">=</span> <span class="p">([</span><span class="n">parent</span><span class="p">]</span> <span class="k">if</span> <span class="n">parent</span> <span class="k">else</span> <span class="p">[])</span> <span class="o">+</span> <span class="n">children</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">with_processes</span><span class="p">:</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">property_name</span> <span class="o">+</span> <span class="s2">&quot;_parent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">property_name</span> <span class="o">+</span> <span class="s2">&quot;_children&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="n">children</span><span class="p">)</span> <span class="k">if</span> <span class="n">children</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">result</span><span class="p">[</span><span class="n">property_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="n">merged</span><span class="p">)</span> <span class="k">if</span> <span class="n">merged</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Mozilla Firefox Data Platform
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
