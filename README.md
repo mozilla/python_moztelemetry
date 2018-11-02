@@ -1,6 +1,10 @@
 # python_moztelemetry [![CircleCI Build Status](https://circleci.com/gh/mozilla/python_moztelemetry/tree/master.svg?style=svg)](https://circleci.com/gh/mozilla/python_moztelemetry/tree/master) [![Updates](https://pyup.io/repos/github/mozilla/python_moztelemetry/shield.svg)](https://pyup.io/repos/github/mozilla/python_moztelemetry/) [![codecov.io](https://codecov.io/github/mozilla/python_moztelemetry/coverage.svg?branch=master)](https://codecov.io/github/mozilla/python_moztelemetry?branch=master)
 
-Spark bindings for Mozilla Telemetry
+PySpark bindings for Mozilla Telemetry
+
+## Documentation
+
+Online documentation is available at https://mozilla.github.io/python_moztelemetry/
 
 ## Deploying a code change
 After having your PR reviewed and merged create a new release on [github](https://help.github.com/articles/creating-releases/).
