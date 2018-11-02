@@ -10,6 +10,11 @@ A simple library to fetch and analyze data collected by the Mozilla Telemetry se
 Objects collected by Telemetry are called ``pings``.
 A ping has a number of properties (aka ``dimensions``) and a payload.
 
+For example usage and additional context on how this library fits into the
+broader landscape of Mozilla telemetry analysis tools, see
+`moztelemetry on docs.telemetry.mozilla.org <https://docs.telemetry.mozilla.org/tools/spark.html#the-moztelemetry-library>`_.
+To browse the source code, see https://github.com/mozilla/python_moztelemetry
+
 A session of Telemetry data analysis/manipulation typically starts
 with a :ref:`Dataset` query that filters the objects by one or more
 dimensions, and then extracts the items of interest from their payload.
