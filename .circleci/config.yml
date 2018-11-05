@@ -111,7 +111,7 @@ jobs:
             git config user.email "fx-data-platform@mozilla.com"
             git config user.name "CircleCI docs-deploy job"
             npm install -g --silent gh-pages@2.0.1
-            gh-pages -d docs/_build/html
+            gh-pages --dotfiles --message "[skip ci] Updates" --dist docs/_build/html
 
   lint:
     docker:
