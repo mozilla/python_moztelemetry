@@ -137,7 +137,7 @@ class Dataset:
         datasets
         :param prefix: a prefix to the
         :param clauses: mapping of fields -> callables to refine the dataset
-        :param max_concurrency: number of processes to spawn when collecting S3 summaries,
+        :param max_concurrency: number of threads to spawn when collecting S3 summaries,
         defaults to 1.5 * cpu_count
         """
         self.bucket = bucket
@@ -283,7 +283,7 @@ class Dataset:
             # on the prefix directory)
             clauses['prefix'] = lambda x: True
 
-        with futures.ProcessPoolExecutor(self.max_concurrency) as executor:
+        with futures.ThreadPoolExecutor(self.max_concurrency) as executor:
             scanned = self._scan(schema, [self.prefix], clauses, executor)
         keys = sc.parallelize(scanned).flatMap(self.store.list_keys)
         return keys.take(limit) if limit else keys.collect()
