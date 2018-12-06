@@ -381,7 +381,9 @@
 <span class="sd">        :param kwargs: a map of `dimension` =&gt; `condition` to filter the elements</span>
 <span class="sd">            of the dataset. `condition` can either be an exact value or a</span>
 <span class="sd">            callable returning a boolean value. If `condition` is a value, it is</span>
-<span class="sd">            converted to a string, then sanitized.</span>
+<span class="sd">            converted to a string, then sanitized. If `condition` is a callable, note that it will</span>
+<span class="sd">            be passed sanitized values -- i.e., characters outside [a-zA-Z0-9_.] are converted</span>
+<span class="sd">            to `_`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">clauses</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clauses</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">dimension</span><span class="p">,</span> <span class="n">condition</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
