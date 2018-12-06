@@ -234,7 +234,9 @@ class Dataset:
         :param kwargs: a map of `dimension` => `condition` to filter the elements
             of the dataset. `condition` can either be an exact value or a
             callable returning a boolean value. If `condition` is a value, it is
-            converted to a string, then sanitized.
+            converted to a string, then sanitized. If `condition` is a callable, note that it will
+            be passed sanitized values -- i.e., characters outside [a-zA-Z0-9_.] are converted
+            to `_`.
         """
         clauses = copy(self.clauses)
         for dimension, condition in kwargs.items():
