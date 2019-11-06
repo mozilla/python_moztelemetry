@@ -25,8 +25,12 @@ test_settings: &test_settings
         command: |
           # python-snappy compression relies on C bindings to libsnappy-dev.
           # pyspark needs to run Java, so we install openjdk.
-          apt-get update
-          apt-get install -y libsnappy-dev openjdk-8-jre-headless
+          echo "deb [check-valid-until=no] http://cdn-fastly.deb.debian.org/debian jessie main" > /etc/apt/sources.list.d/jessie.list
+          echo "deb [check-valid-until=no] http://archive.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list
+          sed -i '/deb http:\/\/deb.debian.org\/debian jessie-updates main/d' /etc/apt/sources.list
+          apt-get -o Acquire::Check-Valid-Until=false update
+          apt-get install -t jessie-backports -y libsnappy-dev openjdk-8-jre-headless
+          /usr/sbin/update-java-alternatives -s java-1.8.0-openjdk-amd64
     - run: &run_tox_environment_matching_circleci_job_name
         name: Run tox job
         command: |
@@ -54,17 +58,17 @@ jobs:
   py27:
     <<: *test_settings
     docker:
-      - image: python:2.7
+      - image: python:2.7-jessie
 
   py35:
     <<: *test_settings
     docker:
-      - image: python:3.5
+      - image: python:3.5-jessie
 
   py36:
     <<: *test_settings
     docker:
-      - image: python:3.6
+      - image: python:3.6-jessie
 
   # We don't actually add this job to the workflow yet due to issues with
   # pyspark <= 2.3.1 running on Python 3.7; see:
@@ -72,11 +76,11 @@ jobs:
   py37:
     <<: *test_settings
     docker:
-      - image: python:3.7
+      - image: python:3.7-jessie
 
   docs: &docs_settings
     docker:
-      - image: python:3.6
+      - image: python:3.6-jessie
     steps:
       - checkout
       - run:
