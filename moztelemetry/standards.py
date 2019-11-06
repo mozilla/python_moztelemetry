@@ -100,7 +100,7 @@ def snap_to_beginning_of_week(day, weekday_start="Sunday"):
     :param weekday_start: Either "Monday" or "Sunday", indicating the first day of the week.
     :returns: A date representing the first day of the current week.
     """
-    delta_days = ((day.weekday() + 1) % 7) if weekday_start is "Sunday" else day.weekday()
+    delta_days = ((day.weekday() + 1) % 7) if weekday_start == "Sunday" else day.weekday()
     return day - timedelta(days=delta_days)
 
 
