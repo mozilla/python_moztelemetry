@@ -6,6 +6,12 @@
 python_moztelemetry
 ===================
 
+.. warning::
+    This library will stop working *VERY SOON* (if it hasn't stopped
+    working already)
+
+    Please see `this post <https://mail.mozilla.org/pipermail/fx-data-dev/2019-November/000291.html>`_ to fx-data-dev for more information.
+
 A simple library to fetch and analyze data collected by the Mozilla Telemetry service.
 Objects collected by Telemetry are called ``pings``.
 A ping has a number of properties (aka ``dimensions``) and a payload.
