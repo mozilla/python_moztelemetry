@@ -55,11 +55,6 @@ test_settings: &test_settings
 version: 2
 jobs:
 
-  py27:
-    <<: *test_settings
-    docker:
-      - image: python:2.7-jessie
-
   py35:
     <<: *test_settings
     docker:
@@ -162,7 +157,6 @@ workflows:
   version: 2
   build:
     jobs:
-      - py27
       - py35
       - py36
       - docs
