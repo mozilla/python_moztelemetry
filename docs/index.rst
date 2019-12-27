@@ -7,8 +7,8 @@ python_moztelemetry
 ===================
 
 .. warning::
-    This library will stop working *VERY SOON* (if it hasn't stopped
-    working already)
+    This library no longer works, as the underlying heka-framed protobuf
+    data no longer exists.
 
     Please see `this post <https://mail.mozilla.org/pipermail/fx-data-dev/2019-November/000291.html>`_ to fx-data-dev for more information.
 
