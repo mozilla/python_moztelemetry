@@ -2,6 +2,9 @@
 
 PySpark bindings for Mozilla Telemetry
 
+The underlying data no longer exists, so this repository is archived.
+See the [`fx-data-dev` mailing list posting for more information](https://mail.mozilla.org/pipermail/fx-data-dev/2019-November/000291.html).
+
 ## Documentation
 
 Online documentation is available at https://mozilla.github.io/python_moztelemetry/
