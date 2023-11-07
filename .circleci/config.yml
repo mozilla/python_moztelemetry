@@ -1,3 +1,10 @@
+#######
+## 2023-11-07 update @kik:
+## Changes to the repo were needed to address bug[1854406]
+# However, we do not want to publish any artifacts anywhere
+# to avoid this CI steps with potential to publish artifacts were commented out.
+###
+
 ####################
 # CircleCI configuration reference:
 #   https://circleci.com/docs/2.0/configuration-reference
@@ -36,15 +43,15 @@ test_settings: &test_settings
         command: |
           pip install tox
           tox -e $CIRCLE_JOB
-    - run:
-        name: Submit code coverage data
-        command: |
-          # Skip this step if running via the CircleCI local CLI.
-          [ -z "$CIRCLE_BUILD_NUM" ] && exit 0
-          # Activate the virtualenv so that codecov can find the 'coverage' executable.
-          source .tox/$CIRCLE_JOB/bin/activate
-          # Upload to codecov and flag (-F) with the name of the job.
-          bash <(curl -s https://codecov.io/bash) -F $CIRCLE_JOB
+    # - run:
+    #     name: Submit code coverage data
+    #     command: |
+    #       # Skip this step if running via the CircleCI local CLI.
+    #       [ -z "$CIRCLE_BUILD_NUM" ] && exit 0
+    #       # Activate the virtualenv so that codecov can find the 'coverage' executable.
+    #       source .tox/$CIRCLE_JOB/bin/activate
+    #       # Upload to codecov and flag (-F) with the name of the job.
+    #       bash <(curl -s https://codecov.io/bash) -F $CIRCLE_JOB
 
 
 
@@ -73,44 +80,44 @@ jobs:
     docker:
       - image: python:3.7-jessie
 
-  docs: &docs_settings
-    docker:
-      - image: python:3.6-jessie
-    steps:
-      - checkout
-      - run:
-          <<: *install_packages
-      - run:
-          <<: *run_tox_environment_matching_circleci_job_name
-      - persist_to_workspace:
-          root: docs/_build
-          paths: html
+  # docs: &docs_settings
+  #   docker:
+  #     - image: python:3.6-jessie
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         <<: *install_packages
+  #     - run:
+  #         <<: *run_tox_environment_matching_circleci_job_name
+  #     - persist_to_workspace:
+  #         root: docs/_build
+  #         paths: html
 
-  docs-deploy:
-    docker:
-      - image: node:8.10.0
-    steps:
-      - checkout
-      - attach_workspace:
-          at: docs/_build
-      - run:
-          name: Disable jekyll builds
-          command: touch docs/_build/html/.nojekyll
-      # Needed for write access to the GitHub repository;
-      # see https://circleci.com/docs/2.0/gh-bb-integration/#deployment-keys-and-user-keys
-      - add_ssh_keys:
-          fingerprints:
-            - "bb:e1:fa:08:e2:ff:a4:ed:f9:b0:64:c0:e6:07:0d:08"
-      # The gh-pages npm package looks to be the most widely used utility for
-      # pushing a directory to a git branch;
-      # see https://www.npmjs.com/package/gh-pages
-      - run:
-          name: Deploy docs to gh-pages branch
-          command: |
-            git config user.email "fx-data-platform@mozilla.com"
-            git config user.name "CircleCI docs-deploy job"
-            npm install -g --silent gh-pages@2.0.1
-            gh-pages --dotfiles --message "[skip ci] Updates" --dist docs/_build/html
+  # docs-deploy:
+  #   docker:
+  #     - image: node:8.10.0
+  #   steps:
+  #     - checkout
+  #     - attach_workspace:
+  #         at: docs/_build
+  #     - run:
+  #         name: Disable jekyll builds
+  #         command: touch docs/_build/html/.nojekyll
+  #     # Needed for write access to the GitHub repository;
+  #     # see https://circleci.com/docs/2.0/gh-bb-integration/#deployment-keys-and-user-keys
+  #     - add_ssh_keys:
+  #         fingerprints:
+  #           - "bb:e1:fa:08:e2:ff:a4:ed:f9:b0:64:c0:e6:07:0d:08"
+  #     # The gh-pages npm package looks to be the most widely used utility for
+  #     # pushing a directory to a git branch;
+  #     # see https://www.npmjs.com/package/gh-pages
+  #     - run:
+  #         name: Deploy docs to gh-pages branch
+  #         command: |
+  #           git config user.email "fx-data-platform@mozilla.com"
+  #           git config user.name "CircleCI docs-deploy job"
+  #           npm install -g --silent gh-pages@2.0.1
+  #           gh-pages --dotfiles --message "[skip ci] Updates" --dist docs/_build/html
 
   lint:
     docker:
@@ -125,27 +132,27 @@ jobs:
 
   # Only runs when a tag starting with 'v' is place on the repository;
   # see the workflows section below for trigger logic.
-  deploy:
-    docker:
-      - image: python:3.6
-    steps:
-      - checkout
-      - run:
-          name: Install deployment tools
-          command: |
-            pip install --upgrade setuptools wheel twine
-      - run:
-          name: Create the distribution files
-          command: |
-            python setup.py sdist bdist_wheel
-      - run:
-          name: Upload to PyPI
-          command: |
-            # Relies on the TWINE_USERNAME and TWINE_PASSWORD environment variables configured at:
-            #   https://circleci.com/gh/mozilla/python_moztelemetry/edit#env-vars
-            # For more on twine, see:
-            #   https://twine.readthedocs.io/en/latest/
-            twine upload dist/*
+  # deploy:
+  #   docker:
+  #     - image: python:3.6
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Install deployment tools
+  #         command: |
+  #           pip install --upgrade setuptools wheel twine
+  #     - run:
+  #         name: Create the distribution files
+  #         command: |
+  #           python setup.py sdist bdist_wheel
+  #     - run:
+  #         name: Upload to PyPI
+  #         command: |
+  #           # Relies on the TWINE_USERNAME and TWINE_PASSWORD environment variables configured at:
+  #           #   https://circleci.com/gh/mozilla/python_moztelemetry/edit#env-vars
+  #           # For more on twine, see:
+  #           #   https://twine.readthedocs.io/en/latest/
+  #           twine upload dist/*
 
 
 
@@ -159,21 +166,21 @@ workflows:
     jobs:
       - py35
       - py36
-      - docs
+      # - docs
       - lint
-      - docs-deploy:
-          requires:
-            - docs
-          filters:
-            branches:
-              only: master
+      # - docs-deploy:
+      #     requires:
+      #       - docs
+      #     filters:
+      #       branches:
+      #         only: master
 
-  tagged-deploy:
-    jobs:
-      - deploy:
-          filters:
-            branches:
-              # Ignore all branches; this workflow should only run for tags.
-              ignore: /.*/
-            tags:
-              only: /^v.*/
+  # tagged-deploy:
+  #   jobs:
+  #     - deploy:
+  #         filters:
+  #           branches:
+  #             # Ignore all branches; this workflow should only run for tags.
+  #             ignore: /.*/
+  #           tags:
+  #             only: /^v.*/
