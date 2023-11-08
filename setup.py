@@ -38,9 +38,9 @@ setup(
         "functools32;python_version<'3'",
         'py4j>=0.10.9.4,<=0.10.9.7',
         'pandas>=0.19.2',
-        'numpy>=1.8.2',
+        'numpy>=1.18.5,<=1.21.6',
         'PyYAML==5.1.2',
-        'python-snappy==0.6.1',
+        'python-snappy>=0.5.4,<=0.6.0',
         'urllib3<1.27,>=1.25.4',
         'typed-ast<1.5,>=1.4.0'
     ],
