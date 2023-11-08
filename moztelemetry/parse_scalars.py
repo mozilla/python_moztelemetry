@@ -319,8 +319,9 @@ def load_scalars(filename, strict_type_checks=True):
 
         # Make sure that the category has at least one probe in it.
         if not category or len(category) == 0:
-            raise ParserError('Category "{}" must have at least one probe in it' +
-                              '.\nSee: {}'.format(category_name, BASE_DOC_URL))
+            raise ParserError(
+                '''Category "{}" must have at least one probe in it.' \
+                See: {}'''.format(category_name, BASE_DOC_URL))
 
         for probe_name in category:
             # We found a scalar type. Go ahead and parse it.
