@@ -46,7 +46,6 @@ setup(
     ],
     setup_requires=[
         'pytest-runner>=5.2,<=5.3.2',
-        'setuptools_scm>=4.1.2,<=7.0.5'
     ],
     extras_require={
         'testing': tests_require,
